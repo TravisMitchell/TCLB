@@ -81,6 +81,9 @@ AddSetting(name="Width", default=4,    comment='Anti-diffusivity coeff')
 AddSetting(name="omega_phi", comment='one over relaxation time (phase field)')
 AddSetting(name="M", omega_phi='1.0/(3*M+0.5)', default=0.02, comment='Mobility')
 AddSetting(name="sigma", 		   comment='surface tension')
+
+AddSetting(name="RTI_Characteristic_Length", default=-999, comment='Use for RTI instability')
+
 # 	Inputs: Fluid Properties
 AddSetting(name="tau_l", comment='relaxation time (low density fluid)')
 AddSetting(name="tau_h", comment='relaxation time (high density fluid)')
@@ -105,8 +108,17 @@ AddSetting(name="BuoyancyX", default=0.0, comment='applied (rho-rho_h)*BuoyancyX
 AddSetting(name="BuoyancyY", default=0.0, comment='applied (rho-rho_h)*BuoyancyY')
 AddSetting(name="BuoyancyZ", default=0.0, comment='applied (rho-rho_h)*BuoyancyZ')
 # Velocity Tracking on Centerline:
+#  For TaylorBubble tracking
 AddNodeType("Centerline",group="ADDITIONALS")
+#  For RTI interface tracking
+AddNodeType("Spiketrack",group="ADDITIONALS")
+AddNodeType("Saddletrack",group="ADDITIONALS")
+AddNodeType("Bubbletrack",group="ADDITIONALS")
+
 AddGlobal("InterfacePosition",comment='trackPosition')
+AddGlobal("RTISpike", comment='SpikeTracker ')
+AddGlobal("RTIBubble",comment='BubbleTracker')
+AddGlobal("RTISaddle",comment='SaddleTracker')
 
 # Globals - table of global integrals that can be monitored and optimized
 AddGlobal(name="PressureLoss", comment='pressure loss', unit="1mPa")

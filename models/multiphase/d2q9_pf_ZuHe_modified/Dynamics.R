@@ -42,7 +42,10 @@ AddQuantity(name="Rho",	  unit="kg/m3")
 AddQuantity(name="PhaseField",unit="1")
 AddQuantity(name="U",	  unit="m/s",vector=T)
 AddQuantity(name="P",	  unit="Pa")
-#AddQuantity(name="InterfaceForce", unit="N",vector=T)
+#	Cases:
+AddSetting(name="Radius", default="0", comment='Use to create air bubble')
+AddSetting(name="CenterX", default="0", comment='Location of air bubble')
+AddSetting(name="CenterY", default="0", comment='Location of air bubble')
 #	Inputs: For phasefield evolution
 AddSetting(name="Density_h", comment='High density')
 AddSetting(name="Density_l", comment='Low  density')

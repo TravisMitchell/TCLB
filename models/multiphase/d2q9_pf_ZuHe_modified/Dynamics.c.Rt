@@ -72,6 +72,11 @@ CudaDeviceFunction real_t calcF_phi(int i, real_t tmp1, real_t nx, real_t ny){
 //	INITIALISATION:
 CudaDeviceFunction void Init() {
 	PhaseF = PhaseField;
+	if ( Radius > 0 ){
+		real_t Ri;
+		Ri = sqrt( (X - CenterX)*(X - CenterX) + (Y - CenterY)*(Y - CenterY) );
+		PhaseF = 0.5 - 0.5 * tanh(2 * (Ri - Radius)/W);
+	}
 }
 
 CudaDeviceFunction void Init_distributions(){

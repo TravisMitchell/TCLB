@@ -46,6 +46,10 @@ AddQuantity(name="P",	  unit="Pa")
 AddQuantity(name="Mu",	  unit="1")
 AddQuantity(name="Normal",unit="1/m",vector=T)
 AddQuantity(name="InterfaceForce", unit="N",vector=T)
+# 	Initialisation Parameters
+AddSetting(name="Radius", default="0", comment='drop radius')
+AddSetting(name="CenterX", default="0", comment='drop location')
+AddSetting(name="CenterY", default="0", comment='drop location')
 #	Inputs: For phasefield evolution
 AddSetting(name="Density_h", comment='High density')
 AddSetting(name="Density_l", comment='Low  density')

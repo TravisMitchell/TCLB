@@ -24,6 +24,9 @@
     u = PV(c("U","V","W"))
 ?>
 
+#include <math.h>
+#define PI 3.14159265
+
 //	EXPORTABLE QUANTITIES:
 /*CudaDeviceFunction real_t getRho(){
 	real_t rho;
@@ -122,6 +125,15 @@ CudaDeviceFunction real_t calcF_phi(int i, real_t tmp1, real_t nx, real_t ny, re
 //	INITIALISATION:
 CudaDeviceFunction void Init() {
 	PhaseF = PhaseField;
+	real_t d = RTI_Characteristic_Length;
+
+	if (d > 0){
+	real_t ycutoff;
+
+	ycutoff = 2.0*d + 0.05*d*(cos(2.0*PI*X/d) + cos(2.0*PI*Z/d));
+	if (Y < ycutoff) {
+		PhaseF = 0.0; }
+	else PhaseF = 1.0;}
 }
 
 CudaDeviceFunction void Init_distributions(){
@@ -853,12 +865,30 @@ CudaDeviceFunction void CollisionMRT(){
         g26 = g26 - (geq[26]) + F_i[26];
 
 	switch (NodeType & NODE_ADDITIONALS) {
+		real_t location;
 		case NODE_Centerline:
 			if (C < 0.5 && PhaseF(1,0,0) > 0.5)
 			{
-				real_t location;
 				location = X + (C-0.5)/(C-PhaseF(1,0,0));
 				AddToInterfacePosition(location);
+			}
+		case NODE_Spiketrack:
+			if (C < 0.5 && PhaseF(0,1,0) > 0.5)
+			{
+				location = Y + (C-0.5)/(C-PhaseF(0,1,0));
+				AddToRTISpike(location);
+			}
+		case NODE_Saddletrack:
+			if (C < 0.5 && PhaseF(0,1,0) > 0.5)
+			{
+				location = Y + (C-0.5)/(C-PhaseF(0,1,0));
+				AddToRTISaddle(location);
+			}
+		case NODE_Bubbletrack:
+			if (C < 0.5 && PhaseF(0,1,0) > 0.5)
+			{
+				location = Y + (C-0.5)/(C-PhaseF(0,1,0));
+				AddToRTIBubble(location);
 			}
 	}
 }

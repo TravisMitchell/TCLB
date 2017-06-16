@@ -65,7 +65,7 @@ R = var(['R[0]','R[1]','R[2]','R[3]','R[4]','R[5]','R[6]','R[7]','R[8]'])
 F_b = var(['Fb_x','Fb_y'])
 #end 
 ?>
-
+#include <math.h>
 #define pi  3.141592653589793116
 
 //	EXPORTABLE QUANTITIES:
@@ -153,6 +153,11 @@ CudaDeviceFunction void calcPhaseF(){
 CudaDeviceFunction void Init() {
 	// This allows gradients to be calculated in equilibrium functions.
 	PhaseF = PhaseField;
+	if (Radius > 0){
+		real_t Ri;
+		Ri = sqrt( (X - CenterX)*(X - CenterX)+(Y - CenterY)*(Y - CenterY) );
+		PhaseF = 0.5 - 0.5 * tanh(2 * (Ri - Radius)/W );
+	}
 }
 CudaDeviceFunction void Init_distributions(){
 // With the value of PhaseField set everywhere we can now shift to
@@ -241,8 +246,8 @@ CudaDeviceFunction void CollisionMRT(){
 	
 	vector_t u;
 	<?R C(PV(c("u.x","u.y")), f %*% U) ?>
-	u.x = (3.0/rho) * (u.x + (0.5/3.0)*(mu*grad.x+Fb_x));
-	u.y = (3.0/rho) * (u.y + (0.5/3.0)*(mu*grad.y+Fb_y));
+	u.x = VelocityX;//(3.0/rho) * (u.x + (0.5/3.0)*(mu*grad.x+Fb_x));
+	u.y = VelocityY;//(3.0/rho) * (u.y + (0.5/3.0)*(mu*grad.y+Fb_y));
 	u.z = 0.0;
 	
 	real_t   p = <?R C(sum(f)) ?> + (Density_h-Density_l)*(grad.x*u.x + grad.y*u.y)/6.0;
