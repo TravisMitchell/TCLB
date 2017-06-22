@@ -24,18 +24,22 @@ AddDensity( name="h[5]", dx= 1, dy= 1, group="h")
 AddDensity( name="h[6]", dx=-1, dy= 1, group="h")
 AddDensity( name="h[7]", dx=-1, dy=-1, group="h")
 AddDensity( name="h[8]", dx= 1, dy=-1, group="h")
-AddField('PhaseF',stencil2d=1, group="OrderParameter")
+
+AddField("PhaseF",stencil2d=1)
 #AddField('p', group="Macro")
+
+
 # Stages - processes to run for initialisation and each iteration
-AddStage("PhaseInit"    , "Init", save="PhaseF")
+AddStage("PhaseInit"    , "Init", save=Fields$name=="PhaseF")
 AddStage("BaseInit"     , "Init_distributions", save=Fields$group=="g" | Fields$group=="h" )
-AddStage("calcPhase"	, "calcPhaseF",	save='PhaseF'                             , 
-	load=DensityAll$group=="h")
+AddStage("calcPhase"	, "calcPhaseF",	save=Fields$name=="PhaseF",load=DensityAll$group=="h")
+AddStage("calcWall"     , "calcWallPhaseF", save=Fields$name=="PhaseF",load=DensityAll$group=="h")
 AddStage("BaseIter"     , "Run" , save=Fields$group=="g" | Fields$group=="h" , 
 	load=DensityAll$group=="g" | DensityAll$group=="h")
 
-AddAction("Iteration", c("BaseIter", "calcPhase"))
-AddAction("Init"     , c("PhaseInit", "BaseInit"))
+AddAction("Iteration", c("BaseIter", "calcPhase","calcWall"))
+AddAction("Init"     , c("PhaseInit", "calcWall","BaseInit"))
+
 
 # 	Outputs:
 AddQuantity(name="Rho",	  unit="kg/m3")
@@ -43,9 +47,19 @@ AddQuantity(name="PhaseField",unit="1")
 AddQuantity(name="U",	  unit="m/s",vector=T)
 AddQuantity(name="P",	  unit="Pa")
 #	Cases:
+########SPHERE
 AddSetting(name="Radius", default="0", comment='Use to create air bubble')
 AddSetting(name="CenterX", default="0", comment='Location of air bubble')
 AddSetting(name="CenterY", default="0", comment='Location of air bubble')
+########RTI
+AddSetting(name="Period", default="0", comment='Number of cells per cos wave')
+AddSetting(name="Perturbation", default="0", comment='Size of wave perturbation, Perturbation*Period')
+AddSetting(name="MidPoint", default="0", comment='height of RTI centerline')
+
+# 	Three phase contact
+AddSetting(name="BoundaryValueType",default="0", comment='Direction of boundary',zonal=T)
+AddSetting(name="theta", default="90", comment='Contact angle')
+
 #	Inputs: For phasefield evolution
 AddSetting(name="Density_h", comment='High density')
 AddSetting(name="Density_l", comment='Low  density')
@@ -59,8 +73,12 @@ AddSetting(name="sigma", 		   comment='surface tension')
 # 	Inputs: Fluid Properties
 AddSetting(name="tau_l", comment='relaxation time (low density fluid)')
 AddSetting(name="tau_h", comment='relaxation time (high density fluid)')
-AddSetting(name="Viscosity_l", tau_l='(3*Viscosity_l)', default=0.16666666, comment='kinematic viscosity')
-AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)', default=0.16666666, comment='kinematic viscosity')
+AddSetting(name="Viscosity_l", tau_l='(3*Viscosity_l)+0.5', default=0.16666666, comment='kinematic viscosity')
+AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)+0.5', default=0.16666666, comment='kinematic viscosity')
+
+#Viscosity commented to alter to Guo Force Scheme
+#AddSetting(name="Viscosity_l", tau_l='(3*Viscosity_l)', default=0.16666666, comment='kinematic viscosity')
+#AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)', default=0.16666666, comment='kinematic viscosity')
 #AddSetting(name="S0", default=1.0, comment='Relaxation Param')
 #AddSetting(name="S1", default=1.0, comment='Relaxation Param')
 #AddSetting(name="S2", default=1.0, comment='Relaxation Param')
@@ -81,3 +99,6 @@ AddGlobal(name="PressureLoss", comment='pressure loss', unit="1mPa")
 AddGlobal(name="OutletFlux", comment='pressure loss', unit="1m2/s")
 AddGlobal(name="InletFlux", comment='pressure loss', unit="1m2/s")
 AddGlobal(name="TotalDensity", comment='Mass conservation check', unit="1kg/m3")
+
+# For Contact angles
+#AddNodeType(name="SouthWall", group="BOUNDARY")
