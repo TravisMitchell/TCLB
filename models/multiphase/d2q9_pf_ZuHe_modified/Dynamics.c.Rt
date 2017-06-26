@@ -14,7 +14,8 @@
 CudaDeviceFunction real_t getRho(){
 	real_t rho;
 	rho = Density_l + (Density_h-Density_l) * (PhaseF(0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
-	return rho;
+	Solidflag=Solidflag(0,0);
+	return Solidflag;
 }
 CudaDeviceFunction real_t getPhaseField(){
 	real_t pf = PhaseF(0,0);
@@ -37,7 +38,7 @@ CudaDeviceFunction vector_t calcGradPhi(){
 	vector_t gradPhi;
 	real_t pf[9];
 	pf[0] = PhaseF(0,0);
-	
+
 	gradPhi.x = (PhaseF(1,0) - PhaseF(-1,0))/3.0 + (PhaseF(1,1) - PhaseF(-1,-1) + PhaseF(1,-1) - PhaseF(-1,1))/12.0;
 	gradPhi.y = (PhaseF(0,1) - PhaseF(0,-1))/3.0 + (PhaseF(1,1) - PhaseF(-1,-1) + PhaseF(-1,1) - PhaseF(1,-1))/12.0;
 	gradPhi.z = sqrt(gradPhi.x*gradPhi.x + gradPhi.y*gradPhi.y + 1e-12);;
@@ -47,18 +48,33 @@ CudaDeviceFunction vector_t calcGradPhi(){
 
 CudaDeviceFunction void calcPhaseF(){
 	PhaseF = h[0]+h[1]+h[2]+h[3]+h[4]+h[5]+h[6]+h[7]+h[8];
-	//if (IamBoundary) {PhaseF = 999;}
+	Solidflag = Solidflag(0,0);
 }
 
 CudaDeviceFunction void calcWallPhaseF(){
 PhaseF = PhaseF(0,0);
-switch (NodeType && NODE_BOUNDARY) {
-	case NODE_Wall:
-		if (BoundaryValueType ==3){
-			PhaseF = PhaseF(0,1) + 0.5*abs(PhaseF(1,1)-PhaseF(-1,1)) * tan(PI/2.0 - theta*PI/180.0);
+Solidflag = Solidflag(0,0);
+
+if (Solidflag == 1){
+real_t NorthWall = Solidflag(-1,1) + Solidflag(0,1) + Solidflag(1,1);
+real_t NorthRemainder = Solidflag(-1,0) + Solidflag(1,0)
+		       +Solidflag(-1,-1)+ Solidflag(0,-1) + Solidflag(1,-1);
+real_t SouthWall = Solidflag(-1,-1)+ Solidflag(0,-1)+ Solidflag(1,-1);
+
+//South Wall
+    if ( NorthWall == 0.0 && NorthRemainder == 5.0  )
+    {
+	PhaseF = PhaseF(0,1) + 0.5*abs(PhaseF(1,1)-PhaseF(-1,1)) * tan(PI/2.0 - theta*PI/180.0);
+    }
+		//North Wall
+		else if (Solidflag(1,-1) + Solidflag(0,-1) + Solidflag(-1,-1) == 0 && //Namely they are all fluid
+			Solidflag(1,0) + Solidflag(-1,0) + Solidflag(1,1)
+			+ Solidflag(0,1) + Solidflag(1,1) ==6) //Namely they are all solid
+		{
+			PhaseF = PhaseF(0,-1) + 0.5*abs(PhaseF(1,-1)-PhaseF(-1,-1)) * tan(PI/2.0 - theta*PI/180.0);
+			printf("Am I entered \n");
 		}
 	}
-
 }
 
 CudaDeviceFunction real_t calcMu(real_t C){
@@ -89,44 +105,42 @@ CudaDeviceFunction real_t calcF_phi(int i, real_t tmp1, real_t nx, real_t ny){
 }
 
 //	INITIALISATION:
-CudaDeviceFunction void Init() {
+CudaDeviceFunction void PhaseInit() {
 	PhaseF = PhaseField;
-	if ( Radius > 0 ){
+// Test Cases:
+	if ( Radius > 0 ){ // Diffuse interface circle
 		real_t Ri;
 		Ri = sqrt( (X - CenterX)*(X - CenterX) + (Y - CenterY)*(Y - CenterY) );
 		PhaseF = 0.5 - 0.5 * tanh(2 * (Ri - Radius)/W);
 	}
-	if ( Period > 0){
+	if ( Period > 0){ // Rayleigh-Taylor Instability
 	 	real_t InterfacePoint;
 		InterfacePoint = MidPoint + Perturbation*Period*cos(2*PI*X/Period);
 		PhaseF = 0.5*( (PhaseField_l+PhaseField_h) + (PhaseField_h - PhaseField_l) *
 					tanh(2 * (Y - InterfacePoint)/W));
 	}
+	Solidflag = 0.0;
+	switch ( NodeType & NODE_BOUNDARY ) {
+		case NODE_Wall:
+			Solidflag = 1.0;
+		case NODE_Solid:
+			Solidflag = 1.0;
+	}
 }
 
-CudaDeviceFunction void Init_distributions(){
-// Find Gradients and normals:
+CudaDeviceFunction void Init(){
+	real_t C = PhaseF;
+	Solidflag = Solidflag(0,0);
 	int i;
-	real_t C = PhaseF(0,0);
-	vector_t gradPhi = calcGradPhi();
-	real_t nx, ny;
-	nx = gradPhi.x/gradPhi.z;	//as in 2D, gradPhi.z is storing the magnitude of the vector
-	ny = gradPhi.y/gradPhi.z;
+
 // Define Equilibrium, then initialise all da things
 	U = VelocityX;
 	V = VelocityY;
-	real_t mag = U*U + V*V;
-
-	real_t Gamma[9];
-// ##### heq
-	real_t F_phi[9], tmp1;
-	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/W;
+	real_t mag = U*U + V*V, Gamma[9];
 
 	for (i=0; i< 9; i++){
 		Gamma[i] = calcGamma(i, U, V, mag);
-		F_phi[i] = calcF_phi(i, tmp1, nx, ny);
-		h[i] = C * Gamma[i] - 0.5*F_phi[i];
-// ##### geq
+		h[i] = C * Gamma[i];
 		g[i] = Gamma[i] - wf[i];
 	}
 	PhaseF = h[0]+h[1]+h[2]+h[3]+h[4]+h[5]+h[6]+h[7]+h[8];
@@ -134,7 +148,8 @@ CudaDeviceFunction void Init_distributions(){
 
 //	ITERATION:
 CudaDeviceFunction void Run() {
-    switch (NodeType & NODE_BOUNDARY) {
+Solidflag = Solidflag(0,0);
+     switch (NodeType & NODE_BOUNDARY) {
 		case NODE_Solid:
 		case NODE_Wall:
 			BounceBack();

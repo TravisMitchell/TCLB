@@ -25,20 +25,27 @@ AddDensity( name="h[6]", dx=-1, dy= 1, group="h")
 AddDensity( name="h[7]", dx=-1, dy=-1, group="h")
 AddDensity( name="h[8]", dx= 1, dy=-1, group="h")
 
-AddField("PhaseF",stencil2d=1)
-#AddField('p', group="Macro")
-
+AddField("Solidflag",stencil2d=1,group="nw")
+AddField("PhaseF",   stencil2d=1,group="nw")
 
 # Stages - processes to run for initialisation and each iteration
-AddStage("PhaseInit"    , "Init", save=Fields$name=="PhaseF")
-AddStage("BaseInit"     , "Init_distributions", save=Fields$group=="g" | Fields$group=="h" )
-AddStage("calcPhase"	, "calcPhaseF",	save=Fields$name=="PhaseF",load=DensityAll$group=="h")
-AddStage("calcWall"     , "calcWallPhaseF", save=Fields$name=="PhaseF",load=DensityAll$group=="h")
-AddStage("BaseIter"     , "Run" , save=Fields$group=="g" | Fields$group=="h" , 
-	load=DensityAll$group=="g" | DensityAll$group=="h")
+AddStage("PhaseInit"    , 
+          save=Fields$group=="nw")
+AddStage("BaseInit"     , "Init", 
+	  save=Fields$group=="g" | Fields$group=="h" )
 
-AddAction("Iteration", c("BaseIter", "calcPhase","calcWall"))
-AddAction("Init"     , c("PhaseInit", "calcWall","BaseInit"))
+AddStage("calcPhaseF",
+	  save=Fields$name=="PhaseF",
+	  load=DensityAll$group=="h")
+AddStage("calcWallPhaseF", 
+	  save=Fields$name=="PhaseF")
+
+AddStage("BaseIter"     , "Run" , 
+	  save=Fields$group=="g" | Fields$group=="h" , 
+	  load=DensityAll$group=="g" | DensityAll$group=="h")
+
+AddAction("Iteration", c("BaseIter", "calcPhaseF","calcWallPhaseF"))
+AddAction("Init"     , c("PhaseInit","calcWallPhaseF","BaseInit"))
 
 
 # 	Outputs:
@@ -57,7 +64,6 @@ AddSetting(name="Perturbation", default="0", comment='Size of wave perturbation,
 AddSetting(name="MidPoint", default="0", comment='height of RTI centerline')
 
 # 	Three phase contact
-AddSetting(name="BoundaryValueType",default="0", comment='Direction of boundary',zonal=T)
 AddSetting(name="theta", default="90", comment='Contact angle')
 
 #	Inputs: For phasefield evolution
