@@ -25,28 +25,24 @@ AddDensity( name="h[6]", dx=-1, dy= 1, group="h")
 AddDensity( name="h[7]", dx=-1, dy=-1, group="h")
 AddDensity( name="h[8]", dx= 1, dy=-1, group="h")
 
-AddField("Solidflag",stencil2d=1,group="nw")
-AddField("PhaseF",   stencil2d=1,group="nw")
+AddField("PhaseF",stencil2d=1)
+AddField("SolidF",stencil2d=1)
 
 # Stages - processes to run for initialisation and each iteration
-AddStage("PhaseInit"    , 
-          save=Fields$group=="nw")
-AddStage("BaseInit"     , "Init", 
-	  save=Fields$group=="g" | Fields$group=="h" )
+AddStage("PhaseInit"    , "Init", save=Fields$name=="PhaseF" | Fields$name=="SolidF")
+AddStage("BaseInit"     , "Init_distributions", save=Fields$group=="g" | Fields$group=="h" )
+AddStage("WallTest"     , "WallInit", save=Fields$name=="PhaseF" | Fields$name=="SolidF")
 
-AddStage("calcPhaseF",
-	  save=Fields$name=="PhaseF",
-	  load=DensityAll$group=="h")
-AddStage("calcWallPhaseF", 
-	  save=Fields$name=="PhaseF")
+AddStage("calcPhase"	, "calcPhaseF",	save=Fields$name=="PhaseF" | Fields$name=="SolidF",
+			                load=DensityAll$group=="h")
+AddStage("calcWall"     , "calcWallPhaseF", save=Fields$name=="PhaseF")
+AddStage("BaseIter"     , "Run" , save=Fields$group=="g" | Fields$group=="h" , 
+	load=DensityAll$group=="g" | DensityAll$group=="h")
 
-AddStage("BaseIter"     , "Run" , 
-	  save=Fields$group=="g" | Fields$group=="h" , 
-	  load=DensityAll$group=="g" | DensityAll$group=="h")
 
-AddAction("Iteration", c("BaseIter", "calcPhaseF","calcWallPhaseF"))
-AddAction("Init"     , c("PhaseInit","calcWallPhaseF","BaseInit"))
 
+AddAction("Iteration", c("BaseIter", "calcPhase"))
+AddAction("Init"     , c("PhaseInit", "WallTest", "BaseInit"))
 
 # 	Outputs:
 AddQuantity(name="Rho",	  unit="kg/m3")
@@ -64,6 +60,7 @@ AddSetting(name="Perturbation", default="0", comment='Size of wave perturbation,
 AddSetting(name="MidPoint", default="0", comment='height of RTI centerline')
 
 # 	Three phase contact
+AddSetting(name="BoundaryValueType",default="0", comment='Direction of boundary',zonal=T)
 AddSetting(name="theta", default="90", comment='Contact angle')
 
 #	Inputs: For phasefield evolution
