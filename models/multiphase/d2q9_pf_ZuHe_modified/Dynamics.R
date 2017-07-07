@@ -35,7 +35,6 @@ AddStage("WallTest"     , "WallInit", save=Fields$name=="PhaseF" | Fields$name==
 
 AddStage("calcPhase"	, "calcPhaseF",	save=Fields$name=="PhaseF" | Fields$name=="SolidF",
 			                load=DensityAll$group=="h")
-AddStage("calcWall"     , "calcWallPhaseF", save=Fields$name=="PhaseF")
 AddStage("BaseIter"     , "Run" , save=Fields$group=="g" | Fields$group=="h" , 
 	load=DensityAll$group=="g" | DensityAll$group=="h")
 

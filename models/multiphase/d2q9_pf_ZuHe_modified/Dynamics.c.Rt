@@ -40,29 +40,54 @@ CudaDeviceFunction vector_t calcGradPhi(){
 	vector_t gradPhi;
 	real_t pf[8];
 	PhaseF = PhaseF(0,0);
-	pf[0] = PhaseF(1,0)  ;if (SolidF(1,0)  ==1) pf[0] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[1] = PhaseF(0,1)  ;if (SolidF(0,1)  ==1) pf[1] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[2] = PhaseF(-1,0) ;if (SolidF(-1,0) ==1) pf[2] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[3] = PhaseF(0,-1) ;if (SolidF(0,-1) ==1) pf[3] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[4] = PhaseF(1,1)  ;if (SolidF(1,1)  ==1) pf[4] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[5] = PhaseF(-1,1) ;if (SolidF(-1,1) ==1) pf[5] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[6] = PhaseF(-1,-1);if (SolidF(-1,-1)==1) pf[6] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[7] = PhaseF(1,-1) ;if (SolidF(1,-1) ==1) pf[7] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-/*	pf[0] = PhaseF(1,0)  ;if (SolidF(1,0)  ==1) pf[0] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[0]-pf[0]*pf[0])/W ;
-	pf[1] = PhaseF(0,1)  ;if (SolidF(0,1)  ==1) pf[1] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[1]-pf[1]*pf[1])/W ;
-	pf[2] = PhaseF(-1,0) ;if (SolidF(-1,0) ==1) pf[2] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[2]-pf[2]*pf[2])/W ;
-	pf[3] = PhaseF(0,-1) ;if (SolidF(0,-1) ==1) pf[3] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[3]-pf[3]*pf[3])/W ;
-	pf[4] = PhaseF(1,1)  ;if (SolidF(1,1)  ==1) pf[4] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[4]-pf[4]*pf[4])/W ;
-	pf[5] = PhaseF(-1,1) ;if (SolidF(-1,1) ==1) pf[5] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[5]-pf[5]*pf[5])/W ;
-	pf[6] = PhaseF(-1,-1);if (SolidF(-1,-1)==1) pf[6] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[6]-pf[6]*pf[6])/W ;
-	pf[7] = PhaseF(1,-1) ;if (SolidF(1,-1) ==1) pf[7] = PhaseF + 4.0*cos( theta*PI/180.0 )*(pf[7]-pf[7]*pf[7])/W ;
-*/
+	real_t kappa, beta;
+	kappa = 1.5 * sigma * W;
+	beta  = 12.0 * sigma/W;
+	real_t phic_kap = 2.0 * sqrt(2.0*kappa*beta) * cos( theta*PI/180.0 ) * (PhaseF*PhaseF-PhaseF)/kappa;
+	pf[0] = PhaseF(1,0)  ;if (SolidF(1,0)  ==1) pf[0] = PhaseF(-1,0)  ;
+	pf[1] = PhaseF(0,1)  ;if (SolidF(0,1)  ==1) pf[1] = PhaseF(0,-1)  ;
+	pf[2] = PhaseF(-1,0) ;if (SolidF(-1,0) ==1) pf[2] = PhaseF(1,0)   ;
+	pf[3] = PhaseF(0,-1) ;if (SolidF(0,-1) ==1) pf[3] = PhaseF(0,1)   ;
+	pf[4] = PhaseF(1,1)  ;if (SolidF(1,1)  ==1) pf[4] = PhaseF(-1,-1) ;
+	pf[5] = PhaseF(-1,1) ;if (SolidF(-1,1) ==1) pf[5] = PhaseF(1,-1)  ;
+	pf[6] = PhaseF(-1,-1);if (SolidF(-1,-1)==1) pf[6] = PhaseF(1,1)   ;
+	pf[7] = PhaseF(1,-1) ;if (SolidF(1,-1) ==1) pf[7] = PhaseF(-1,1)  ;
+
+	gradPhi.x = (pf[0]-pf[2])/3.0 + (pf[4]-pf[6]+pf[7]-pf[5])/12.0;
+	gradPhi.y = (pf[1]-pf[3])/3.0 + (pf[4]-pf[6]+pf[5]-pf[7])/12.0;
+	gradPhi.z = sqrt(gradPhi.x*gradPhi.x + gradPhi.y*gradPhi.y + 1e-12);;
+
+	return gradPhi;
+}
+
+CudaDeviceFunction vector_t calcNormal(){
+	SolidF = SolidF(0,0);
+	vector_t gradPhi, n;
+	real_t pf[8];
+	PhaseF = PhaseF(0,0);
+	real_t kappa, beta;
+	kappa = 1.5 * sigma * W;
+	beta  = 12.0 * sigma/W;
+	real_t phic_kap = 2.0 * sqrt(2.0*kappa*beta) * cos( theta*PI/180.0 ) * (PhaseF*PhaseF-PhaseF)/kappa;
+
+	pf[0] = PhaseF(1,0)  ;if (SolidF(1,0)  ==1) pf[0] = PhaseF(-1,0)  + phic_kap ;
+	pf[1] = PhaseF(0,1)  ;if (SolidF(0,1)  ==1) pf[1] = PhaseF(0,-1)  + phic_kap ;
+	pf[2] = PhaseF(-1,0) ;if (SolidF(-1,0) ==1) pf[2] = PhaseF(1,0)   + phic_kap ;
+	pf[3] = PhaseF(0,-1) ;if (SolidF(0,-1) ==1) pf[3] = PhaseF(0,1)   + phic_kap ;
+	pf[4] = PhaseF(1,1)  ;if (SolidF(1,1)  ==1) pf[4] = PhaseF(-1,-1) + phic_kap ;
+	pf[5] = PhaseF(-1,1) ;if (SolidF(-1,1) ==1) pf[5] = PhaseF(1,-1)  + phic_kap ;
+	pf[6] = PhaseF(-1,-1);if (SolidF(-1,-1)==1) pf[6] = PhaseF(1,1)   + phic_kap ;
+	pf[7] = PhaseF(1,-1) ;if (SolidF(1,-1) ==1) pf[7] = PhaseF(-1,1)  + phic_kap ;
+
 	gradPhi.x = (pf[0]-pf[2])/3.0 + (pf[4]-pf[6]+pf[7]-pf[5])/12.0;
 	gradPhi.y = (pf[1]-pf[3])/3.0 + (pf[4]-pf[6]+pf[5]-pf[7])/12.0;
 
 	gradPhi.z = sqrt(gradPhi.x*gradPhi.x + gradPhi.y*gradPhi.y + 1e-12);;
 
-	return gradPhi;
+	n.x = gradPhi.x/gradPhi.z;
+	n.y = gradPhi.y/gradPhi.z;
+	n.z = 0;
+	return n;
 }
 
 CudaDeviceFunction void calcPhaseF(){
@@ -75,42 +100,25 @@ CudaDeviceFunction void calcPhaseF(){
 	}
 }
 
-CudaDeviceFunction void calcWallPhaseF(){
-PhaseF = PhaseF(0,0);
-switch (NodeType & NODE_BOUNDARY) {
-	case NODE_Wall:
-		PhaseF = -999;/*
-		if (BoundaryValueType ==3){ // Bottom Wall
-			PhaseF = PhaseF(0,1) + 0.5*abs(PhaseF(1,1)-PhaseF(-1,1)) * tan(PI/2.0 - theta*PI/180.0);
-		}
-		if (BoundaryValueType ==4){ // Top Wall
-			PhaseF = PhaseF(0,-1) + 0.5*abs(PhaseF(1,-1)-PhaseF(-1,-1)) * tan(PI/2.0 - theta*PI/180.0);
-		}*/
-	}
-
-}
-
 CudaDeviceFunction real_t calcMu(real_t C){
 	real_t pfavg, lpPhi, mu;
-
 	pfavg = 0.5*(PhaseField_l+PhaseField_h);
 	real_t pf[8];
-	pf[0] = PhaseF(1,0)  ;if (SolidF(1,0)  ==1) pf[0] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[1] = PhaseF(0,1)  ;if (SolidF(0,1)  ==1) pf[1] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[2] = PhaseF(-1,0) ;if (SolidF(-1,0) ==1) pf[2] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[3] = PhaseF(0,-1) ;if (SolidF(0,-1) ==1) pf[3] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[4] = PhaseF(1,1)  ;if (SolidF(1,1)  ==1) pf[4] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[5] = PhaseF(-1,1) ;if (SolidF(-1,1) ==1) pf[5] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[6] = PhaseF(-1,-1);if (SolidF(-1,-1)==1) pf[6] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
-	pf[7] = PhaseF(1,-1) ;if (SolidF(1,-1) ==1) pf[7] = 0.8 ; // PhaseF + 4.0*cos( theta*PI/180.0 )*(PhaseF-PhaseF*PhaseF)/W ;
+	pf[0] = PhaseF(1,0)  ;if (SolidF(1,0)  ==1) pf[0] = PhaseF(-1,0)  ;
+	pf[1] = PhaseF(0,1)  ;if (SolidF(0,1)  ==1) pf[1] = PhaseF(0,-1)  ;
+	pf[2] = PhaseF(-1,0) ;if (SolidF(-1,0) ==1) pf[2] = PhaseF(1,0)   ;
+	pf[3] = PhaseF(0,-1) ;if (SolidF(0,-1) ==1) pf[3] = PhaseF(0,1)   ;
+	pf[4] = PhaseF(1,1)  ;if (SolidF(1,1)  ==1) pf[4] = PhaseF(-1,-1) ;
+	pf[5] = PhaseF(-1,1) ;if (SolidF(-1,1) ==1) pf[5] = PhaseF(1,-1)  ;
+	pf[6] = PhaseF(-1,-1);if (SolidF(-1,-1)==1) pf[6] = PhaseF(1,1)   ;
+	pf[7] = PhaseF(1,-1) ;if (SolidF(1,-1) ==1) pf[7] = PhaseF(-1,1)  ;
 
 	lpPhi = (pf[4]+pf[5]+pf[7]+pf[6] +
 				    4.0*(pf[0]+pf[2]+pf[1]+pf[3] ) -
 					20.0*C)/6.0;
 /*	lpPhi = (PhaseF(1,1)+PhaseF(-1,1)+PhaseF(1,-1)+PhaseF(-1,-1) +
 				    4.0*(PhaseF(1,0)+PhaseF(-1,0)+PhaseF(0,1)+PhaseF(0,-1) ) -
-					20.0*C)/6.0;
-*/
+					20.0*C)/6.0;*/
 	mu = 4.0*(12.0*sigma/W)*(C-PhaseField_l)*(C-PhaseField_h)*(C-pfavg)
 	       - (1.5 *sigma*W) * lpPhi;
 	return mu;
@@ -379,8 +387,10 @@ CudaDeviceFunction void CollisionMRT(){
 // 		Gradients & Normals
 	gradPhi = calcGradPhi();
 //as in 2D, gradPhi.z is storing the magnitude of the vector
-	nx = gradPhi.x/gradPhi.z;
-	ny = gradPhi.y/gradPhi.z;
+//	nx = gradPhi.x/gradPhi.z;
+//	ny = gradPhi.y/gradPhi.z;
+	vector_t n = calcNormal();
+	nx = n.x; ny = n.y;
 
 // 		MRT stuff
 	mag = U*U + V*V;
