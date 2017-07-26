@@ -62,8 +62,10 @@ AddStage("calcPhase"	, "calcPhaseF",	save='PhaseF'                             ,
 AddStage("BaseIter"     , "Run" , save=Fields$group=="g" | Fields$group=="h" , 
 	load=DensityAll$group=="g" | DensityAll$group=="h")
 
-AddAction("Iteration", c("BaseIter", "calcPhase"))
-AddAction("Init"     , c("PhaseInit", "BaseInit", "calcPhase"))
+AddStage("WallPhase", "calcWallPhase", save="PhaseF")
+
+AddAction("Iteration", c("BaseIter", "calcPhase", "WallPhase"))
+AddAction("Init"     , c("PhaseInit", "WallPhase","BaseInit", "calcPhase"))
 
 # 	Outputs:
 #AddQuantity(name="Rho",	  unit="kg/m3")
@@ -81,6 +83,8 @@ AddSetting(name="Width", default=4,    comment='Anti-diffusivity coeff')
 AddSetting(name="omega_phi", comment='one over relaxation time (phase field)')
 AddSetting(name="M", omega_phi='1.0/(3*M+0.5)', default=0.02, comment='Mobility')
 AddSetting(name="sigma", 		   comment='surface tension')
+
+AddSetting(name="ContactAngle", default="90", comment='Contact angle of the phases')
 
 AddSetting(name="RTI_Characteristic_Length", default=-999, comment='Use for RTI instability')
 

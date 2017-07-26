@@ -79,6 +79,19 @@ CudaDeviceFunction void calcPhaseF(){
 	if ( NodeType & NODE_Wall ) PhaseF = PhaseField;
 }
 
+CudaDeviceFunction void calcWallPhase(){
+	PhaseF = PhaseF(0,0,0);
+	if ( Y == 0 ) {
+		if ( ContactAngle == 90 ) {
+			PhaseF = PhaseF(0,1,0);
+		} else {
+			PhaseF = PhaseF(0,1,0) + 0.5 * tan( PI*0.5 - ContactAngle * PI/180.0 ) * sqrt(
+				      ( PhaseF(1,1,0)-PhaseF(-1,1,0) )*( PhaseF(1,1,0)-PhaseF(-1,1,0) ) 
+				     +( PhaseF(0,1,1)-PhaseF(0,1,-1) )*( PhaseF(0,1,1)-PhaseF(0,1,-1) ) );
+		}
+	}
+}
+
 CudaDeviceFunction real_t calcMu(real_t C){
 	real_t pfavg, lpPhi, mu, phi[27];
 
@@ -928,7 +941,7 @@ CudaDeviceFunction vector_t getA(){
 CudaDeviceFunction float2 Color() {
         float2 ret;
         vector_t u = getU();
-        ret.x = sqrt(u.x*u.x + u.y*u.y);
+        ret.x = PhaseF(0,0);
         if (NodeType == NODE_Solid){
                 ret.y = 0;
         } else {
