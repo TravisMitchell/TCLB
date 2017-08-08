@@ -14,14 +14,14 @@
 CudaDeviceFunction real_t getRho(){
 	real_t rho;
 	rho = Density_l + (Density_h-Density_l) * (PhaseF(0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
-	//return rho;
-	SolidF = SolidF(0,0);
-	return SolidF;
+	return rho;
 }
+
 CudaDeviceFunction real_t getPhaseField(){
 	real_t pf = PhaseF(0,0);
 	return pf;
 }
+
 CudaDeviceFunction vector_t getU(){
 	vector_t u;
 	u.x = U;
@@ -29,6 +29,7 @@ CudaDeviceFunction vector_t getU(){
 	u.z = 0.0;
 	return u;
 }
+
 CudaDeviceFunction real_t getP(){
 	real_t   p = g[0]+g[1]+g[2]+g[3]+g[4]+g[5]+g[6]+g[7]+g[8];
 	return p;
@@ -151,7 +152,8 @@ CudaDeviceFunction void Init() {
 	if ( Radius > 0 ){ //Create diffuse interfaced droplet
 		real_t Ri;
 		Ri = sqrt( (X - CenterX)*(X - CenterX) + (Y - CenterY)*(Y - CenterY) );
-		PhaseF = 0.5 - 0.5 * tanh(2 * (Ri - Radius)/W);
+		PhaseF = 0.5*(PhaseField_h + PhaseField_l) 
+		       - 0.5*(PhaseField_h - PhaseField_l) * BubbleType * tanh(2 * (Ri - Radius)/W);
 	}
 	if ( Period > 0){ //Create Rayleigh-Taylor instability
 	 	real_t InterfacePoint;
@@ -191,14 +193,15 @@ CudaDeviceFunction void Init_distributions(){
 	real_t Gamma[9];
 // ##### heq
 	real_t F_phi[9], tmp1;
-	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/W;
+	real_t Phi_Avg = 0.5 * (PhaseField_h + PhaseField_l);
+	tmp1 = (1.0 - 4.0*(C - Phi_Avg)*(C - Phi_Avg))/W;
 
 	for (i=0; i< 9; i++){
 		Gamma[i] = calcGamma(i, U, V, mag);
 		F_phi[i] = calcF_phi(i, tmp1, nx, ny);
 		h[i] = C * Gamma[i] - 0.5*F_phi[i];
 // ##### geq
-		g[i] = Gamma[i] - wf[i];
+		g[i] = Pressure*wf[i] + Gamma[i] - wf[i];
 	}
 	PhaseF = h[0]+h[1]+h[2]+h[3]+h[4]+h[5]+h[6]+h[7]+h[8];
 	SolidF = SolidF(0,0);
@@ -212,12 +215,31 @@ CudaDeviceFunction void Run() {
 		case NODE_Wall:
 			BounceBack();
 			break;
+		case NODE_MovingWall_N:
+			MovingNWall();
+			break;
+                case NODE_MovingWall_S: 
+                        MovingSWall();
+                        break;
+		case NODE_EPressure:
+			EPressure();
+			break;
+		case NODE_WPressure:
+			WPressure();
+			break;
+		case NODE_EVelocity:
+			EVelocity();
+			break;
+		case NODE_WVelocity:
+			WVelocity();
+			break;
     }
+
     if (NodeType & NODE_MRT)
     {
 		CollisionMRT();
 		//CollisionBGK_Guo();
-//CollisionMRT_SRTstress();
+		//CollisionMRT_SRTstress();
     } else if (NodeType & NODE_BGK) {
 		CollisionBGK();
 	}
@@ -238,7 +260,7 @@ CudaDeviceFunction void CollisionMRT_Guo(){
 // Find Macroscopic Details
 //	Fluid Properties:
 	mu = calcMu( C );
-	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l);
+	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l)/(PhaseField_h - PhaseField_l);
 	p = g[0]+g[1]+g[2]+g[3]+g[4]+g[5]+g[6]+g[7]+g[8];
 
 	if ( C < PhaseField_l){
@@ -246,7 +268,7 @@ CudaDeviceFunction void CollisionMRT_Guo(){
 	} else if (C > PhaseField_h) {
 		tau = tau_h;
 	} else {
-		tau = tau_l + C*(tau_h - tau_l); //Linear Update
+		tau = tau_l + C*(tau_h - tau_l)/(PhaseField_h - PhaseField_l); //Linear Update
 }
 // 	Gradients & Normals
 	gradPhi = calcGradPhi();
@@ -306,7 +328,8 @@ for (j=0; j<2; j++) {
 }
 
 // PHASE FIELD POPULATION UPDATE:
-	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/W;
+	real_t Phi_Average = 0.5* ( PhaseField_h - PhaseField_l);
+	tmp1 = (1.0 - 4.0*(C - Phi_Average)*(C - Phi_Average))/W;
 	for (i=0; i< 9; i++){
 		F_phi[i] = calcF_phi(i, tmp1, nx, ny); // Forcing Terms
 		heq[i] = C * Gamma[i] - 0.5*F_phi[i];  // heq
@@ -350,7 +373,7 @@ for (j=0; j<2; j++) {
 }
 
 CudaDeviceFunction void CollisionMRT(){
-	int i;
+	int i, j;
 	real_t C = PhaseF(0,0), mu;
 	real_t tau, DynVisc, rho, p;			// Macroscopic Properties
 	vector_t gradPhi;				// Phase field gradients
@@ -364,7 +387,7 @@ CudaDeviceFunction void CollisionMRT(){
 // Find Macroscopic Details
 //		Fluid Properties:
 	mu = calcMu( C );
-	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l);
+	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l) / (PhaseField_h - PhaseField_l);
 	p = g[0]+g[1]+g[2]+g[3]+g[4]+g[5]+g[6]+g[7]+g[8];
 
 	if ( C < PhaseField_l){
@@ -377,7 +400,7 @@ CudaDeviceFunction void CollisionMRT(){
 		//tau = 1.0/tau + 0.5;
 
 		// Linear update:
-		tau = 0.5 + tau_l + C*(tau_h - tau_l);
+		tau = 0.5 + tau_l + (C - PhaseField_l)*(tau_h - tau_l) / (PhaseField_h - PhaseField_l);
 
 		// Viscosity update:
 		//DynVisc = Density_l*Viscosity_l + C * (Density_h*Viscosity_h - Density_l*Viscosity_l);
@@ -392,7 +415,9 @@ CudaDeviceFunction void CollisionMRT(){
 	vector_t n = calcNormal();
 	nx = n.x; ny = n.y;
 
-// 		MRT stuff
+for (j=0; j<2; j++)
+{
+// MRT stuff
 	mag = U*U + V*V;
 	for (i=0; i< 9; i++){
 		Gamma[i] = calcGamma(i, U, V, mag);
@@ -400,25 +425,17 @@ CudaDeviceFunction void CollisionMRT(){
 		R[i] = g[i] - geq[i];
 	}
 
-	S[0] = R[8] + R[7] + R[6] + R[5] + R[4] + R[3] + R[2] + R[1] + R[0];
-	S[1] = -R[4] - R[3] - R[2] - R[1] + ( R[8] + R[7] + R[6] + R[5] - R[0]*2. )*2.;
-	S[2] = R[8] + R[7] + R[6] + R[5] + ( -R[4] - R[3] - R[2] - R[1] + R[0]*2. )*2.;
-	S[3] = R[8] - R[7] - R[6] + R[5] - R[3] + R[1];
-	S[4] = R[8] - R[7] - R[6] + R[5] + ( R[3] - R[1] )*2.;
-	S[5] = -R[8] - R[7] + R[6] + R[5] - R[4] + R[2];
-	S[6] = -R[8] - R[7] + R[6] + R[5] + ( R[4] - R[2] )*2.;
-	S[7] = -R[4] + R[3] - R[2] + R[1];
-	S[8] = -R[8] + R[7] - R[6] + R[5];
-	//	Relax in Momentum space:
-/*	S[0] *= S0;
-	S[1] *= S1;
-	S[2] *= S2;
-	S[3] *= S3;
-	S[4] *= S4;
-	S[5] *= S5;
-	S[6] *= S6;*/ // CURRENT DEFAULT - S0-S6=1.0
-	S[7] *= 1.0/(tau);
-	S[8] *= 1.0/(tau);
+	//	Jump Into Momentum space:
+	S[0] = S0 *( R[8] + R[7] + R[6] + R[5] + R[4] + R[3] + R[2] + R[1] + R[0]            );
+	S[1] = S1 *(-R[4] - R[3] - R[2] - R[1] + ( R[8] + R[7] + R[6] + R[5] - R[0]*2. )*2.  );
+	S[2] = S2 *( R[8] + R[7] + R[6] + R[5] + ( -R[4] - R[3] - R[2] - R[1] + R[0]*2. )*2. );
+	S[3] = S3 *( R[8] - R[7] - R[6] + R[5] - R[3] + R[1]                                 );
+	S[4] = S4 *( R[8] - R[7] - R[6] + R[5] + ( R[3] - R[1] )*2.                          );
+	S[5] = S5 *(-R[8] - R[7] + R[6] + R[5] - R[4] + R[2]                                 );
+	S[6] = S6 *(-R[8] - R[7] + R[6] + R[5] + ( R[4] - R[2] )*2.                          );
+	S[7] = (-R[4] + R[3] - R[2] + R[1])/tau;
+	S[8] = (-R[8] + R[7] - R[6] + R[5])/tau;
+
 	//	Transform to back to shifted-Pressure space:
 	R[0] = ( S[2] - S[1] + S[0] )/9.;
 	R[1] = ( -S[1] + S[7]*9. + ( -S[2] + S[0]*2. + ( -S[4] + S[3] )*3. )*2. )/36.;
@@ -450,65 +467,11 @@ CudaDeviceFunction void CollisionMRT(){
 	F_total[1] = mu*gradPhi.y + F_pressure[1] + F_body[1] + F_mu[1];
 	U = g[1]-g[3]+g[5]-g[6]-g[7]+g[8] + 0.5*F_total[0]/rho;
 	V = g[2]-g[4]+g[5]+g[6]-g[7]-g[8] + 0.5*F_total[1]/rho;
-
-
-// Update geq and forcing terms:
-//		Geq, gamma
-	mag = U*U + V*V;
-	for (i=0; i< 9; i++){
-		Gamma[i] = calcGamma(i, U, V, mag);
-		geq[i] = wf[i]*p + Gamma[i] - wf[i];
-		R[i] = g[i] - (geq[i]);
-	}
-//		MRT Stuff
-	S[0] = R[8] + R[7] + R[6] + R[5] + R[4] + R[3] + R[2] + R[1] + R[0];
-	S[1] = -R[4] - R[3] - R[2] - R[1] + ( R[8] + R[7] + R[6] + R[5] - R[0]*2. )*2.;
-	S[2] = R[8] + R[7] + R[6] + R[5] + ( -R[4] - R[3] - R[2] - R[1] + R[0]*2. )*2.;
-	S[3] = R[8] - R[7] - R[6] + R[5] - R[3] + R[1];
-	S[4] = R[8] - R[7] - R[6] + R[5] + ( R[3] - R[1] )*2.;
-	S[5] = -R[8] - R[7] + R[6] + R[5] - R[4] + R[2];
-	S[6] = -R[8] - R[7] + R[6] + R[5] + ( R[4] - R[2] )*2.;
-	S[7] = -R[4] + R[3] - R[2] + R[1];
-	S[8] = -R[8] + R[7] - R[6] + R[5];
-	//	Relax in Momentum space:
-/*	S[0] *= S0;
-	S[1] *= S1;
-	S[2] *= S2;
-	S[3] *= S3;
-	S[4] *= S4;
-	S[5] *= S5;
-	S[6] *= S6;*/ // CURRENT DEFAULT - S0-S6=1.0
-	S[7] *= 1.0/(tau);
-	S[8] *= 1.0/(tau);
-	//	Transform to back to shifted-Pressure space:
-	R[0] = ( S[2] - S[1] + S[0] )/9.;
-	R[1] = ( -S[1] + S[7]*9. + ( -S[2] + S[0]*2. + ( -S[4] + S[3] )*3. )*2. )/36.;
-	R[2] = ( -S[1] - S[7]*9. + ( -S[2] + S[0]*2. + ( -S[6] + S[5] )*3. )*2. )/36.;
-	R[3] = ( -S[1] + S[7]*9. + ( -S[2] + S[0]*2. + ( S[4] - S[3] )*3. )*2. )/36.;
-	R[4] = ( -S[1] - S[7]*9. + ( -S[2] + S[0]*2. + ( S[6] - S[5] )*3. )*2. )/36.;
-	R[5] = ( S[2] + ( S[1] + S[0]*2. )*2. + ( S[6] + S[4] + S[8]*3. + ( S[5] + S[3] )*2. )*3. )/36.;
-	R[6] = ( S[2] + ( S[1] + S[0]*2. )*2. + ( S[6] - S[4] - S[8]*3. + ( S[5] - S[3] )*2. )*3. )/36.;
-	R[7] = ( S[2] + ( S[1] + S[0]*2. )*2. + ( -S[6] - S[4] + S[8]*3. + ( -S[5] - S[3] )*2. )*3. )/36.;
-	R[8] = ( S[2] + ( S[1] + S[0]*2. )*2. + ( -S[6] + S[4] - S[8]*3. + ( -S[5] + S[3] )*2. )*3. )/36.;
-//		Stress Calc
-	stress[0] = 0.0;
-	stress[1] = 0.0;
-	stress[2] = 0.0;
-	for (i=0;i< 9; i++){
-		stress[0] += R[i]*d2q9_ex[i]*d2q9_ex[i];
-		stress[1] += R[i]*d2q9_ex[i]*d2q9_ey[i];
-		stress[2] += R[i]*d2q9_ey[i]*d2q9_ey[i];
-	}
-
-	F_mu[0] = (0.5-tau) * (stress[0]*gradPhi.x + stress[1]*gradPhi.y) * (Density_h-Density_l);
-	F_mu[1] = (0.5-tau) * (stress[1]*gradPhi.x + stress[2]*gradPhi.y) * (Density_h-Density_l);
-//		Force Calc
-	F_total[0] = mu*gradPhi.x + F_pressure[0] + F_body[0] + F_mu[0];
-	F_total[1] = mu*gradPhi.y + F_pressure[1] + F_body[1] + F_mu[1];
-
+}
 
 // PHASE FIELD POPULATION UPDATE:
-	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/W;
+	real_t Phi_Avg = 0.5 * (PhaseField_h + PhaseField_l);
+	tmp1 = (1.0 - 4.0*(C - Phi_Avg)*(C - Phi_Avg))/W;
 	for (i=0; i< 9; i++){
 		F_phi[i] = calcF_phi(i, tmp1, nx, ny); // Forcing Terms
 		heq[i] = C * Gamma[i] - 0.5*F_phi[i];  // heq
@@ -522,26 +485,16 @@ CudaDeviceFunction void CollisionMRT(){
 	}
 
 	//	Jump Into Momentum space:
-	S[0] = R[8] + R[7] + R[6] + R[5] + R[4] + R[3] + R[2] + R[1] + R[0];
-	S[1] = -R[4] - R[3] - R[2] - R[1] + ( R[8] + R[7] + R[6] + R[5] - R[0]*2. )*2.;
-	S[2] = R[8] + R[7] + R[6] + R[5] + ( -R[4] - R[3] - R[2] - R[1] + R[0]*2. )*2.;
-	S[3] = R[8] - R[7] - R[6] + R[5] - R[3] + R[1];
-	S[4] = R[8] - R[7] - R[6] + R[5] + ( R[3] - R[1] )*2.;
-	S[5] = -R[8] - R[7] + R[6] + R[5] - R[4] + R[2];
-	S[6] = -R[8] - R[7] + R[6] + R[5] + ( R[4] - R[2] )*2.;
-	S[7] = -R[4] + R[3] - R[2] + R[1];
-	S[8] = -R[8] + R[7] - R[6] + R[5];
+	S[0] = S0 *( R[8] + R[7] + R[6] + R[5] + R[4] + R[3] + R[2] + R[1] + R[0]            );
+	S[1] = S1 *(-R[4] - R[3] - R[2] - R[1] + ( R[8] + R[7] + R[6] + R[5] - R[0]*2. )*2.  );
+	S[2] = S2 *( R[8] + R[7] + R[6] + R[5] + ( -R[4] - R[3] - R[2] - R[1] + R[0]*2. )*2. );
+	S[3] = S3 *( R[8] - R[7] - R[6] + R[5] - R[3] + R[1]                                 );
+	S[4] = S4 *( R[8] - R[7] - R[6] + R[5] + ( R[3] - R[1] )*2.                          );
+	S[5] = S5 *(-R[8] - R[7] + R[6] + R[5] - R[4] + R[2]                                 );
+	S[6] = S6 *(-R[8] - R[7] + R[6] + R[5] + ( R[4] - R[2] )*2.                          );
+	S[7] = (-R[4] + R[3] - R[2] + R[1])/tau;
+	S[8] = (-R[8] + R[7] - R[6] + R[5])/tau;
 
-	//	Relax in Momentum space:
-/*	S[0] *= S0;
-	S[1] *= S1;
-	S[2] *= S2;
-	S[3] *= S3;
-	S[4] *= S4;
-	S[5] *= S5;
-	S[6] *= S6;*/ // CURRENT DEFAULT - S0-S6=1.0
-	S[7] *= 1.0/(tau);
-	S[8] *= 1.0/(tau);
 	//	Transform to back to shifted-Pressure space:
 	R[0] = ( S[2] - S[1] + S[0] )/9.;
 	R[1] = ( -S[1] + S[7]*9. + ( -S[2] + S[0]*2. + ( -S[4] + S[3] )*3. )*2. )/36.;
@@ -557,6 +510,9 @@ CudaDeviceFunction void CollisionMRT(){
 		g[i] = g[i]-R[i]+F_i[i];
 	}
 }
+
+
+
 /* FOR FUTURE TESTING AS TO WHETHER MRT FOR STRESS EFFECTS
 STABILITY + ACCURACY OR IF USING SRT FOR STRESS GIVES BETTER RUN TIME WITH
 NO REAL LOSS IN STABILITY + ACCURACY
@@ -894,6 +850,91 @@ CudaDeviceFunction void CollisionBGK(){
 }
 
 //	BOUNDARY CONDITIONS:
+CudaDeviceFunction void EVelocity()
+{
+/********* velocity-type Zou He boundary condition  ****************/
+g[3] = g[1] + 6.0*VelocityX;
+g[7] = g[5] + 0.5*(VelocityX*5.0 - VelocityY + g[2] - g[4] );
+g[6] = g[8] + 0.5*(VelocityX*5.0 + VelocityY - g[2] + g[4] );
+
+/********* pressure-type Zou He boundary condition  ****************/
+real_t Rx  =  -PhaseField + h[4] + h[2] + h[0] + ( h[8] + h[5] + h[1] )*2. ;
+real_t Ry  =  ( h[4] - h[2] )*3. ;
+h[3] = h[1] - Rx*2./3.;
+h[6] = h[8] + ( Ry - Rx )/6.;
+h[7] = h[5] + ( -Ry - Rx )/6.;
+}
+
+CudaDeviceFunction void WVelocity()
+{
+/********* velocity-type Zou He boundary condition  ****************/
+g[1] = g[3] - 6.0*VelocityX;
+g[5] = g[7] + 0.5*(VelocityX*7.0 + VelocityY - g[2] + g[4] );
+g[8] = g[6] + 0.5*(VelocityX*7.0 - VelocityY + g[2] - g[4] );
+
+/********* pressure-type Zou He boundary condition  ****************/
+real_t Rx  =  PhaseField - h[4] - h[2] - h[0] + ( -h[6] - h[7] - h[3] )*2. ;
+real_t Ry  =  ( h[4] - h[2] )*3. ;
+h[1] = h[3] + Rx*2./3.;
+h[5] = h[7] + ( Ry + Rx )/6.;
+h[8] = h[6] + ( -Ry + Rx )/6.;
+}
+
+CudaDeviceFunction void EPressure()
+{
+/********* pressure-type Zou He boundary condition  ****************/
+real_t Rx  =  g[4] + g[2] + g[0] - Pressure + ( g[8] + g[5] + g[1] )*2. ;
+real_t Ry  =  ( g[4] - g[2] )*3. ;
+g[3] = g[1] - Rx*2./3.;
+g[6] = g[8] + ( Ry - Rx )/6.;
+g[7] = g[5] + ( -Ry - Rx )/6.;
+
+/********* pressure-type Zou He boundary condition  ****************/
+Rx  =  -PhaseF(-1,0) + h[4] + h[2] + h[0] + ( h[8] + h[5] + h[1] )*2. ;
+Ry  =  ( h[4] - h[2] )*3. ;
+h[3] = h[1] - Rx*2./3.;
+h[6] = h[8] + ( Ry - Rx )/6.;
+h[7] = h[5] + ( -Ry - Rx )/6.;
+}
+
+CudaDeviceFunction void WPressure()
+{
+/********* pressure-type Zou He boundary condition  ****************/
+real_t Rx  =  - g[4] - g[2] - g[0] + Pressure + ( -g[6] - g[7] - g[3] )*2. ;
+real_t Ry  =  ( g[4] - g[2] )*3. ;
+g[1] = g[3] + Rx*2./3.;
+g[5] = g[7] + ( Ry + Rx )/6.;
+g[8] = g[6] + ( -Ry + Rx )/6.;
+
+/********* pressure-type Zou He boundary condition  ****************/
+Rx  =  PhaseField - h[4] - h[2] - h[0] + ( -h[6] - h[7] - h[3] )*2. ;
+Ry  =  ( h[4] - h[2] )*3. ;
+h[1] = h[3] + Rx*2./3.;
+h[5] = h[7] + ( Ry + Rx )/6.;
+h[8] = h[6] + ( -Ry + Rx )/6.;
+}
+
+
+CudaDeviceFunction void MovingNWall(){
+	g[4] = g[2];
+	g[7] = g[5] - VelocityX/6.0;
+	g[8] = g[6] + VelocityX/6.0;
+
+	h[4] = h[2];
+	h[7] = h[5];
+	h[8] = h[6];
+}
+
+CudaDeviceFunction void MovingSWall(){
+	g[2] = g[4];
+	g[5] = g[7] + VelocityX/6.0;
+	g[6] = g[8] - VelocityX/6.0;
+
+	h[2] = h[4];
+	h[5] = h[7];
+	h[6] = h[8];
+}
+
 CudaDeviceFunction void BounceBack()
 {
 	real_t tmp;

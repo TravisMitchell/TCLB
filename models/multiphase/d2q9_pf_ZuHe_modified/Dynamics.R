@@ -27,6 +27,8 @@ AddDensity( name="h[8]", dx= 1, dy=-1, group="h")
 
 AddField("PhaseF",stencil2d=1)
 AddField("SolidF",stencil2d=1)
+#AddField("UX",stencil2d=1)
+#AddField("UY",stencil2d=1)
 
 # Stages - processes to run for initialisation and each iteration
 AddStage("PhaseInit"    , "Init", save=Fields$name=="PhaseF" | Fields$name=="SolidF")
@@ -53,6 +55,7 @@ AddQuantity(name="P",	  unit="Pa")
 AddSetting(name="Radius", default="0", comment='Use to create air bubble')
 AddSetting(name="CenterX", default="0", comment='Location of air bubble')
 AddSetting(name="CenterY", default="0", comment='Location of air bubble')
+AddSetting(name="BubbleType", default="1", comment='1 for drop, -1 for bubble')
 ########RTI
 AddSetting(name="Period", default="0", comment='Number of cells per cos wave')
 AddSetting(name="Perturbation", default="0", comment='Size of wave perturbation, Perturbation*Period')
@@ -81,13 +84,13 @@ AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)+0.5', default=0.16666666, 
 #Viscosity commented to alter to Guo Force Scheme
 #AddSetting(name="Viscosity_l", tau_l='(3*Viscosity_l)', default=0.16666666, comment='kinematic viscosity')
 #AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)', default=0.16666666, comment='kinematic viscosity')
-#AddSetting(name="S0", default=1.0, comment='Relaxation Param')
-#AddSetting(name="S1", default=1.0, comment='Relaxation Param')
-#AddSetting(name="S2", default=1.0, comment='Relaxation Param')
-#AddSetting(name="S3", default=1.0, comment='Relaxation Param')
-#AddSetting(name="S4", default=1.0, comment='Relaxation Param')
-#AddSetting(name="S5", default=1.0, comment='Relaxation Param')
-#AddSetting(name="S6", default=1.0, comment='Relaxation Param')
+AddSetting(name="S0", default=1.0, comment='Relaxation Param')
+AddSetting(name="S1", default=1.0, comment='Relaxation Param')
+AddSetting(name="S2", default=1.0, comment='Relaxation Param')
+AddSetting(name="S3", default=1.0, comment='Relaxation Param')
+AddSetting(name="S4", default=1.0, comment='Relaxation Param')
+AddSetting(name="S5", default=1.0, comment='Relaxation Param')
+AddSetting(name="S6", default=1.0, comment='Relaxation Param')
 #	Inputs: Flow Properties
 AddSetting(name="VelocityX", default=0.0, comment='inlet/outlet/init velocity', zonal=T)
 AddSetting(name="VelocityY", default=0.0, comment='inlet/outlet/init velocity', zonal=T)
@@ -104,3 +107,5 @@ AddGlobal(name="TotalDensity", comment='Mass conservation check', unit="1kg/m3")
 
 # For Contact angles
 #AddNodeType(name="SouthWall", group="BOUNDARY")
+AddNodeType(name="MovingWall_N", group="BOUNDARY")
+AddNodeType(name="MovingWall_S", group="BOUNDARY")

@@ -88,6 +88,12 @@ AddSetting(name="ContactAngle", default="90", comment='Contact angle of the phas
 
 AddSetting(name="RTI_Characteristic_Length", default=-999, comment='Use for RTI instability')
 
+AddSetting(name="Radius", default="0.0", comment='Diffuse Sphere Radius')
+AddSetting(name="CenterX", default="0.0", comment='Diffuse sphere center_x')
+AddSetting(name="CenterY", default="0.0", comment='Diffuse sphere center_y')
+AddSetting(name="CenterZ", default="0.0", comment='Diffuse sphere center_z')
+AddSetting(name="BubbleType",default="1.0", comment='droplet or bubble?!')
+
 # 	Inputs: Fluid Properties
 AddSetting(name="tau_l", comment='relaxation time (low density fluid)')
 AddSetting(name="tau_h", comment='relaxation time (high density fluid)')
@@ -111,6 +117,7 @@ AddSetting(name="GravitationZ", default=0.0, comment='applied (rho)*GravitationZ
 AddSetting(name="BuoyancyX", default=0.0, comment='applied (rho-rho_h)*BuoyancyX')
 AddSetting(name="BuoyancyY", default=0.0, comment='applied (rho-rho_h)*BuoyancyY')
 AddSetting(name="BuoyancyZ", default=0.0, comment='applied (rho-rho_h)*BuoyancyZ')
+
 # Velocity Tracking on Centerline:
 #  For TaylorBubble tracking
 AddNodeType("Centerline",group="ADDITIONALS")
@@ -118,6 +125,11 @@ AddNodeType("Centerline",group="ADDITIONALS")
 AddNodeType("Spiketrack",group="ADDITIONALS")
 AddNodeType("Saddletrack",group="ADDITIONALS")
 AddNodeType("Bubbletrack",group="ADDITIONALS")
+
+AddNodeType(name="MovingWall_N", group="BOUNDARY")
+AddNodeType(name="MovingWall_S", group="BOUNDARY")
+AddNodeType(name="SymmetricXY_W",group="BOUNDARY")
+AddNodeType(name="SymmetricXY_E",group="BOUNDARY")
 
 AddGlobal("InterfacePosition",comment='trackPosition')
 AddGlobal("RTISpike", comment='SpikeTracker ')

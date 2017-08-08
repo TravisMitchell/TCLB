@@ -76,7 +76,14 @@ CudaDeviceFunction vector_t calcGradPhi(){
 CudaDeviceFunction void calcPhaseF(){
 	PhaseF = h0+h1+h2+h3+h4+h5+h6+h7+h8+
 		 h9+h10+h11+h12+h13+h14;
-	if ( NodeType & NODE_Wall ) PhaseF = PhaseField;
+	switch ( NodeType & NODE_BOUNDARY ){
+		case NODE_Wall:
+			 PhaseF = PhaseField;
+		case NODE_SymmetricXY_W:
+			PhaseF = PhaseF(0,0,1);
+		case NODE_SymmetricXY_E:
+			PhaseF = PhaseF(0,0,-1);
+	}
 }
 
 CudaDeviceFunction void calcWallPhase(){
@@ -89,6 +96,15 @@ CudaDeviceFunction void calcWallPhase(){
 				      ( PhaseF(1,1,0)-PhaseF(-1,1,0) )*( PhaseF(1,1,0)-PhaseF(-1,1,0) ) 
 				     +( PhaseF(0,1,1)-PhaseF(0,1,-1) )*( PhaseF(0,1,1)-PhaseF(0,1,-1) ) );
 		}
+	}
+	
+        switch (NodeType & NODE_BOUNDARY) {
+		case NODE_SymmetricXY_W:
+			PhaseF = PhaseF(0,0,1);
+			break;
+		case NODE_SymmetricXY_E:
+			PhaseF = PhaseF(0,0,-1);
+			break;
 	}
 }
 
@@ -140,13 +156,25 @@ CudaDeviceFunction void Init() {
 	PhaseF = PhaseField;
 	real_t d = RTI_Characteristic_Length;
 
-	if (d > 0){
-	real_t ycutoff;
 
-	ycutoff = 2.0*d + 0.05*d*(cos(2.0*PI*X/d) + cos(2.0*PI*Z/d));
-	if (Y < ycutoff) {
-		PhaseF = 0.0; }
-	else PhaseF = 1.0;}
+// Initialise diffuse Sphere
+        if ( Radius > 0 ){ //Create diffuse interfaced droplet
+                real_t Ri;
+                Ri = sqrt( (X - CenterX)*(X - CenterX) + (Y - CenterY)*(Y - CenterY) + (Z - CenterZ)*(Z - CenterZ) );
+                PhaseF = 0.5*(PhaseField_h + PhaseField_l)
+                       - 0.5*(PhaseField_h - PhaseField_l) * BubbleType * tanh(2 * (Ri - Radius)/Width);
+        }
+// Initialisation Methods
+//	THE RAYLEIGH-TAYLOR INSTABILITY:
+	if (d > 0){
+		real_t ycutoff;
+		ycutoff = 2.0*d + 0.05*d*(cos(2.0*PI*X/d) + cos(2.0*PI*Z/d));
+		if (Y < ycutoff) {
+			PhaseF = 0.0; }
+		else 
+			PhaseF = 1.0;
+	}
+	
 }
 
 CudaDeviceFunction void Init_distributions(){
@@ -224,7 +252,21 @@ CudaDeviceFunction void Run() {
 		case NODE_Wall:
 			BounceBack();
 			break;
-    }
+		case NODE_MovingWall_N:
+			MovingNWall();
+			break;
+		case NODE_MovingWall_S:    
+			MovingSWall();
+			break;
+		case NODE_SymmetricXY_W:
+			SymmetryXY_W();
+			PhaseF = PhaseF(0,0,1);
+			break;
+		case NODE_SymmetricXY_E:
+			SymmetryXY_E();
+			PhaseF = PhaseF(0,0,-1);
+			break;
+	}
     if (NodeType & NODE_MRT)
     {
 		CollisionMRT();
@@ -906,6 +948,92 @@ CudaDeviceFunction void CollisionMRT(){
 	}
 }
 //	BOUNDARY CONDITIONS:
+CudaDeviceFunction void SymmetryXY_W()
+{
+	g5  = g6;
+
+	g7  = g11;
+	g8  = g12;
+	g9  = g13; 
+	g10 = g14;
+
+	g19 = g21;
+	g20 = g22;
+	g23 = g25;
+	g24 = g26;
+
+	h5  = h6;
+
+	h7  = h11;
+	h8  = h12;
+	h9  = h13; 
+	h10 = h14;
+}
+
+CudaDeviceFunction void SymmetryXY_E()
+{
+	g6  = g5 ;
+
+	g14 = g10;
+	g13 = g9 ;
+	g12 = g8 ; 
+	g11 = g7 ;
+
+	g22 = g20;
+	g21 = g19;
+	g26 = g24;
+	g25 = g23;
+
+	h6  = h5 ;
+
+	h14 = h10;
+	h13 = h9 ;
+	h12 = h8 ; 
+	h11 = h7 ;
+}
+
+CudaDeviceFunction void MovingNWall()
+{
+	g4  = g3;
+	g24 = g25;
+	g26 = g23;
+
+	g9  = g12 + VelocityX/36.0;
+	g13 = g8  + VelocityX/36.0;
+	g17 = g16 + VelocityX/9.0;
+
+	g10 = g11 - VelocityX/36.0;
+	g14 = g7  - VelocityX/36.0;
+	g18 = g15 - VelocityX/9.0;
+
+	h4  = h3 ;
+	h9  = h12;
+	h10 = h11;
+	h13 = h8 ;
+	h14 = h7 ;
+}
+
+CudaDeviceFunction void MovingSWall(){
+	g3  = g4;
+	g25 = g24;
+	g23 = g26;
+
+	g12 = g9  - VelocityX/36.0;
+	g8  = g13 - VelocityX/36.0;
+	g16 = g17 - VelocityX/9.0;
+
+	g11 = g10 + VelocityX/36.0;
+	g7  = g14 + VelocityX/36.0;
+	g15 = g18 + VelocityX/9.0;
+
+	h3  = h4 ;
+	h12 = h9 ;
+	h11 = h10;
+	h8  = h13 ;
+	h7  = h14 ;
+
+}
+
 CudaDeviceFunction void BounceBack()
 {
 	real_t tmp;
