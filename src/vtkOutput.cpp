@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "mpi.h"
 #include "vtkOutput.h"
+#include <cstring>
+#include <stdlib.h>
 
 const char * base64char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -37,9 +39,9 @@ void fprintB64(FILE* f, void * tab, int len)
 	fprintf(f,"%s",buf);
 }
 
-// args of printf: width height width height
+// order of % arguments: width height width height
 //const char * vtk_header       = "<?xml version=\"1.0\"?>\n<VTKFile type=\"ImageData\" version=\"0.1\" byte_order=\"LittleEndian\">\n<ImageData WholeExtent=\"0 %d 0 %d 0 %d\" Origin=\"0 0 0\" Spacing=\"0.005 0.005 0.005\">\n<Piece Extent=\"0 %d 0 %d 0 %d\">\n<PointData %s>\n";
-// args of printf: datatype fieldname
+// order of % arguments: datatype fieldname
 const char * vtk_field_header = "<DataArray type=\"%s\" Name=\"%s\" format=\"binary\" encoding=\"base64\" NumberOfComponents=\"%d\">\n";
 const char * vtk_field_footer = "</DataArray>\n";
 const char * vtk_field_parallel = "<PDataArray type=\"%s\" Name=\"%s\" format=\"binary\" encoding=\"base64\" NumberOfComponents=\"%d\"/>\n";
@@ -56,7 +58,7 @@ vtkFileOut::vtkFileOut ()
 	size = 0;
 };
 
-int vtkFileOut::Open(char* filename) {
+int vtkFileOut::Open(const char* filename) {
 	char * n;
 	f = fopen(filename,"w");
 	if (f == NULL) {fprintf(stderr, "Error: Could not open vtk file %s\n", filename); return -1; } 

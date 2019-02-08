@@ -1,0 +1,126 @@
+<?R
+  source("conf.R")
+  branch = git_branch("..")
+  options(width=4000)
+  source("stensil.plot.R")
+
+  glob_mx = max(abs(c(
+    Fields$maxx, Fields$minx,
+    Fields$maxy, Fields$miny,
+    Fields$maxz, Fields$minz)))
+  glob_only2d = max(abs(c(Fields$maxz, -Fields$minz))) < 1
+    
+
+  stensil = function(tab,mx=0,only2d=FALSE,pref="st_") {
+    ret = mark.stensil(tab, mx=glob_mx, only2d=glob_only2d, pref="images/st_")
+    paste("![stencil](",ret,")",sep="")
+  }
+
+?>
+
+## Description
+<?%s Description$long ?>
+
+## Details
+[Model description files](Model description) files for this model:
+[Dynamics.c](https://github.com/llaniewski/TCLB/blob/<?%s branch ?>/src/<?%s MODEL ?>/Dynamics.c.Rt)
+[Dynamics.R](https://github.com/llaniewski/TCLB/blob/<?%s branch ?>/src/<?%s MODEL ?>/Dynamics.R)
+
+### [Zonal Settings](Settings)
+
+| Name | Comment |
+| --- | --- |
+<?R
+  for (s in rows(ZoneSettings)) {
+    cat("", paste("`",s$name,"`",sep=""), s$comment, "\n", sep="|");
+  }
+?>
+
+### [Global Settings](Settings)
+
+| Name | Derived | Comment |
+| --- | --- | --- |
+<?R
+  for (s in rows(Settings)) {
+    if (s$name %in% Settings$derived) {
+      eq = Settings$equation[Settings$derived %in% s$name]
+    } else {
+      eq = ""
+    }
+    cat("", paste("`",s$name,"`",sep=""), eq, s$comment, "\n", sep="|");
+  }
+?>
+### [Exported Quantities](Quantities) (VTK, etc)
+
+| Name | [Unit](Units) | Comment |
+| --- | --- | --- |
+<?R
+  for (g in rows(Quantities)) {
+    cat("", paste("`",g$name,"`",sep=""), paste("`",g$unit,"`",sep=""), g$comment, "\n", sep="|");
+  }
+?>
+#### [Exported Global Integrals](Globals) (CSV, etc)
+
+| Name | [Unit](Units) | Comment |
+| --- | --- | --- |
+<?R
+  for (g in rows(Globals)) {
+    cat("", paste("`",g$name,"`",sep=""), paste("`",g$unit,"`",sep=""), g$comment, "\n", sep="|");
+  }
+?>
+### [Node Types](Node-Types)
+
+| Group | Types |
+| --- | --- |
+<?R
+  ret = by(NodeTypes, NodeTypes$group, function (n) {
+    cat("", n$group[1], paste(n$name,collapse=", "), "\n", sep="|");
+  })
+?>
+### [Solved fields](Fields)
+
+| Name | Access pattern | Comment |
+| --- | --- | --- |
+<?R
+  for (d in rows(Fields)) {
+    cat("", paste("`",d$name,"`",sep=""),
+      stensil(d),
+      d$comment, "\n", sep="|");
+  }
+?>
+### [Densities - default accessors](Densities)
+
+| Name | [Field](Fields) | Pulling field from | Comment |
+| --- | --- | --- | --- |
+<?R
+  for (d in rows(DensityAll)) {
+    cat("", paste("`",d$name,"`",sep=""), d$field, stensil(d), d$comment, "\n", sep="|");
+  }
+?>
+### [Action stages](Stages)
+
+| Name | Main procedure | Preloaded densities | Pushed fields |
+| --- | --- | --- | --- |
+<?R
+  for (s in rows(Stages)) {
+    sel = DensityAll[,s$tag]
+    if (any(sel)) {
+      dens = paste(DensityAll$name[sel],collapse=", ")
+    } else dens = "_none_"
+    sel = Fields[,s$tag]
+    if (any(sel)) {
+      fields = paste(Fields$name[sel],collapse=", ")
+    } else fields = "_none_"
+    cat("", s$name, s$main, dens, fields, "\n", sep="|");
+  }
+?>
+
+### [Actions](Stages)
+
+| Name | Stages |
+| --- | --- |
+<?R
+  for (an in names(Actions)) {
+    cat("", an, paste(Actions[[an]],collapse=", "), "\n", sep="|");
+  }
+?>

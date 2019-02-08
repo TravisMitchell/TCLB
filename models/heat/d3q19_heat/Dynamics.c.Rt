@@ -1,0 +1,177 @@
+<?R
+	source("conf.R") 
+	source("lib/boundary.R")
+	c_header();
+
+# Creating variables for symbolic computations
+	f = PV(DensityAll$name[DensityAll$group=="f"])
+	g = PV(DensityAll$name[DensityAll$group=="g"])
+	rho =  PV("rho")
+	u = PV(c("ux","uy","uz"))
+	rhoT = PV("rhoT")
+
+# Extracting velocity set
+	U = d3q19
+
+# Calculating equlibrium density set
+	source("lib/feq.R")
+	feq = MRT_eq(d3q19, rho, u*rho );
+	geq = MRT_eq(d3q7, rhoT, u*rhoT, order=1, sigma2=1/4 );
+?>
+
+CudaDeviceFunction real_t getRho(){
+	return <?R C(sum(f)) ?>;
+}
+
+CudaDeviceFunction real_t getT(){
+	return (<?R C(sum(g)) ?>)/(<?R C(sum(f)) ?>);
+}
+    
+CudaDeviceFunction vector_t getU(){
+	real_t d = getRho();
+	vector_t u;
+<?R C(PV(c("u.x","u.y", "u.z")), f %*% U) ?>
+	u.x /= d;
+	u.y /= d;
+	u.z /= d;
+	return u;
+}
+
+CudaDeviceFunction float2 Color() {
+        float2 ret;
+        vector_t u = getU();
+        ret.x = sqrt(u.x*u.x + u.y*u.y + u.z*u.z);
+        if (NodeType == NODE_Solid){
+                ret.y = 0;
+        } else {
+                ret.y = 1;
+        }
+        return ret;
+}
+
+CudaDeviceFunction void Collision()
+{
+
+}
+
+
+CudaDeviceFunction void BounceBack()
+{
+	<?R FullBounceBack() ?>
+}
+
+CudaDeviceFunction void EVelocity()
+{
+
+}
+
+CudaDeviceFunction void WPressure()
+{
+}
+
+CudaDeviceFunction void eqWVelocity()
+{
+}
+
+
+CudaDeviceFunction void WVelocity()
+{
+
+}
+
+CudaDeviceFunction void EPressure()
+{
+
+}
+
+
+CudaDeviceFunction void Run() {
+    switch (NodeType & NODE_BOUNDARY) {
+	case NODE_EVelocity:
+		EVelocity();
+		break;
+	case NODE_WPressure:
+		WPressure();
+		break;
+	case NODE_WVelocity:
+		WVelocity();
+		break;
+	case NODE_EPressure:
+		EPressure();
+		break;
+	case NODE_Wall:
+	case NODE_Solid:
+		BounceBack();
+                break;
+    }
+    switch (NodeType & NODE_COLLISION) {
+	case NODE_BGK:
+		Collision();
+		break;
+	case NODE_MRT:
+		CollisionMRT();
+		break;
+    }
+}
+
+CudaDeviceFunction void SetEquilibrum(real_t rho, real_t ux, real_t uy, real_t uz, real_t rhoT)
+{
+	<?R
+		C(f,feq$feq);
+		C(g,geq$feq);
+	?>
+}
+
+CudaDeviceFunction void Init() {
+	real_t d = 1.0;
+	SetEquilibrum( 1.0, Velocity, 0., 0., Temperature*1.0 );
+}
+
+
+CudaDeviceFunction void CollisionMRT()
+{
+	real_t M[19];
+	real_t rho, ux, uy, uz, rhoT;
+	real_t ax, ay, Q;
+<?R
+        R = PV("M[",1:19-1,"]")
+        OMEGA = c(
+		PV(rep("omega",19))
+	)
+        OMEGA_T = PV("omegaT");
+	OMEGA_C = PV("omegaC");
+
+	C( rho, sum(f) )
+	C( u, f %*% U * ( rho^(-1) ) )
+	C( rhoT, sum(g) )
+?>
+	ax=0;
+	ay=0;
+	Q=0;
+	if ((NodeType & NODE_ADDITIONALS) == NODE_Heater) Q = Temperature*rho - rhoT;
+	real_t omega = 1.0-1.0/(3*nu + 0.5);
+	real_t omega2 = omega;
+	real_t omegaT = 1.0-1.0/(3*FluidAlpha + 0.5);
+<?R
+	C( R, (f-feq$feq) %*% feq$mat * OMEGA );
+?>
+	ux += ax;
+	uy += ay;
+<?R
+	C( R, R + feq$Req);
+	C( R, R * (1 / diag(t(feq$mat) %*% feq$mat)));
+	C( f, R %*% t(feq$mat) );
+?>
+	ux -= ax/2.0;
+	uy -= ay/2.0;
+<?R
+	RT = R[1:7]
+	C( RT, (g-geq$feq) %*% geq$mat * OMEGA_T );
+?>
+	rhoT += Q;
+<?R
+	C( RT, RT + geq$Req);
+	C( RT, RT * (1/ diag(t(geq$mat) %*% geq$mat)));
+	C( g, RT %*% t(geq$mat) );
+?>
+}

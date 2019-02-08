@@ -2,10 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 
-AC_PREREQ([2.68])
+AC_PREREQ([2.63])
 AC_INIT([CLB], 0.01)
-AC_CONFIG_AUX_DIR([CLB/tools])
-AC_CONFIG_HEADERS([CLB/config.h])
+AC_CONFIG_AUX_DIR([tools])
+AC_CONFIG_HEADERS([CLB/config.h:src/config.h.in])
+AC_LANG([C++])
 
 AC_ARG_WITH([gcc],
 	AC_HELP_STRING([--with-gcc=compiler_bindir],
@@ -24,7 +25,7 @@ AC_ARG_WITH([mpi-include],
 AC_ARG_WITH([mpi-lib],
 	AC_HELP_STRING([--with-mpi-lib=mpi_lib],
 		[specify the full path to your mpi shared libraries, e.g. /usr/lib/openmpi/]),
-	[MPI_LIBS="$withval"])
+	[MPI_LIB="$withval"])
 
 AC_ARG_ENABLE([graphics],
 	AC_HELP_STRING([--enable-graphics],
@@ -36,30 +37,76 @@ AC_ARG_ENABLE([double],
 
 AC_ARG_WITH([cuda-arch],
 	AC_HELP_STRING([--with-cuda-arch=arch],
-		[specify the desired CUDA architecture (sm_11/sm_13/sm_20)]))
+		[specify the desired CUDA architecture (sm_11/sm_13/sm_20/sm_30/sm_60)]))
 
 AC_ARG_WITH([nlopt],
 	AC_HELP_STRING([--with-nlopt=nlopt],
 		[specify the full path to your nlopt library]))
 
-AC_ARG_WITH([debug],
-	AC_HELP_STRING([--with-debug=level],
-		[specify level of debug messages 0-3]))
+AC_ARG_WITH([r],
+	AC_HELP_STRING([--with-r=r],
+		[specify the full path to your r]))
+
+AC_ARG_ENABLE([rinside],
+	AC_HELP_STRING([--enable-rinside],
+		[specify the full path to your r]))
+
+AC_ARG_WITH([catalyst],
+	AC_HELP_STRING([--with-catalyst=path],
+		[specify the full path to your paraview source and build]))
+
+AC_ARG_WITH([verbosity_level],
+	AC_HELP_STRING([--with-verbosity-level=level],
+		[specify level of debug messages 0-all, 1-much, 2-some, 3-normal]))
 
 AC_ARG_ENABLE([debug],
-	AC_HELP_STRING([--enable-waitany],
+	AC_HELP_STRING([--enable-debug],
 		[enables debug version (gcc -g)]))
 
 AC_ARG_ENABLE([waitany],
 	AC_HELP_STRING([--enable-waitany],
 		[enables MPI WaitAny (default)]))
 
-AC_ARG_ENABLE([openmp],
-	AC_HELP_STRING([--enable-openmp],
+AC_ARG_WITH([openmp],
+	AC_HELP_STRING([--with-openmp],
 		[enable openMP in the CPU code]))
 
-		
+AC_ARG_ENABLE([coverage],
+	AC_HELP_STRING([--enable-coverage],
+		[enable coverage testing]))
+
+AC_ARG_ENABLE([marklines],
+	AC_HELP_STRING([--enable-marklines],
+		[enable marking lines with pragma in RT]))
+
+AC_ARG_ENABLE([debug-kernel],
+	AC_HELP_STRING([--with-debug-kernel],
+		[enable NVCC pos compile stats for debug (lots of output!)]))
+
+AC_ARG_WITH([python],
+	AC_HELP_STRING([--with-python],
+		[Enable CallPython handler, requires python-dev]))
+
+AC_ARG_WITH([python_config],
+	AC_HELP_STRING([--with-python-config],
+		[Set python(2)-config binary to call]))
+
+
+AC_ARG_ENABLE([paranoid],
+	AC_HELP_STRING([--enable-paranoid],
+		[Makes GCC paranoid.]))
+AC_ARG_ENABLE([profiling],
+	AC_HELP_STRING([--enable-profiling],
+		[enable profiling for R in rtemplate]))		
+
+AC_ARG_WITH([cpp-flags],
+	AC_HELP_STRING([--with-cpp-flags=FLAGS],
+		[privide additionals flags for the compiler]),
+	[CONF_CPPFLAGS="$withval"])		
 NVFLAGS=""
+
+test -z "$CXX" && CXX=mpic++
+test -z "$CC" && CC=mpicc
 
 # Checks for programs.
 AC_PROG_CXX
@@ -69,13 +116,25 @@ AC_PROG_CC
 AC_CHECK_HEADERS([float.h malloc.h stddef.h stdint.h stdlib.h string.h wchar.h],[],[AC_MSG_ERROR([Cannot find standart headers])])
 AC_CHECK_LIB([m], [sqrt],[],[AC_MSG_ERROR([Didn't find math Library])])
 
-if test "x${enable_double}" == "xyes"
+if test "x${enable_double}" != "xno"
 then
 	AC_DEFINE([CALC_DOUBLE_PRECISION], [1], [Making a double precision version])
 fi
 
+OPENMP="${with_openmp}"
+test "x${with_openmp}" == "xno" && OPENMP=""
+test "x${with_openmp}" == "x" && OPENMP=""
+test "x${with_openmp}" == "xyes" && OPENMP="-fopenmp"	
+
 if test "x${enable_cuda}" != "xno"
 then
+
+    if test "x{debug-kernel}" == "xyes"
+    then
+     AC_MSG_RESULT(>>>> NVCC debug output enabled <<<<)
+	 NVFLAGS="${NVFLAGS} -keep -v"
+    fi
+
 	if test "x${enable_cuda}" != "xyes" && test "x${enable_cuda}" != "x"
 	then
 		CUDA_HOME="${enable_cuda}"
@@ -99,27 +158,35 @@ then
 	AC_CHECK_FILE([${CUDA_HOME}/bin/nvcc], [NVCC="${CUDA_HOME}/bin/nvcc"],[AC_MSG_ERROR([Cannot find nvcc; Check CUDA install])])
 
 	CUDA_LIB_DIR=""
-	AC_CHECK_FILE([${CUDA_HOME}/lib64/libcudart.so], [CUDA_LIB_DIR="/lib64"])
+	AC_CHECK_FILE([${CUDA_HOME}/lib64/libcudart.so], [CUDA_LIB_DIR="${CUDA_HOME}/lib64"])
+
+	
 	if test -z "${CUDA_LIB_DIR}"; then
-		AC_CHECK_FILE([${CUDA_HOME}/lib/libcudart.so], [CUDA_LIB_DIR="/lib"], [CUDA_LIB_DIR=""])
+		AC_CHECK_FILE([${CUDA_HOME}/lib/libcudart.so], [CUDA_LIB_DIR="${CUDA_HOME}/lib"], [CUDA_LIB_DIR=""])
 	fi
+	
+	AC_MSG_RESULT([using CUDALIBDIR:${CUDA_LIB_DIR}])
+	
+	
 	if test "x${CUDA_LIB_DIR}" != "x"
 	then
-		LDFLAGS="${LDFLAGS} -L${CUDA_HOME}${CUDA_LIB_DIR}"
+		LDFLAGS="${LDFLAGS} -L${CUDA_LIB_DIR}"
 		CPPFLAGS="${CPPFLAGS} -I${CUDA_HOME}/include"
 	fi
 	AC_CHECK_HEADERS([cuda.h],[],[AC_MSG_ERROR([Didn't find cuda.h])])
-	AC_CHECK_LIB([cudart], [cudaMalloc],[],[AC_MSG_ERROR([Didn't find CUDA Run-time Library])])
+	#AC_CHECK_LIB([cudart], [cudaMalloc],[],[AC_MSG_ERROR([Didn't find CUDA Run-time Library])])
 	if test "x${enable_graphics}" == "xyes"
 	then
 		AC_CHECK_HEADERS([GL/glut.h],[],[AC_MSG_ERROR([Didn't find GLUT headers])])
 		AC_CHECK_LIB([glut], [glutInit],[],[AC_MSG_ERROR([Didn't find GLUT library])])
+		AC_CHECK_LIB([GL], [glDrawPixels],[],[AC_MSG_ERROR([Didn't find GLUT library])])
+		AC_CHECK_LIB([GLU], [gluSphere],[],[AC_MSG_ERROR([Didn't find GLUT library])])
 		AC_DEFINE([GRAPHICS], [1], [Making a graphics version])
 	fi
 
 	GRID3D=""
 	if test -z "${with_cuda_arch}"; then
-		CUDA_ARCH="sm_11"
+		CUDA_ARCH="sm_20"
 	else
 		CUDA_ARCH="${with_cuda_arch}"
 	fi
@@ -152,6 +219,12 @@ then
 		AC_DEFINE([GRID3D], [1], [Using 3D block grid in CUDA])
 
 		CUDA_SUFF="30"
+	elif test "$CUDA_ARCH" == "sm_60"
+	then
+		AC_MSG_RESULT([${CUDA_ARCH}])
+		AC_DEFINE([GRID3D], [1], [Using 3D block grid in CUDA])
+
+		CUDA_SUFF="60"
 	else
 		AC_MSG_ERROR([unknown arch ${CUDA_ARCH}])
 	fi
@@ -161,9 +234,10 @@ then
 		AC_MSG_ERROR([CUDA_ARCH should be set by now])
 	else
 		AC_DEFINE_UNQUOTED([CUDA_ARCH], "${CUDA_ARCH}", [target CUDA arch])
-		NVFLAGS="${NVFLAGS} -gencode arch=compute_${CUDA_SUFF},code=sm_${CUDA_SUFF}"
+		#NVFLAGS="${NVFLAGS} -gencode arch=compute_${CUDA_SUFF},code=sm_${CUDA_SUFF}"
+		NVFLAGS="${NVFLAGS} -arch=compute_${CUDA_SUFF}"
 	fi
-	if test "x${enable_openmp}" == "xyes"
+	if ! test -z "$OPENMP"
 	then
 		AC_MSG_ERROR([Cannot make OpenMP support with GPU version])
 	fi
@@ -174,10 +248,10 @@ else
 	then
 		AC_MSG_ERROR([Cannot make GLUT graphics with CPU version])
 	fi
-	if test "x${enable_openmp}" == "xyes"
+	if ! test -z "$OPENMP"
 	then
-		CPPFLAGS="${CPPFLAGS} -fopenmp"
-		LDFLAGS="${CPPFLAGS} -fopenmp"
+		CPPFLAGS="${CPPFLAGS} $OPENMP"
+		LDFLAGS="${CPPFLAGS} $OPENMP"
 		AC_DEFINE([CROSS_OPENMP], [1], [Using OpenMP])
 	fi
 fi
@@ -195,6 +269,10 @@ else
 fi
 CPPFLAGS="${CPPFLAGS} -I${MPI_INCLUDE}"
 
+
+
+
+
 AC_MSG_CHECKING([MPI library path])
 if test -z "${MPI_LIB}"; then
 	if test -z "${MPI}"; then
@@ -208,7 +286,45 @@ else
 fi
 LDFLAGS="${LDFLAGS} -L${MPI_LIB}"
 AC_CHECK_HEADERS([mpi.h],[],[AC_MSG_ERROR([Didn't find mpi.h])])
-AC_CHECK_LIB([mpi], [MPI_Recv],[],[AC_MSG_ERROR([Didn't find MPI Library])])
+AC_CHECK_LIB([mpi], [MPI_Recv],[],[
+	AC_CHECK_FUNC([MPI_Recv],[],[
+		AC_MSG_ERROR([Didn't find MPI Library])
+	])
+])
+
+
+if  test "x${with_python}" == "xyes"; then
+   
+    AC_CHECK_PROG(python_config,"${with_python_config}","${with_python_config}",python-config)
+    
+    AC_MSG_NOTICE([python config: ${python_config}])
+
+    AC_MSG_CHECKING([python embandinng: linker flags])
+    PF=$(${python_config} --ldflags)
+	
+    LDFLAGS="${LDFLAGS} ${PF}"
+
+    AC_MSG_RESULT([${PF}])
+
+	AC_MSG_CHECKING([Python - numpy additional include path])
+	PYINC="$(python -c 'import numpy; print(numpy.get_include())')"
+	CPPFLAGS="${CPPFLAGS} -I${PYINC}"
+    AC_MSG_RESULT([${PYINC}])
+    
+    AC_MSG_CHECKING([Python Embandinng: compiler flags])
+#    PF=$($python_config --cflags)
+    PF=$($python_config --includes)
+    CPPFLAGS="${CPPFLAGS} ${PF}"
+
+    PF=$($python_config --prefix)
+
+    LDFLAGS="${LDFLAGS} -L${PF}/lib"
+    EMBEDED_PYTHON=1
+    AC_MSG_RESULT([${PF}])
+	AC_DEFINE([EMBEDED_PYTHON], [1], [Using Python support])
+fi
+
+
 
 NLOPT=""
 
@@ -255,37 +371,184 @@ then
 	fi
 fi
 
+if test "x${with_catalyst}" != "x"
+then
+	SV_LDFLAGS="${LDFLAGS}"
+	SV_CPPFLAGS="${CPPFLAGS}"
+	
+	if ! test -d "${with_catalyst}"
+	then
+		AC_MSG_ERROR([Catalyst path ${with_catalyst} is not a directory])
+	fi
+	
+	AC_MSG_CHECKING([for Catalyst-enabled ParaView build directory])
+	RET=$(find ${with_catalyst} -name "libvtkPVCatalyst-*.so" -print -quit 2>/dev/null)
+	if test -z "${RET}"
+	then
+		AC_MSG_RESULT([not found])		
+		AC_MSG_ERROR([Didn't find Catalyst libs in path ${with_catalyst}])
+	fi
+	PV_VERSION=$(echo ${RET} | sed 's/^.*libvtkPVCatalyst-\(.*\).so$/\1/')
+	RET=$(AS_DIRNAME([${RET}]))
+	AC_MSG_RESULT([${RET}])		
+	if ! test -d ${RET}
+	then
+		AC_MSG_ERROR([Lib directory is not a directory - find the developer of this package and discreetly pass him this codeword: Arszenik])
+	fi
+	PV_BUILD=${RET}
+	AC_MSG_CHECKING([for Catalyst-enabled ParaView version])
+	if test -z "${PV_VERSION}"
+	then
+		AC_MSG_RESULT([not found])
+		AC_MSG_ERROR([Library didn't have version suffix in ${with_catalyst} (ask the developer, what the hell I'm talking about)])
+	fi
+	AC_MSG_RESULT([${PV_VERSION}])
+
+	AC_MSG_CHECKING([for Catalyst-enabled ParaView build include directory])
+	RET=$(find ${with_catalyst} -name "vtkCommonDataModelModule.h" -print -quit 2>/dev/null)
+	if test -z "${RET}"
+	then
+		AC_MSG_RESULT([not found])		
+		AC_MSG_ERROR([Didn't find VTK includes in path ${with_catalyst}])
+	fi
+	RET=$(AS_DIRNAME([${RET}]))
+	RET=$(echo ${RET} | sed 's/\/VTK\/Common\/DataModel$//')
+	AC_MSG_RESULT([${RET}])		
+	if ! test -d ${RET}
+	then
+		AC_MSG_ERROR([include directory is not a directory - find the developer of this package and discreetly pass him this codeword: Arszenik])
+	fi
+	PV_BUILD_INC=${RET}
+
+	AC_MSG_CHECKING([for Catalyst-enabled ParaView source directory])
+	RET=$(find ${with_catalyst} -name "vtkCPProcessor.h" -print -quit 2>/dev/null)
+	if test -z "${RET}"
+	then
+		AC_MSG_RESULT([not found])		
+		AC_MSG_ERROR([Didn't find Catalyst headers in path ${with_catalyst}])
+	fi
+	RET=$(AS_DIRNAME([${RET}]))
+	RET=$(echo ${RET} | sed 's/\/CoProcessing\/Catalyst$//')
+	AC_MSG_RESULT([${RET}])		
+	if ! test -d ${RET}
+	then
+		AC_MSG_ERROR([Header directory is not a directory - find the developer of this package and discreetly pass him this codeword: Arszenik])
+	fi
+	PV_SOURCE=${RET}
+	
+	WITH_CATALYST=1
+	
+fi
+
+
+if test "x${with_r}" == "x"
+then
+	AC_PATH_PROG(with_r,[R],[no])
+fi
+
+if test "x${with_r}" == "xno"
+then
+	AC_MSG_ERROR([Cannot run without R (--without-r not allowed)])
+else
+	R_BIN=${with_r}
+fi
+
+AC_MSG_CHECKING($R_BIN)
+if ! test -f "$R_BIN"
+then
+	AC_MSG_ERROR([not found])
+else
+	AC_MSG_RESULT([exists])
+fi
+
+AC_MSG_CHECKING([R package: optparse])
+AS_IF([$R_BIN --vanilla --slave -e 'if (!require("optparse")) stop("No");' >/dev/null 2>&1],AC_MSG_RESULT([yes]),AC_MSG_ERROR([no]))
+AC_MSG_CHECKING([R package: numbers])
+AS_IF([$R_BIN --vanilla --slave -e 'if (!require("numbers")) stop("No");' >/dev/null 2>&1],AC_MSG_RESULT([yes]),AC_MSG_ERROR([no]))
+AC_MSG_CHECKING([R package: rtemplate])
+AS_IF([$R_BIN --vanilla --slave -e 'if (!require("rtemplate")) stop("No");' >/dev/null 2>&1],AC_MSG_RESULT([yes]),AC_MSG_ERROR([no]))
+AC_MSG_CHECKING([R package: gvector])
+AS_IF([$R_BIN --vanilla --slave -e 'if (!require("gvector")) stop("No");' >/dev/null 2>&1],AC_MSG_RESULT([yes]),AC_MSG_ERROR([no]))
+AC_MSG_CHECKING([R package: polyAlgebra])
+AS_IF([$R_BIN --vanilla --slave -e 'if (!require("polyAlgebra")) stop("No");' >/dev/null 2>&1],AC_MSG_RESULT([yes]),AC_MSG_ERROR([no]))
+
+if test "x${enable_rinside}" != "xno"
+then
+	AC_MSG_CHECKING([R package: RInside])
+	RINSIDE=yes
+	AS_IF([$R_BIN --vanilla --slave -e 'if (!require("RInside")) stop("No");' >/dev/null 2>&1],AC_MSG_RESULT([yes]),[AC_MSG_RESULT([no]); RINSIDE=no])
+	if test "x${RINSIDE}" == "xno"
+	then
+		AC_MSG_CHECKING([if RInside required])
+		if test "x${enable_rinside}" == "xyes"
+		then
+			AC_MSG_ERROR([yes])
+		else
+			AC_MSG_RESULT([no])
+		fi
+	else
+		CPPFLAGS="${CPPFLAGS} $($R_BIN CMD config --cppflags)"
+		CPPFLAGS="${CPPFLAGS} $($R_BIN --vanilla --slave -e 'RInside:::CxxFlags()')"
+		CPPFLAGS="${CPPFLAGS} $($R_BIN --vanilla --slave -e 'Rcpp:::CxxFlags()')"
+		LDFLAGS="${LDFLAGS} $($R_BIN CMD config --ldflags)"
+		LDFLAGS="${LDFLAGS} $($R_BIN CMD config BLAS_LIBS)"
+		LDFLAGS="${LDFLAGS} $($R_BIN CMD config LAPACK_LIBS)"
+		LDFLAGS="${LDFLAGS} $($R_BIN --vanilla --slave -e 'Rcpp:::LdFlags()')"
+		LDFLAGS="${LDFLAGS} $($R_BIN --vanilla --slave -e 'RInside:::LdFlags()')"
+		CPP_OPT=${CPPFLAGS}
+		AC_CHECK_HEADERS([RInside.h],[],AC_MSG_ERROR([RInside.h not found. If you don't want RInside go --without-rinside]))
+		AC_DEFINE([WITH_R], [1], [Using R])
+	fi
+fi
+
 if test "x${enable_debug}" == "xyes"
 then
-	if test "x${with_debug}" == "x"
+	if test "x${with_verbosity_level}" == "x"
 	then
-		with_debug="0"
+		with_verbosity_level="0"
 	fi
 	AC_DEFINE([CROSS_SYNC], [1], [Sync calls])
 	AC_DEFINE([CROSS_SYNCALLOC], [1], [Sync malloc calls])
 	CPPFLAGS="${CPPFLAGS} -g"
+	NVFLAGS="${NVFLAGS} --ptxas-options=-v"
 fi
 
-if test "x${with_debug}" == "x0"
+if test "x${CONF_CPPFLAGS}" == "x"
 then
-	AC_DEFINE([DEBUG_LEVEL], [0], [Making a double precision version])
-elif test "x${with_debug}" == "x1"
-then
-	AC_DEFINE([DEBUG_LEVEL], [1], [Making a double precision version])
-elif test "x${with_debug}" == "x2"
-then
-	AC_DEFINE([DEBUG_LEVEL], [2], [Making a double precision version])
-elif test "x${with_debug}" == "x3"
-then
-	AC_DEFINE([DEBUG_LEVEL], [3], [Making a double precision version])
-elif test "x${with_debug}" == "x"
-then
-	AC_DEFINE([DEBUG_LEVEL], [10], [Making a double precision version])
-elif test "x${with_debug}" == "xno"
-then
-	AC_DEFINE([DEBUG_LEVEL], [10], [Making a double precision version])
+        if test "x${enable_debug}" == "xyes"
+        then
+                CPPFLAGS="${CPPFLAGS} -g"
+        else
+                CPPFLAGS="${CPPFLAGS} -O3"
+        fi
+        CPPFLAGS="${CPPFLAGS} -Wno-write-strings"
 else
-	AC_MSG_ERROR([Unknown debug level: ${with_debug}])
+	CPPFLAGS="${CPPFLAGS} ${CONF_CPPFLAGS}"
+fi
+
+if test "x${with_verbosity_level}" == "x0"
+then
+	AC_DEFINE([DEBUG_LEVEL], [0], [print EVERYTHING!])
+elif test "x${with_verbosity_level}" == "x1"
+then
+	AC_DEFINE([DEBUG_LEVEL], [1], [print insane amount of output])
+elif test "x${with_verbosity_level}" == "x2"
+then
+	AC_DEFINE([DEBUG_LEVEL], [2], [print moderatly sane additional information])
+elif test "x${with_verbosity_level}" == "x3"
+then
+	AC_DEFINE([DEBUG_LEVEL], [3], [print normal output])
+elif test "x${with_verbosity_level}" == "x4"
+then
+	AC_DEFINE([DEBUG_LEVEL], [4], [print only notice/warning/error])
+elif test "x${with_verbosity_level}" == "x"
+then
+	AC_DEFINE([DEBUG_LEVEL], [3], [normal output])
+elif test "x${with_verbosity_level}" == "xno"
+then
+	AC_DEFINE([DEBUG_LEVEL], [3], [normal output])
+else
+	AC_MSG_ERROR([Unknown verbosity level level: ${with_verbosity_level}. Can be: 0,1,2,3,4;])
 fi
 
 if test "x${enable_waitany}" != "xno"
@@ -293,6 +556,28 @@ then
 	AC_DEFINE([CROSS_MPI_WAITANY], [1], [MPI WAIT ANY])
 fi
 
+if test "x${enable_coverage}" == "xyes"
+then
+	CPP_OPT="${CPP_OPT} -fprofile-arcs -ftest-coverage"
+	LDFLAGS="${LDFLAGS} -fprofile-arcs -ftest-coverage"
+fi
+
+CP=cp
+if test "x${enable_marklines}" == "xyes"
+then
+	RTOPT="${RTOPT} --mark-lines"
+	CP=./tools/cp_line
+fi
+
+if test "x${enable_paranoid}" == "xyes"
+then
+	CPP_OPT="${CPP_OPT} -Wall -Werror -Wno-unused-but-set-variable -Wno-unused-variable"
+fi
+
+if test "x${enable_profiling}" == "xyes"
+then
+	RTOPT="${RTOPT} -p"
+fi
 
 # Checks for typedefs, structures, and compiler characteristics.
 #AC_HEADER_STDBOOL
@@ -309,7 +594,20 @@ fi
 #AC_FUNC_STRTOD
 #AC_CHECK_FUNCS([floor memmove memset pow sqrt strchr strstr strtol strtoul])
 
+AC_SUBST(CP)
 AC_SUBST(NVFLAGS)
 AC_SUBST(CROSS_CPU)
-AC_CONFIG_FILES([CLB/config.mk])
+AC_SUBST(PV_BUILD)
+AC_SUBST(PV_BUILD_INC)
+AC_SUBST(PV_SOURCE)
+AC_SUBST(CROSS_CPU)
+AC_SUBST(WITH_CATALYST)
+AC_SUBST(WITH_R)
+AC_SUBST(PV_VERSION)
+AC_SUBST(RTOPT)
+AC_SUBST(CPP_OPT)
+AC_SUBST(EMBEDED_PYTHON)
+
+AC_CONFIG_FILES([CLB/config.mk:src/config.mk.in])
+AC_CONFIG_FILES([config.main.mk:src/config.main.mk.in])
 AC_OUTPUT

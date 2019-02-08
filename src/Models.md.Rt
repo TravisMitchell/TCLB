@@ -1,0 +1,8 @@
+<?R
+  models = strsplit(MODELS, ",")[[1]]
+?>
+Models: <?R
+  for (m in models) { ?>
+- [[<?%s m ?>|Model <?%s m ?>]] <?R
+  }
+?>

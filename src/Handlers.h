@@ -1,89 +1,71 @@
-#include "Consts.h"
-#include "pugixml.hpp"
+#ifndef Handler_H
+#define Handler_H
 
-#define HANDLER_CALLBACK 0x01
-#define HANDLER_ACTION 0x02
-#define HANDLER_GENERIC 0x04
-#define HANDLER_CONTAINER 0x08
+#include "Handlers/vHandler.h"
+#include "Handlers/NullHandler.h"
+#include "HandlerFactory.h"
 
-class Solver;
-
-class vHandler {
-	public:
-	int startIter;
-	double everyIter;
-	pugi::xml_node node;
-	Solver* solver;
-	virtual int Init();
-	virtual int DoIt();
-	virtual int Finish();
-	virtual int Type();
-	inline const bool Now(int iter) {
-		if (everyIter) {
-			iter -= startIter;
-			return floor((iter)/everyIter) > floor((iter-1)/everyIter);
-		} else return false;
-	}
-	inline const int Next(int iter) {
-		if (everyIter) {
-			iter -= startIter;
-			int k = floor((iter)/everyIter);
-			return - floor(-(k+1) * everyIter) - iter;
-		} else return -1;
-	}
-	inline const int Prev(int iter) {
-		if (everyIter) {
-			iter -= startIter;
-			int k = floor((iter-1)/everyIter);
-			return iter + floor(-k * everyIter);
-		} else return -1;
-	}
-};
-
-vHandler * getHandler(pugi::xml_node);
-
+/// Encapsulating Handler class.
+/**
+	It's kind of a shared pointer for Handlers
+*/
 class Handler {
 private:
 public:
-	vHandler * hand;
-	int *ref;
-//public:
+	vHandler * hand; ///< Handler
+	int *ref; ///< Number of references of the shared pointer
+/// Constructs a Handler based on a XML element
 	inline Handler(pugi::xml_node node, Solver * solver_) {
-		hand = getHandler(node);
+		hand = HandlerFactory::Produce(node);
+		if (hand == NULL) {
+			ERROR("Unknown Handler: %s",node.name());
+			hand = new NullHandler();
+		}
 		hand->solver = solver_;
-		if (hand) {
-			int ret = hand->Init();
-			if (ret) {
-				delete hand;
-				hand = NULL;
-			}
+		hand->node = node;
+		int ret = hand->Init();
+		if (ret) {
+			delete hand;
+			hand = NULL;
 		}
 		ref = new int;
 		*ref=1;
-		DEBUG0(printf("H: create\n");)
+		debug0("Handler shared pointer: create\n");
 	}
+/// Makes another reference of the shared pointer
 	inline Handler(const Handler & that) {
 		hand = that.hand;
 		ref = that.ref;
 		(*ref)++;
-		DEBUG0(printf("H: + %d\n", *ref);)
+		debug0("Handler shared pointer++: %d\n", *ref);
 	}
+/// Dispatches Init on the vHandler
 	inline const int Init() { return hand->Init(); }
+/// Dispatches DoIt on the vHandler
 	inline const int DoIt() { return hand->DoIt(); }
+/// Dispatches Init on the vHandler
 	inline const int Type() { return hand->Type(); }
+/// Dispatches Init on the vHandler
 	inline const bool Now(int iter) { return hand->Now(iter); }
+/// Dispatches Init on the vHandler
 	inline const int Next(int iter) { return hand->Next(iter); }
+/// Dispatches Init on the vHandler
 	inline const int Prev(int iter) { return hand->Prev(iter); }
+/// Makes another reference of the shared pointer
 	inline Handler & operator=(const Handler & that) {
 		hand = that.hand;
 		ref = that.ref;
 		(*ref)++;
-		DEBUG0(printf("H: + %d\n", *ref);)
+		debug0("Handler shared pointer++: %d\n", *ref);
 		return *this;
 	}
+/// Gets the vHandler
+	vHandler& operator* () { return *hand; }
+	vHandler* operator-> () { return hand; }
+/// Deletes a shared pointer reference
 	inline ~Handler() {
 		(*ref)--;
-		DEBUG0(printf("H: - %d\n", *ref);)
+		debug0("Handler shared pointer--: %d\n", *ref);
 		if (ref <= 0) {
 			if (hand) {
 				hand->Finish();
@@ -92,8 +74,10 @@ public:
 			delete ref;
 		}
 	}
+/// Checks in the handler is non-null
 	inline operator bool () { return hand != NULL; }
 };
 
 
 
+#endif // Handler_H

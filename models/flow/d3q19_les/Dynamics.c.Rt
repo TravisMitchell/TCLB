@@ -1,0 +1,264 @@
+<?R
+	source("conf.R")
+        c_header();
+?>
+/*  Dynamics for d3q19                                         */
+/*                                                             */
+/*-------------------------------------------------------------*/
+
+<?R
+	source("lib/d3q19.R")
+
+	Flow = d3q19_MRT("rho", c("Jx","Jy","Jz"), "R", group="f")
+
+	f = Flow$f
+	rho = Flow$rho
+	J   = Flow$J
+        Req = Flow$Req
+        U   = Flow$U
+        R   = Flow$R
+	selR= Flow$selR
+?>
+
+CudaDeviceFunction real_t getRho(){
+	return <?R C(sum(f)) ?>;
+}
+
+CudaDeviceFunction real_t getP(){
+	return ((<?R C(sum(f)) ?>)-1.0)/3.0;
+}
+
+CudaDeviceFunction vector_t getU(){
+	real_t d = getRho();
+	vector_t u;
+<?R C(PV(c("u.x","u.y", "u.z")), f %*% U) ?>
+	u.x /= d;
+	u.y /= d;
+	u.z /= d;
+	return u;
+}
+
+CudaDeviceFunction float2 Color() {
+        float2 ret;
+        vector_t u = getU();
+        ret.x = sqrt(u.x*u.x + u.y*u.y + u.z*u.z);
+        if (NodeType == NODE_Solid){
+                ret.y = 0;
+        } else {
+                ret.y = 1;
+        }
+        return ret;
+}
+
+CudaDeviceFunction void BounceBack()
+{
+     real_t uf;
+<?R
+	uf = PV("uf")
+	by(Density, Density$group, function(d) {
+		i = order(d$dx,d$dy,d$dz)
+		j = order(-d$dx,-d$dy,-d$dz)
+		if (any(d[i,c("dx","dy","dz")]!=-d[j,c("dx","dy","dz")])) stop("Density directions are not fully symetric!");
+		V = cbind(i,j);
+		sel = V[,1] > V[,2]
+		V = V[sel,, drop=F]
+		if (nrow(V) > 0) {
+		f = PV(d$name)
+		apply(V,1,function(x) {
+			C(uf,f[x[1]])
+			C(f[x[1]],f[x[2]])
+			C(f[x[2]],uf)
+		})
+		}
+	NULL})
+?>}
+
+CudaDeviceFunction void EVelocity()
+{
+
+}
+
+CudaDeviceFunction void eqWVelocity()
+{
+}
+
+
+<?R
+	X = U[,1]
+	Y = U[,2]
+	Z = U[,3]
+
+        renum = c(19, 1, 2, 3, 4, 5, 6, 7, 11, 8, 12, 9, 13, 10, 14, 15, 17, 16, 18)
+        I = rep(0, 19)
+        I[renum] = 1:19
+
+?>
+
+<?R Inlet = function() { ?>
+	Nxy = (<?R C(sum(f[X == 0 & Y > 0]) - sum(f[X == 0 & Y < 0])) ?>)/2.;
+	Nxz = (<?R C(sum(f[X == 0 & Z > 0]) - sum(f[X == 0 & Z < 0])) ?>)/2.;
+
+	f<?%d -1 + I[ 1] ?> = f<?%d -1 + I[ 2] ?> + rho * ux / 3.;
+	f<?%d -1 + I[ 8] ?> = f<?%d -1 + I[11] ?> + rho * ux / 6. + Nxy;
+	f<?%d -1 + I[ 7] ?> = f<?%d -1 + I[12] ?> + rho * ux / 6. - Nxy;
+	f<?%d -1 + I[ 9] ?> = f<?%d -1 + I[14] ?> + rho * ux / 6. - Nxz;
+	f<?%d -1 + I[10] ?> = f<?%d -1 + I[13] ?> + rho * ux / 6. + Nxz;
+
+<?R } ?>
+
+CudaDeviceFunction void WVelocity()
+{
+     real_t rho, Nxy, Nxz;
+	real_t ux = Velocity;
+
+<?R
+	C(rho, sum(f[X <  0]),float=F)
+	C(rho, sum(f[X == 0]) + 2 * rho, float=F)
+?>
+	rho = rho / (1. - ux);
+
+<?R Inlet(); ?>
+}
+
+CudaDeviceFunction void WPressure()
+{
+     real_t rho, Nxy, Nxz;
+	real_t ux;
+	rho = Density;
+<?R
+	ux = PV("ux")
+	C(ux, sum(f[X <  0]),float=F)
+	C(ux, sum(f[X == 0]) + 2 * ux, float=F)
+?>
+	ux = 1. - ux / rho;
+<?R Inlet(); ?>
+}
+
+CudaDeviceFunction void WPressureLimited()
+{
+     real_t rho, Nxy, Nxz, SF, ux;
+<?R
+	SF = PV("SF")
+	C(SF, sum(f[X <  0]),float=F)
+	C(SF, sum(f[X == 0]) + 2 * SF, float=F)
+?>
+	rho = Density;
+	ux = 1. - SF / rho;
+	if (ux > Velocity) {
+		ux = Velocity;
+		rho = SF / (1. - ux);
+	}
+<?R Inlet(); ?>
+}
+
+
+
+CudaDeviceFunction void EPressure()
+{
+     real_t rho = 1.0;
+     real_t Nxy, Nxz;
+     real_t ux;
+<?R
+	ux = PV("ux")
+	C(ux, sum(f[X >  0]),float=F)
+	C(ux, sum(f[X == 0]) + 2 * ux, float=F)
+?>
+	ux =  -1. + ux / rho;
+
+	Nxy = (<?R C(sum(f[X == 0 & Y > 0]) - sum(f[X == 0 & Y < 0])) ?>)/2;
+	Nxz = (<?R C(sum(f[X == 0 & Z > 0]) - sum(f[X == 0 & Z < 0])) ?>)/2;
+
+	f<?%d -1 + I[ 2] ?> = f<?%d -1 + I[ 1] ?> - rho * ux / 3.0;
+	f<?%d -1 + I[11] ?> = f<?%d -1 + I[ 8] ?> - rho * ux / 6.0 - Nxy;
+	f<?%d -1 + I[12] ?> = f<?%d -1 + I[ 7] ?> - rho * ux / 6.0 + Nxy;
+	f<?%d -1 + I[14] ?> = f<?%d -1 + I[ 9] ?> - rho * ux / 6.0 + Nxz;
+	f<?%d -1 + I[13] ?> = f<?%d -1 + I[10] ?> - rho * ux / 6.0 - Nxz;
+
+
+}
+
+CudaDeviceFunction void Run() {
+//	printf("Run %d %d -> (%d,%d)\n", CudaBlock.x, CudaBlock.y, X, Y);
+
+
+//    AddToVOLrho(<?R C(sum(f)) ?>);
+
+    switch (NodeType & NODE_BOUNDARY) {
+	case NODE_WPressureL:
+		WPressureLimited();
+		break;
+	case NODE_WPressure:
+		WPressure();
+		break;
+	case NODE_WVelocity:
+		WVelocity();
+		break;
+	case NODE_EPressure:
+		EPressure();
+		break;
+	case NODE_Wall:
+	case NODE_Solid:
+		BounceBack();
+                break;
+    }
+    switch (NodeType & NODE_COLLISION) {
+	case NODE_MRT:
+		CollisionMRT();
+		break;
+    }
+}
+
+CudaDeviceFunction void SetEquilibrum(real_t rho, real_t Jx, real_t Jy, real_t Jz)
+{
+	<?R
+		C(f, Req %*% MRTMAT.inv);
+	?>
+}
+
+CudaDeviceFunction void Init() {
+	SetEquilibrum(1.0, Velocity, 0., 0.);
+}
+
+CudaDeviceFunction void CollisionMRT()
+{
+	real_t omT;
+	real_t <?R C(R, sep=", ") ?>;
+
+
+	real_t tau0 = (3*nu + 0.5);
+	real_t tau_t;
+<?R
+	S = PV("S",1:19);
+	S[c(1,4,6,8)] = 0;
+	S[c(2,3,10:16)] = PV("gamma1");
+	S[c(5,7,9,17:19)] = PV("gamma2");
+	C(R, f %*% MRTMAT);
+	C(R[selR], (R-Req)[selR]);
+
+SecondMoments = cbind(U**2,U[,1]*U[,2],U[,2]*U[,3],U[,3]*U[,1])
+Qtens = R[selR] %*% (MRTMAT.inv %*% SecondMoments)[selR,]
+Qnorm2 = sum(Qtens * Qtens * c(1,1,1,2,2,2))
+tau_t = PV("tau_t")
+
+C(tau_t, Qnorm2)
+?>
+	tau_t = 18 * sqrt(tau_t) * Smag;
+	tau_t = tau0*tau0 + tau_t;
+	tau_t = sqrt(tau_t);
+	tau_t = (tau_t + tau0)/2;
+	real_t omega = 1/tau_t;
+        real_t gamma1 = 1 - omega;
+        real_t gamma2 = 1 - 8.0 * ( 2.0 - omega )/( 8.0 - omega );
+<?R 	C(R[selR], (S*R)[selR]); ?>
+
+    Jx += rho*ForceX;
+    Jy += rho*ForceY;
+    Jz += rho*ForceZ;
+<?R
+	C(R[selR], (R + Req)[selR]);
+	# nearly ortogonal MRT matrix
+        Mw = colSums(MRTMAT**2)
+	C(R,  Mw, eq="/=")
+	C( f, R %*% t(MRTMAT) , float=F);
+?>
+}
