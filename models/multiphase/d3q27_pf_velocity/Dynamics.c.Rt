@@ -125,8 +125,8 @@ if (Options$OutFlow) {
 
 /* MRT Matrix Check:
 <?R
-#options(width=200)
-#print(M)
+options(width=200)
+print(M)
 
 #printf <- function(...) cat(sprintf(...))
 
@@ -804,7 +804,7 @@ CudaDeviceFunction void CollisionCM(){
 	C(m, g)
 ?>
 for (j=0;j<2;j++) {
-	CM_hydro(m, rho, omega_nu, u, F_total, 0); 
+	CM_hydro_wmrt(m, rho, omega_nu, u, F_total, 0); 
 <?R
 	stress = PV("stress[",1:6-1,"]")
 	C(stress[1], sum( U[,1]*U[,1] * m )) # XX
@@ -850,11 +850,22 @@ if (Options$RT) {
 ?>
 // Move to Central moments from the raw moment space we currently are in:
 	<?R C(m, g) ?>
-	CM_hydro(m, rho, omega_nu, u, F_total, 1); 
+	CM_hydro_wmrt(m, rho, omega_nu, u, F_total, 1); 
 	<?R C(g,m) ?>
 
 	global_trackers( C );
 }
+
+
+CudaDeviceFunction void CM_hydro_wmrt(real_t g_in[27], real_t rho, real_t omega_nu, vector_t u, vector_t F_total, int F){
+	if (F == 0) {
+		F_total.x = 0;
+		F_total.y = 0;
+		F_total.z = 0;
+	}
+	
+}
+
 
 CudaDeviceFunction void CM_hydro(real_t g_in[27], real_t rho, real_t omega_nu, vector_t u, vector_t F_total, int F){
 	if (F == 0) {
