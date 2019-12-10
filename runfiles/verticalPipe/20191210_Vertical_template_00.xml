@@ -84,7 +84,7 @@ for (i in 1:nrow(prmSweep)) {
 
 	<Param name="M"        value="0.1" />   
 	<Param name="IntWidth" value="5"   /> 
-	<Param name="sigma"    value="<?%.8f prmSweep$sigma[3] ?>" />
+	<Param name="sigma"    value="<?%.8f sigma ?>" />
 
 	<Param name="GravitationY" value="<?%.8f GravitationY ?>" />
 	<Param name="ContactAngle" value="22" />
