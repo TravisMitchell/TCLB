@@ -907,7 +907,7 @@ int Geometry::Draw(pugi::xml_node & node)
 		for (int y = reg.dy; y < reg.dy + reg.ny; y++)
 		for (int z = reg.dz; z < reg.dz + reg.nz; z++)
        		    for (int x = reg.dx; x < reg.dx + reg.nx; x++) {
-		double xx = (.5 + x - y0);
+		double xx = (.5 + x - x0);
 		double zz = (.5 + z - z0);
 			if (zz*zz/Rz2 + xx*xx/Rx2 < 1. ) {
 			    Dot(x,y,z);
@@ -943,7 +943,7 @@ int Geometry::Draw(pugi::xml_node & node)
 		for (int y = reg.dy; y < reg.dy + reg.ny; y++)
 		for (int z = reg.dz; z < reg.dz + reg.nz; z++)
        		    for (int x = reg.dx; x < reg.dx + reg.nx; x++) {
-		double xx = (.5 + x - y0);
+		double xx = (.5 + x - x0);
 		double yy = (.5 + y - y0);
 			if (yy*yy/Ry2 + xx*xx/Rx2 < 1. ) {
 			    Dot(x,y,z);

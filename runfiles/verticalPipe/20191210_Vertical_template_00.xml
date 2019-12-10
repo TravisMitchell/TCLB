@@ -50,16 +50,17 @@ for (i in 1:nrow(prmSweep)) {
 	sink(xml)
 ?>
 <?xml version="1.0"?>
-<CLBConfig version="2.0" output="<?%s paste0("/home/uqtmitc3/scratch/prmSweep/") ?>">
+<CLBConfig version="2.0" output="<?%s paste0("/scratch/eait/uqtmitc3/ParameterSweep/") ?>">
+<!--<CLBConfig version="2.0" output="<?%s paste0("/home/uqtmitc3/scratch/prmSweep/") ?>">-->
 <!-- d1=<?%f D ?>; d2=<?%f d ?>; Mo= <?%.4e prmSweep$Mo[i] ?>; Eo= <?%.2f prmSweep$Eo[i] ?> -->	
 <Geometry nx="<?%f D ?>" ny="<?%f 15*D ?>" nz="<?%f D ?>">
 	<MRT><Box /></MRT>
 	<Smoothing><Box /></Smoothing>
 	<Wall mask="ALL">
-	    <PipeY dx="1" dy="1" dz="1" nx="<?%f D ?>" ny="<?%f 15*D  ?>" nz="<?%f D ?>" />
+	    <PipeY dx="1" dy="1" dz="1" nx="<?%f D-2 ?>" ny="<?%f 15*D  ?>" nz="<?%f D-2 ?>" />
 	    <Box   nx="1"  />
 	    <Box   dx="-1" />
-	    <YPipe y="<?%f 0.5*D ?>" z="<?%f 0.5*D ?>" R="<?%f 0.5 * d ?>" />
+	    <YPipe x="<?%f 0.5*D-1 ?>" z="<?%f 0.5*D-1 ?>" R="<?%f 0.5 * d-0.5 ?>" />
 	</Wall>
 </Geometry>
 <Model>
@@ -74,8 +75,8 @@ for (i in 1:nrow(prmSweep)) {
 	<Param name="PhaseField"   value="1" />    
 
 	<Param name="Donut_xyz"   value="1" />
-	<Param name="CenterX"   value="<?%f 0.5*D ?>" />    
-	<Param name="CenterZ"   value="<?%f 0.5*D ?>" />    
+	<Param name="CenterX"   value="<?%f 0.5*D-1 ?>" />    
+	<Param name="CenterZ"   value="<?%f 0.5*D-1 ?>" />    
 	<Param name="DonutTime" value="<?%.4f 0.5*(D + d)/2 ?>"/>
 	<Param name="Donut_h"   value="<?%.4f dh/6 ?>" />
 	<Param name="Donut_D"   value="<?%.2f 0.1*D ?>"/>
@@ -97,7 +98,7 @@ for (i in 1:nrow(prmSweep)) {
 <Param	name="M" value="0.05" />
 <VTK what="PhaseField,U,P,BOUNDARY,ADDITIONALS"/>
 <Solve Iterations="<?%f 15*ts ?>">
-	<HDF5 Iterations="<?%f 1*ts ?>"  what="PhaseField,U,P,BOUNDARY,ADDITIONALS"/>
+	<VTK Iterations="<?%f 1*ts ?>"  what="PhaseField,U,P,BOUNDARY,ADDITIONALS"/>
 	<Log  Iterations="100"/>
 	<Failcheck Iterations="100"/>
 </Solve>
