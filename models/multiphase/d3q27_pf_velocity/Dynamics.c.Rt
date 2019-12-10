@@ -409,17 +409,43 @@ CudaDeviceFunction void Init() {
 
 	// Create shape for Annular Taylor bubble initialisation
 	if ( DonutTime > 0){
-		real_t intLocation = Donut_D * 
-					sqrt( pow(Donut_h,2) 
-					    - pow( DonutTime - sqrt(pow(Y-CenterY,2) + pow(Z-CenterZ,2)), 2) );
-		real_t shifter = atan2( (Z-CenterZ), (Y-CenterY) );
-		if (shifter < 0) shifter = shifter + 2*PI;
-		if (  (X < Donut_x0 + intLocation * sin(shifter/2.0) ) && (X > Donut_x0 - intLocation) )
-		{
-			PhaseF = 0.0;
-		} else {
-			PhaseF = 1.0;
-		}
+		if (Donut_xyz == 0) {
+			real_t intLocation = Donut_D * 
+						sqrt( pow(Donut_h,2) 
+						    - pow( DonutTime - sqrt(pow(Y-CenterY,2) + pow(Z-CenterZ,2)), 2) );
+			real_t shifter = atan2( (Z-CenterZ), (Y-CenterY) );
+			if (shifter < 0) shifter = shifter + 2*PI;
+			if (  (X < Donut_x0 + intLocation * sin(shifter/2.0) ) && (X > Donut_x0 - intLocation) )
+			{
+				PhaseF = 0.0;
+			} else {
+				PhaseF = 1.0;
+			}
+		} else if (Donut_xyz == 1) {
+			real_t intLocation = Donut_D * 
+						sqrt( pow(Donut_h,2) 
+						    - pow( DonutTime - sqrt(pow(X-CenterX,2) + pow(Z-CenterZ,2)), 2) );
+			real_t shifter = atan2( (Z-CenterZ), (X-CenterX) );
+			if (shifter < 0) shifter = shifter + 2*PI;
+			if (  (Y < Donut_x0 + intLocation * sin(shifter/2.0) ) && (Y > Donut_x0 - intLocation) )
+			{
+				PhaseF = 0.0;
+			} else {
+				PhaseF = 1.0;
+			}
+		} else if (Donut_xyz == 2) {
+			real_t intLocation = Donut_D * 
+						sqrt( pow(Donut_h,2) 
+						    - pow( DonutTime - sqrt(pow(Y-CenterY,2) + pow(X-CenterX,2)), 2) );
+			real_t shifter = atan2( (X-CenterX), (Y-CenterY) );
+			if (shifter < 0) shifter = shifter + 2*PI;
+			if (  (Z < Donut_x0 + intLocation * sin(shifter/2.0) ) && (Z > Donut_x0 - intLocation) )
+			{
+				PhaseF = 0.0;
+			} else {
+				PhaseF = 1.0;
+			}
+		} 
 	}
 
 	if ( IamWall || IamSolid ) PhaseF = -999;

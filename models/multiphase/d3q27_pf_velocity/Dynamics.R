@@ -126,6 +126,7 @@ AddSetting(name="DonutTime", default="0.0", comment='Radius of a Torus - initial
 AddSetting(name="Donut_h",   default="0.0", comment='Half donut thickness, i.e. the radius of the cross-section')
 AddSetting(name="Donut_D",   default="0.0", comment='Dilation factor along the x-axis')
 AddSetting(name="Donut_x0",  default="0.0", comment='Position along x-axis')
+AddSetting(name="Donut_xyz",  default="0.0", comment='Selection of axis, x=0, y=1, z=2')
 
 # 	Inputs: Fluid Properties
 AddSetting(name="tau_l", comment='relaxation time (low density fluid)')
