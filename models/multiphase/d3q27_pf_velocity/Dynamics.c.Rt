@@ -143,6 +143,33 @@ print(M)
 ?>
 */
 
+
+<?R
+CM_omega = PV("tau")^-1
+sp = (1.0 + 2.0 * CM_omega) * 0.33333333
+sm = (1.0 - 2.0 * CM_omega) * 0.33333333
+S = V(rep(0,27*27))
+dim(S) = c(27,27)
+for (i in 1:27) { S[i,i] = 1 }
+S[5,5] = CM_omega
+S[6,6] = CM_omega
+S[7,7] = CM_omega
+S[8,8] = sp
+S[9,9] = sp
+S[10,10] = sp
+S[8,9] = sm
+S[8,10] = sm
+S[9,8] = sm
+S[9,10] = sm
+S[10,8] = sm
+S[10,9] = sm
+
+# Define normal MRT matrix:
+
+
+
+?>
+
 //	EXPORTABLE QUANTITIES:
 CudaDeviceFunction real_t getRho(){
 	real_t rho;
@@ -592,7 +619,7 @@ CudaDeviceFunction void CollisionMRT(){
 	p = m0[0];
 	
 // Update tau:
-	if ( C < PhaseField_l){
+	if ( C < P haseField_l){
 		tau = tau_l + 0.5;
 	} else if (C > PhaseField_h) {
 		tau = tau_h + 0.5;
@@ -667,7 +694,7 @@ CudaDeviceFunction void CollisionMRT(){
 //	   and redetermine stress to ensure more accurate F_total
 for (j=0;j<2;j++) {
 <?R
-	C(m[selR], (m0 - EQ$Req)[selR] * Omega)
+	C(m[selR],  (m0 - EQ$Req)[selR] * Omega)
 
 	stress = PV("stress[",1:6-1,"]");
 	new_g = solve(M) %*% m
@@ -815,7 +842,7 @@ for (j=0;j<2;j++) {
 	C(stress[6], sum( U[,3]*U[,3] * m )) # ZZ
 ?>
 
-	F_mu[0] = (0.5-tau) * (Density_h-Density_l) * (stress[0]*gradPhi.x + stress[1]*gradPhi.y + stress[2]*gradPhi.z);
+	F_mu [0] = (0.5-tau) * (Density_h-Density_l) * (stress[0]*gradPhi.x + stress[1]*gradPhi.y + stress[2]*gradPhi.z);
 	F_mu[1] = (0.5-tau) * (Density_h-Density_l) * (stress[1]*gradPhi.x + stress[3]*gradPhi.y + stress[4]*gradPhi.z);
 	F_mu[2] = (0.5-tau) * (Density_h-Density_l) * (stress[2]*gradPhi.x + stress[4]*gradPhi.y + stress[5]*gradPhi.z);
 	F_total.x = mu*gradPhi.x + F_pressure[0] + F_body[0] + F_mu[0];
@@ -825,7 +852,7 @@ for (j=0;j<2;j++) {
 #ifdef OPTIONS_filter
 	F_total.x += Fa.x;
 	F_total.y += Fa.y;
-	F_total.z += Fa.z;
+	F_total.z +=  Fa.z;
 #endif
 
 <?R 	C( u, g %*% U  + 0.5 * F_total * rho.inv) ?>
@@ -836,9 +863,9 @@ for (j=0;j<2;j++) {
 	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/IntWidth;
 <?R
 	C(heq, EQ_h$feq * PV("C"))
-	n = PV("n",c("x","y","z"))
-if (Options$RT) {
-	u_old = PV(c("u_old[0]","u_old[1]","u_old[2]"))
+	n  = PV("n",c("x","y","z"))
+if (Options$RT) { 
+	u_old = PV (c("u_old[0]","u_old[1]","u_old[2]"))
 	pf_old= PV("PhaseF_old")
 	pf    = PV("PhaseF")
 	C(Fphi, myWeighting * PV("tmp1") * (U %*% n) + 3.0 * U %*% (pf*u - pf_old*u_old) )
@@ -849,7 +876,7 @@ if (Options$RT) {
 	C(h, h - omega * (h - heq + 0.5*Fphi) + Fphi)
 ?>
 // Move to Central moments from the raw moment space we currently are in:
-	<?R C(m, g) ?>
+	<?R  C(m, g) ?>
 	CM_hydro_wmrt(m, rho, omega_nu, u, F_total, 1); 
 	<?R C(g,m) ?>
 
@@ -863,8 +890,362 @@ CudaDeviceFunction void CM_hydro_wmrt(real_t g_in[27], real_t rho, real_t omega_
 		F_total.y = 0;
 		F_total.z = 0;
 	}
-	
+	//=== THIS IS AUTOMATICALLY GENERATED CODE ===
+	real_t omega_bulk = 1.0;
+	real_t uxuy = u.x*u.y;
+	real_t ux2 = u.x*u.x;
+	real_t uy2 = u.y*u.y;
+	real_t uxuz = u.x*u.z;
+	real_t uyuz = u.y*u.z;
+	real_t uz2 = u.z*u.z;
+	real_t m00 = g_in[0] + g_in[9] + g_in[18] + g_in[3] + g_in[12] + g_in[21] + g_in[6] + g_in[15] + g_in[24] + g_in[1] + g_in[10] + g_in[19] + g_in[4] + g_in[13] + g_in[22] + g_in[7] + g_in[16] + g_in[25] + g_in[2] + g_in[11] + g_in[20] + g_in[5] + g_in[14] + g_in[23] + g_in[8] + g_in[17] + g_in[26];
+	real_t temp000 = g_in[0];
+	real_t temp100 = g_in[1];
+	real_t temp200 = g_in[2];
+	real_t temp010 = g_in[3];
+	real_t temp110 = g_in[4];
+	real_t temp210 = g_in[5];
+	real_t temp020 = g_in[6];
+	real_t temp120 = g_in[7];
+	real_t temp220 = g_in[8];
+	real_t temp001 = g_in[9];
+	real_t temp101 = g_in[10];
+	real_t temp201 = g_in[11];
+	real_t temp011 = g_in[12];
+	real_t temp111 = g_in[13];
+	real_t temp211 = g_in[14];
+	real_t temp021 = g_in[15];
+	real_t temp121 = g_in[16];
+	real_t temp221 = g_in[17];
+	real_t temp002 = g_in[18];
+	real_t temp102 = g_in[19];
+	real_t temp202 = g_in[20];
+	real_t temp012 = g_in[21];
+	real_t temp112 = g_in[22];
+	real_t temp212 = g_in[23];
+	real_t temp022 = g_in[24];
+	real_t temp122 = g_in[25];
+	real_t temp222 = g_in[26];
+	//raw moments from density-probability functions
+	g_in[0] = temp000 + temp001 + temp002 + temp010 + temp011 + temp012 + temp020 + temp021 + temp022 + temp100 + temp101 + temp102 + temp110 + temp111 + temp112 + temp120 + temp121 + temp122 + temp200 + temp201 + temp202 + temp210 + temp211 + temp212 + temp220 + temp221 + temp222;
+	g_in[1] = temp100 + temp101 + temp102 + temp110 + temp111 + temp112 + temp120 + temp121 + temp122 - temp200 - temp201 - temp202 - temp210 - temp211 - temp212 - temp220 - temp221 - temp222;
+	g_in[2] = temp100 + temp101 + temp102 + temp110 + temp111 + temp112 + temp120 + temp121 + temp122 + temp200 + temp201 + temp202 + temp210 + temp211 + temp212 + temp220 + temp221 + temp222;
+	g_in[3] = temp010 + temp011 + temp012 - temp020 - temp021 - temp022 + temp110 + temp111 + temp112 - temp120 - temp121 - temp122 + temp210 + temp211 + temp212 - temp220 - temp221 - temp222;
+	g_in[4] = temp110 + temp111 + temp112 - temp120 - temp121 - temp122 - temp210 - temp211 - temp212 + temp220 + temp221 + temp222;
+	g_in[5] = temp110 + temp111 + temp112 - temp120 - temp121 - temp122 + temp210 + temp211 + temp212 - temp220 - temp221 - temp222;
+	g_in[6] = temp010 + temp011 + temp012 + temp020 + temp021 + temp022 + temp110 + temp111 + temp112 + temp120 + temp121 + temp122 + temp210 + temp211 + temp212 + temp220 + temp221 + temp222;
+	g_in[7] = temp110 + temp111 + temp112 + temp120 + temp121 + temp122 - temp210 - temp211 - temp212 - temp220 - temp221 - temp222;
+	g_in[8] = temp110 + temp111 + temp112 + temp120 + temp121 + temp122 + temp210 + temp211 + temp212 + temp220 + temp221 + temp222;
+	g_in[9] = temp001 - temp002 + temp011 - temp012 + temp021 - temp022 + temp101 - temp102 + temp111 - temp112 + temp121 - temp122 + temp201 - temp202 + temp211 - temp212 + temp221 - temp222;
+	g_in[10] = temp101 - temp102 + temp111 - temp112 + temp121 - temp122 - temp201 + temp202 - temp211 + temp212 - temp221 + temp222;
+	g_in[11] = temp101 - temp102 + temp111 - temp112 + temp121 - temp122 + temp201 - temp202 + temp211 - temp212 + temp221 - temp222;
+	g_in[12] = temp011 - temp012 - temp021 + temp022 + temp111 - temp112 - temp121 + temp122 + temp211 - temp212 - temp221 + temp222;
+	g_in[13] = temp111 - temp112 - temp121 + temp122 - temp211 + temp212 + temp221 - temp222;
+	g_in[14] = temp111 - temp112 - temp121 + temp122 + temp211 - temp212 - temp221 + temp222;
+	g_in[15] = temp011 - temp012 + temp021 - temp022 + temp111 - temp112 + temp121 - temp122 + temp211 - temp212 + temp221 - temp222;
+	g_in[16] = temp111 - temp112 + temp121 - temp122 - temp211 + temp212 - temp221 + temp222;
+	g_in[17] = temp111 - temp112 + temp121 - temp122 + temp211 - temp212 + temp221 - temp222;
+	g_in[18] = temp001 + temp002 + temp011 + temp012 + temp021 + temp022 + temp101 + temp102 + temp111 + temp112 + temp121 + temp122 + temp201 + temp202 + temp211 + temp212 + temp221 + temp222;
+	g_in[19] = temp101 + temp102 + temp111 + temp112 + temp121 + temp122 - temp201 - temp202 - temp211 - temp212 - temp221 - temp222;
+	g_in[20] = temp101 + temp102 + temp111 + temp112 + temp121 + temp122 + temp201 + temp202 + temp211 + temp212 + temp221 + temp222;
+	g_in[21] = temp011 + temp012 - temp021 - temp022 + temp111 + temp112 - temp121 - temp122 + temp211 + temp212 - temp221 - temp222;
+	g_in[22] = temp111 + temp112 - temp121 - temp122 - temp211 - temp212 + temp221 + temp222;
+	g_in[23] = temp111 + temp112 - temp121 - temp122 + temp211 + temp212 - temp221 - temp222;
+	g_in[24] = temp011 + temp012 + temp021 + temp022 + temp111 + temp112 + temp121 + temp122 + temp211 + temp212 + temp221 + temp222;
+	g_in[25] = temp111 + temp112 + temp121 + temp122 - temp211 - temp212 - temp221 - temp222;
+	g_in[26] = temp111 + temp112 + temp121 + temp122 + temp211 + temp212 + temp221 + temp222;
+	//central moments from raw moments
+	temp000 = g_in[0];
+	temp100 = -g_in[0]*u.x + g_in[1];
+	temp200 = g_in[0]*ux2 - 2.*g_in[1]*u.x + g_in[2];
+	temp010 = -g_in[0]*u.y + g_in[3];
+	temp110 = g_in[0]*uxuy - g_in[3]*u.x - g_in[1]*u.y + g_in[4];
+	temp210 = -g_in[0]*ux2*u.y + g_in[3]*ux2 + 2.*g_in[1]*uxuy - 2.*g_in[4]*u.x - g_in[2]*u.y + g_in[5];
+	temp020 = g_in[0]*uy2 - 2.*g_in[3]*u.y + g_in[6];
+	temp120 = -g_in[0]*u.x*uy2 + 2.*g_in[3]*uxuy - g_in[6]*u.x + g_in[1]*uy2 - 2.*g_in[4]*u.y + g_in[7];
+	temp220 = g_in[0]*ux2*uy2 - 2.*g_in[3]*ux2*u.y + g_in[6]*ux2 - 2.*g_in[1]*u.x*uy2 + 4.*g_in[4]*uxuy - 2.*g_in[7]*u.x + g_in[2]*uy2 - 2.*g_in[5]*u.y + g_in[8];
+	temp001 = -g_in[0]*u.z + g_in[9];
+	temp101 = g_in[0]*uxuz - g_in[9]*u.x - g_in[1]*u.z + g_in[10];
+	temp201 = -g_in[0]*ux2*u.z + g_in[9]*ux2 + 2.*g_in[1]*uxuz - 2.*g_in[10]*u.x - g_in[2]*u.z + g_in[11];
+	temp011 = g_in[0]*uyuz - g_in[9]*u.y - g_in[3]*u.z + g_in[12];
+	temp111 = -g_in[0]*uxuy*u.z + g_in[9]*uxuy + g_in[3]*uxuz - g_in[12]*u.x + g_in[1]*uyuz - g_in[10]*u.y - g_in[4]*u.z + g_in[13];
+	temp211 = g_in[0]*ux2*uyuz - g_in[9]*ux2*u.y - g_in[3]*ux2*u.z + g_in[12]*ux2 - 2.*g_in[1]*uxuy*u.z + 2.*g_in[10]*uxuy + 2.*g_in[4]*uxuz - 2.*g_in[13]*u.x + g_in[2]*uyuz - g_in[11]*u.y - g_in[5]*u.z + g_in[14];
+	temp021 = -g_in[0]*uy2*u.z + g_in[9]*uy2 + 2.*g_in[3]*uyuz - 2.*g_in[12]*u.y - g_in[6]*u.z + g_in[15];
+	temp121 = g_in[0]*u.x*uy2*u.z - g_in[9]*u.x*uy2 - 2.*g_in[3]*uxuy*u.z + 2.*g_in[12]*uxuy + g_in[6]*uxuz - g_in[15]*u.x - g_in[1]*uy2*u.z + g_in[10]*uy2 + 2.*g_in[4]*uyuz - 2.*g_in[13]*u.y - g_in[7]*u.z + g_in[16];
+	temp221 = -g_in[0]*ux2*uy2*u.z + g_in[9]*ux2*uy2 + 2.*g_in[3]*ux2*uyuz - 2.*g_in[12]*ux2*u.y - g_in[6]*ux2*u.z + g_in[15]*ux2 + 2.*g_in[1]*u.x*uy2*u.z - 2.*g_in[10]*u.x*uy2 - 4.*g_in[4]*uxuy*u.z + 4.*g_in[13]*uxuy + 2.*g_in[7]*uxuz - 2.*g_in[16]*u.x - g_in[2]*uy2*u.z + g_in[11]*uy2 + 2.*g_in[5]*uyuz - 2.*g_in[14]*u.y - g_in[8]*u.z + g_in[17];
+	temp002 = g_in[0]*uz2 - 2.*g_in[9]*u.z + g_in[18];
+	temp102 = -g_in[0]*u.x*uz2 + 2.*g_in[9]*uxuz - g_in[18]*u.x + g_in[1]*uz2 - 2.*g_in[10]*u.z + g_in[19];
+	temp202 = g_in[0]*ux2*uz2 - 2.*g_in[9]*ux2*u.z + g_in[18]*ux2 - 2.*g_in[1]*u.x*uz2 + 4.*g_in[10]*uxuz - 2.*g_in[19]*u.x + g_in[2]*uz2 - 2.*g_in[11]*u.z + g_in[20];
+	temp012 = -g_in[0]*u.y*uz2 + 2.*g_in[9]*uyuz - g_in[18]*u.y + g_in[3]*uz2 - 2.*g_in[12]*u.z + g_in[21];
+	temp112 = g_in[0]*uxuy*uz2 - 2.*g_in[9]*uxuy*u.z + g_in[18]*uxuy - g_in[3]*u.x*uz2 + 2.*g_in[12]*uxuz - g_in[21]*u.x - g_in[1]*u.y*uz2 + 2.*g_in[10]*uyuz - g_in[19]*u.y + g_in[4]*uz2 - 2.*g_in[13]*u.z + g_in[22];
+	temp212 = -g_in[0]*ux2*u.y*uz2 + 2.*g_in[9]*ux2*uyuz - g_in[18]*ux2*u.y + g_in[3]*ux2*uz2 - 2.*g_in[12]*ux2*u.z + g_in[21]*ux2 + 2.*g_in[1]*uxuy*uz2 - 4.*g_in[10]*uxuy*u.z + 2.*g_in[19]*uxuy - 2.*g_in[4]*u.x*uz2 + 4.*g_in[13]*uxuz - 2.*g_in[22]*u.x - g_in[2]*u.y*uz2 + 2.*g_in[11]*uyuz - g_in[20]*u.y + g_in[5]*uz2 - 2.*g_in[14]*u.z + g_in[23];
+	temp022 = g_in[0]*uy2*uz2 - 2.*g_in[9]*uy2*u.z + g_in[18]*uy2 - 2.*g_in[3]*u.y*uz2 + 4.*g_in[12]*uyuz - 2.*g_in[21]*u.y + g_in[6]*uz2 - 2.*g_in[15]*u.z + g_in[24];
+	temp122 = -g_in[0]*u.x*uy2*uz2 + 2.*g_in[9]*u.x*uy2*u.z - g_in[18]*u.x*uy2 + 2.*g_in[3]*uxuy*uz2 - 4.*g_in[12]*uxuy*u.z + 2.*g_in[21]*uxuy - g_in[6]*u.x*uz2 + 2.*g_in[15]*uxuz - g_in[24]*u.x + g_in[1]*uy2*uz2 - 2.*g_in[10]*uy2*u.z + g_in[19]*uy2 - 2.*g_in[4]*u.y*uz2 + 4.*g_in[13]*uyuz - 2.*g_in[22]*u.y + g_in[7]*uz2 - 2.*g_in[16]*u.z + g_in[25];
+	temp222 = g_in[0]*ux2*uy2*uz2 - 2.*g_in[9]*ux2*uy2*u.z + g_in[18]*ux2*uy2 - 2.*g_in[3]*ux2*u.y*uz2 + 4.*g_in[12]*ux2*uyuz - 2.*g_in[21]*ux2*u.y + g_in[6]*ux2*uz2 - 2.*g_in[15]*ux2*u.z + g_in[24]*ux2 - 2.*g_in[1]*u.x*uy2*uz2 + 4.*g_in[10]*u.x*uy2*u.z - 2.*g_in[19]*u.x*uy2 + 4.*g_in[4]*uxuy*uz2 - 8.*g_in[13]*uxuy*u.z + 4.*g_in[22]*uxuy - 2.*g_in[7]*u.x*uz2 + 4.*g_in[16]*uxuz - 2.*g_in[25]*u.x + g_in[2]*uy2*uz2 - 2.*g_in[11]*uy2*u.z + g_in[20]*uy2 - 2.*g_in[5]*u.y*uz2 + 4.*g_in[14]*uyuz - 2.*g_in[23]*u.y + g_in[8]*uz2 - 2.*g_in[17]*u.z + g_in[26];
+	//collision in central moments space
+	//collide
+	g_in[0] = m00;
+	g_in[1] = 1/2.*F_total.x/rho - m00*u.x + u.x;
+	g_in[2] = m00*ux2 + 1/3.*m00 - ux2;
+	g_in[3] = 1/2.*F_total.y/rho - m00*u.y + u.y;
+	g_in[4] = omega_nu*uxuy*(m00 - 1.) - temp110*(omega_nu - 1.);
+	g_in[5] = -(1/6.*F_total.y*(omega_nu - 2.) + rho*(omega_nu*u.y*(m00*ux2 + 1/3.*m00 - ux2 - 1/3.) + temp210*(omega_nu - 1.)))/rho;
+	g_in[6] = omega_nu*(m00*uy2 + 1/3.*m00 - uy2) - temp020*(omega_nu - 1.);
+	g_in[7] = -(1/18.*F_total.x*(omega_bulk + 2.*omega_nu - 6.) + 1/6.*F_total.z*(omega_bulk - omega_nu) + 1/3.*rho*(temp001*(omega_bulk - omega_nu) + temp120*(omega_bulk + 2.*omega_nu - 3.) + temp220*(omega_bulk - omega_nu) + u.x*(omega_bulk + 2.*omega_nu)*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.) + u.z*(m00 - 1.)*(omega_bulk - omega_nu) - (omega_bulk - omega_nu)*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2)))/rho;
+	g_in[8] = -(1/18.*F_total.x*(omega_bulk - omega_nu) + 1/6.*F_total.z*(omega_bulk - omega_nu) + 1/3.*rho*(temp001*(omega_bulk - omega_nu) + temp120*(omega_bulk - omega_nu) + temp220*(omega_bulk + 2.*omega_nu - 3.) + u.x*(omega_bulk - omega_nu)*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.) + u.z*(m00 - 1.)*(omega_bulk - omega_nu) - (omega_bulk + 2.*omega_nu)*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2)))/rho;
+	g_in[9] = -(1/18.*F_total.x*(omega_bulk - omega_nu) + 1/6.*F_total.z*(omega_bulk + 2.*omega_nu - 6.) + 1/3.*rho*(temp001*(omega_bulk + 2.*omega_nu - 3.) + temp120*(omega_bulk - omega_nu) + temp220*(omega_bulk - omega_nu) + u.x*(omega_bulk - omega_nu)*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.) + u.z*(m00 - 1.)*(omega_bulk + 2.*omega_nu) - (omega_bulk - omega_nu)*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2)))/rho;
+	g_in[10] = uxuz*(m00 - 1.);
+	g_in[11] = (1/6.*F_total.z - rho*u.z*(m00*ux2 + 1/3.*m00 - ux2 - 1/3.))/rho;
+	g_in[12] = uyuz*(m00 - 1.);
+	g_in[13] = -u.z*uxuy*(m00 - 1.);
+	g_in[14] = uyuz*(m00*ux2 + 1/3.*m00 - ux2 - 1/3.);
+	g_in[15] = (1/6.*F_total.z - rho*u.z*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.))/rho;
+	g_in[16] = uxuz*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.);
+	g_in[17] = (1/18.*F_total.z - rho*u.z*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2 - 1/9.))/rho;
+	g_in[18] = m00*uz2 + 1/3.*m00 - uz2;
+	g_in[19] = (1/6.*F_total.x - rho*u.x*(m00*uz2 + 1/3.*m00 - uz2 - 1/3.))/rho;
+	g_in[20] = m00*ux2*uz2 + 1/3.*m00*ux2 + 1/3.*m00*uz2 + 1/9.*m00 - ux2*uz2 - 1/3.*ux2 - 1/3.*uz2;
+	g_in[21] = (1/6.*F_total.y - rho*u.y*(m00*uz2 + 1/3.*m00 - uz2 - 1/3.))/rho;
+	g_in[22] = uxuy*(m00*uz2 + 1/3.*m00 - uz2 - 1/3.);
+	g_in[23] = (1/18.*F_total.y - rho*u.y*(m00*ux2*uz2 + 1/3.*m00*ux2 + 1/3.*m00*uz2 + 1/9.*m00 - ux2*uz2 - 1/3.*ux2 - 1/3.*uz2 - 1/9.))/rho;
+	g_in[24] = m00*uy2*uz2 + 1/3.*m00*uy2 + 1/3.*m00*uz2 + 1/9.*m00 - uy2*uz2 - 1/3.*uy2 - 1/3.*uz2;
+	g_in[25] = (1/18.*F_total.x - rho*u.x*(m00*uy2*uz2 + 1/3.*m00*uy2 + 1/3.*m00*uz2 + 1/9.*m00 - uy2*uz2 - 1/3.*uy2 - 1/3.*uz2 - 1/9.))/rho;
+	g_in[26] = m00*ux2*uy2*uz2 + 1/3.*m00*ux2*uy2 + 1/3.*m00*ux2*uz2 + 1/9.*m00*ux2 + 1/3.*m00*uy2*uz2 + 1/9.*m00*uy2 + 1/9.*m00*uz2 + 1/27.*m00 - ux2*uy2*uz2 - 1/3.*ux2*uy2 - 1/3.*ux2*uz2 - 1/9.*ux2 - 1/3.*uy2*uz2 - 1/9.*uy2 - 1/9.*uz2;
+	//back to raw moments
+	temp000 = g_in[0];
+	temp100 = g_in[0]*u.x + g_in[1];
+	temp200 = g_in[0]*ux2 + 2.*g_in[1]*u.x + g_in[2];
+	temp010 = g_in[0]*u.y + g_in[3];
+	temp110 = g_in[0]*uxuy + g_in[3]*u.x + g_in[1]*u.y + g_in[4];
+	temp210 = g_in[0]*ux2*u.y + g_in[3]*ux2 + 2.*g_in[1]*uxuy + 2.*g_in[4]*u.x + g_in[2]*u.y + g_in[5];
+	temp020 = g_in[0]*uy2 + 2.*g_in[3]*u.y + g_in[6];
+	temp120 = g_in[0]*u.x*uy2 + 2.*g_in[3]*uxuy + g_in[6]*u.x + g_in[1]*uy2 + 2.*g_in[4]*u.y + g_in[7];
+	temp220 = g_in[0]*ux2*uy2 + 2.*g_in[3]*ux2*u.y + g_in[6]*ux2 + 2.*g_in[1]*u.x*uy2 + 4.*g_in[4]*uxuy + 2.*g_in[7]*u.x + g_in[2]*uy2 + 2.*g_in[5]*u.y + g_in[8];
+	temp001 = g_in[0]*u.z + g_in[9];
+	temp101 = g_in[0]*uxuz + g_in[9]*u.x + g_in[1]*u.z + g_in[10];
+	temp201 = g_in[0]*ux2*u.z + g_in[9]*ux2 + 2.*g_in[1]*uxuz + 2.*g_in[10]*u.x + g_in[2]*u.z + g_in[11];
+	temp011 = g_in[0]*uyuz + g_in[9]*u.y + g_in[3]*u.z + g_in[12];
+	temp111 = g_in[0]*uxuy*u.z + g_in[9]*uxuy + g_in[3]*uxuz + g_in[12]*u.x + g_in[1]*uyuz + g_in[10]*u.y + g_in[4]*u.z + g_in[13];
+	temp211 = g_in[0]*ux2*uyuz + g_in[9]*ux2*u.y + g_in[3]*ux2*u.z + g_in[12]*ux2 + 2.*g_in[1]*uxuy*u.z + 2.*g_in[10]*uxuy + 2.*g_in[4]*uxuz + 2.*g_in[13]*u.x + g_in[2]*uyuz + g_in[11]*u.y + g_in[5]*u.z + g_in[14];
+	temp021 = g_in[0]*uy2*u.z + g_in[9]*uy2 + 2.*g_in[3]*uyuz + 2.*g_in[12]*u.y + g_in[6]*u.z + g_in[15];
+	temp121 = g_in[0]*u.x*uy2*u.z + g_in[9]*u.x*uy2 + 2.*g_in[3]*uxuy*u.z + 2.*g_in[12]*uxuy + g_in[6]*uxuz + g_in[15]*u.x + g_in[1]*uy2*u.z + g_in[10]*uy2 + 2.*g_in[4]*uyuz + 2.*g_in[13]*u.y + g_in[7]*u.z + g_in[16];
+	temp221 = g_in[0]*ux2*uy2*u.z + g_in[9]*ux2*uy2 + 2.*g_in[3]*ux2*uyuz + 2.*g_in[12]*ux2*u.y + g_in[6]*ux2*u.z + g_in[15]*ux2 + 2.*g_in[1]*u.x*uy2*u.z + 2.*g_in[10]*u.x*uy2 + 4.*g_in[4]*uxuy*u.z + 4.*g_in[13]*uxuy + 2.*g_in[7]*uxuz + 2.*g_in[16]*u.x + g_in[2]*uy2*u.z + g_in[11]*uy2 + 2.*g_in[5]*uyuz + 2.*g_in[14]*u.y + g_in[8]*u.z + g_in[17];
+	temp002 = g_in[0]*uz2 + 2.*g_in[9]*u.z + g_in[18];
+	temp102 = g_in[0]*u.x*uz2 + 2.*g_in[9]*uxuz + g_in[18]*u.x + g_in[1]*uz2 + 2.*g_in[10]*u.z + g_in[19];
+	temp202 = g_in[0]*ux2*uz2 + 2.*g_in[9]*ux2*u.z + g_in[18]*ux2 + 2.*g_in[1]*u.x*uz2 + 4.*g_in[10]*uxuz + 2.*g_in[19]*u.x + g_in[2]*uz2 + 2.*g_in[11]*u.z + g_in[20];
+	temp012 = g_in[0]*u.y*uz2 + 2.*g_in[9]*uyuz + g_in[18]*u.y + g_in[3]*uz2 + 2.*g_in[12]*u.z + g_in[21];
+	temp112 = g_in[0]*uxuy*uz2 + 2.*g_in[9]*uxuy*u.z + g_in[18]*uxuy + g_in[3]*u.x*uz2 + 2.*g_in[12]*uxuz + g_in[21]*u.x + g_in[1]*u.y*uz2 + 2.*g_in[10]*uyuz + g_in[19]*u.y + g_in[4]*uz2 + 2.*g_in[13]*u.z + g_in[22];
+	temp212 = g_in[0]*ux2*u.y*uz2 + 2.*g_in[9]*ux2*uyuz + g_in[18]*ux2*u.y + g_in[3]*ux2*uz2 + 2.*g_in[12]*ux2*u.z + g_in[21]*ux2 + 2.*g_in[1]*uxuy*uz2 + 4.*g_in[10]*uxuy*u.z + 2.*g_in[19]*uxuy + 2.*g_in[4]*u.x*uz2 + 4.*g_in[13]*uxuz + 2.*g_in[22]*u.x + g_in[2]*u.y*uz2 + 2.*g_in[11]*uyuz + g_in[20]*u.y + g_in[5]*uz2 + 2.*g_in[14]*u.z + g_in[23];
+	temp022 = g_in[0]*uy2*uz2 + 2.*g_in[9]*uy2*u.z + g_in[18]*uy2 + 2.*g_in[3]*u.y*uz2 + 4.*g_in[12]*uyuz + 2.*g_in[21]*u.y + g_in[6]*uz2 + 2.*g_in[15]*u.z + g_in[24];
+	temp122 = g_in[0]*u.x*uy2*uz2 + 2.*g_in[9]*u.x*uy2*u.z + g_in[18]*u.x*uy2 + 2.*g_in[3]*uxuy*uz2 + 4.*g_in[12]*uxuy*u.z + 2.*g_in[21]*uxuy + g_in[6]*u.x*uz2 + 2.*g_in[15]*uxuz + g_in[24]*u.x + g_in[1]*uy2*uz2 + 2.*g_in[10]*uy2*u.z + g_in[19]*uy2 + 2.*g_in[4]*u.y*uz2 + 4.*g_in[13]*uyuz + 2.*g_in[22]*u.y + g_in[7]*uz2 + 2.*g_in[16]*u.z + g_in[25];
+	temp222 = g_in[0]*ux2*uy2*uz2 + 2.*g_in[9]*ux2*uy2*u.z + g_in[18]*ux2*uy2 + 2.*g_in[3]*ux2*u.y*uz2 + 4.*g_in[12]*ux2*uyuz + 2.*g_in[21]*ux2*u.y + g_in[6]*ux2*uz2 + 2.*g_in[15]*ux2*u.z + g_in[24]*ux2 + 2.*g_in[1]*u.x*uy2*uz2 + 4.*g_in[10]*u.x*uy2*u.z + 2.*g_in[19]*u.x*uy2 + 4.*g_in[4]*uxuy*uz2 + 8.*g_in[13]*uxuy*u.z + 4.*g_in[22]*uxuy + 2.*g_in[7]*u.x*uz2 + 4.*g_in[16]*uxuz + 2.*g_in[25]*u.x + g_in[2]*uy2*uz2 + 2.*g_in[11]*uy2*u.z + g_in[20]*uy2 + 2.*g_in[5]*u.y*uz2 + 4.*g_in[14]*uyuz + 2.*g_in[23]*u.y + g_in[8]*uz2 + 2.*g_in[17]*u.z + g_in[26];
+	//back to density-probability functions
+	g_in[0] = temp000 - temp002 - temp020 + temp022 - temp200 + temp202 + temp220 - temp222;
+	g_in[1] = 1/2.*temp100 - 1/2.*temp102 - 1/2.*temp120 + 1/2.*temp122 + 1/2.*temp200 - 1/2.*temp202 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[2] = -1/2.*temp100 + 1/2.*temp102 + 1/2.*temp120 - 1/2.*temp122 + 1/2.*temp200 - 1/2.*temp202 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[3] = 1/2.*temp010 - 1/2.*temp012 + 1/2.*temp020 - 1/2.*temp022 - 1/2.*temp210 + 1/2.*temp212 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[4] = 1/4.*temp110 - 1/4.*temp112 + 1/4.*temp120 - 1/4.*temp122 + 1/4.*temp210 - 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[5] = -1/4.*temp110 + 1/4.*temp112 - 1/4.*temp120 + 1/4.*temp122 + 1/4.*temp210 - 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[6] = -1/2.*temp010 + 1/2.*temp012 + 1/2.*temp020 - 1/2.*temp022 + 1/2.*temp210 - 1/2.*temp212 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[7] = -1/4.*temp110 + 1/4.*temp112 + 1/4.*temp120 - 1/4.*temp122 - 1/4.*temp210 + 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[8] = 1/4.*temp110 - 1/4.*temp112 - 1/4.*temp120 + 1/4.*temp122 - 1/4.*temp210 + 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[9] = 1/2.*temp001 + 1/2.*temp002 - 1/2.*temp021 - 1/2.*temp022 - 1/2.*temp201 - 1/2.*temp202 + 1/2.*temp221 + 1/2.*temp222;
+	g_in[10] = 1/4.*temp101 + 1/4.*temp102 - 1/4.*temp121 - 1/4.*temp122 + 1/4.*temp201 + 1/4.*temp202 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[11] = -1/4.*temp101 - 1/4.*temp102 + 1/4.*temp121 + 1/4.*temp122 + 1/4.*temp201 + 1/4.*temp202 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[12] = 1/4.*temp011 + 1/4.*temp012 + 1/4.*temp021 + 1/4.*temp022 - 1/4.*temp211 - 1/4.*temp212 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[13] = 1/8.*temp111 + 1/8.*temp112 + 1/8.*temp121 + 1/8.*temp122 + 1/8.*temp211 + 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[14] = -1/8.*temp111 - 1/8.*temp112 - 1/8.*temp121 - 1/8.*temp122 + 1/8.*temp211 + 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[15] = -1/4.*temp011 - 1/4.*temp012 + 1/4.*temp021 + 1/4.*temp022 + 1/4.*temp211 + 1/4.*temp212 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[16] = -1/8.*temp111 - 1/8.*temp112 + 1/8.*temp121 + 1/8.*temp122 - 1/8.*temp211 - 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[17] = 1/8.*temp111 + 1/8.*temp112 - 1/8.*temp121 - 1/8.*temp122 - 1/8.*temp211 - 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[18] = -1/2.*temp001 + 1/2.*temp002 + 1/2.*temp021 - 1/2.*temp022 + 1/2.*temp201 - 1/2.*temp202 - 1/2.*temp221 + 1/2.*temp222;
+	g_in[19] = -1/4.*temp101 + 1/4.*temp102 + 1/4.*temp121 - 1/4.*temp122 - 1/4.*temp201 + 1/4.*temp202 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[20] = 1/4.*temp101 - 1/4.*temp102 - 1/4.*temp121 + 1/4.*temp122 - 1/4.*temp201 + 1/4.*temp202 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[21] = -1/4.*temp011 + 1/4.*temp012 - 1/4.*temp021 + 1/4.*temp022 + 1/4.*temp211 - 1/4.*temp212 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[22] = -1/8.*temp111 + 1/8.*temp112 - 1/8.*temp121 + 1/8.*temp122 - 1/8.*temp211 + 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;
+	g_in[23] = 1/8.*temp111 - 1/8.*temp112 + 1/8.*temp121 - 1/8.*temp122 - 1/8.*temp211 + 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;
+	g_in[24] = 1/4.*temp011 - 1/4.*temp012 - 1/4.*temp021 + 1/4.*temp022 - 1/4.*temp211 + 1/4.*temp212 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[25] = 1/8.*temp111 - 1/8.*temp112 - 1/8.*temp121 + 1/8.*temp122 + 1/8.*temp211 - 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;
+	g_in[26] =  -1/8.*temp111 + 1/8.*temp112 + 1/8.*temp121 - 1/8.*temp122 + 1/8.*temp211 - 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;	
+
+
+
+/*
+real_t m00 = g_in[0] + g_in[9] + g_in[18] + g_in[3] + g_in[12] + g_in[21] + g_in[6] + g_in[15] + g_in[24] + g_in[1] + g_in[10] + g_in[19] + g_in[4] + g_in[13] + g_in[22] + g_in[7] + g_in[16] + g_in[25] + g_in[2] + g_in[11] + g_in[20] + g_in[5] + g_in[14] + g_in[23] + g_in[8] + g_in[17] + g_in[26];
+	real_t temp000 = g_in[0];
+	real_t temp100 = g_in[1];
+	real_t temp200 = g_in[2];
+	real_t temp010 = g_in[3];
+	real_t temp110 = g_in[4];
+	real_t temp210 = g_in[5];
+	real_t temp020 = g_in[6];
+	real_t temp120 = g_in[7];
+	real_t temp220 = g_in[8];
+	real_t temp001 = g_in[9];
+	real_t temp101 = g_in[10];
+	real_t temp201 = g_in[11];
+	real_t temp011 = g_in[12];
+	real_t temp111 = g_in[13];
+	real_t temp211 = g_in[14];
+	real_t temp021 = g_in[15];
+	real_t temp121 = g_in[16];
+	real_t temp221 = g_in[17];
+	real_t temp002 = g_in[18];
+	real_t temp102 = g_in[19];
+	real_t temp202 = g_in[20];
+	real_t temp012 = g_in[21];
+	real_t temp112 = g_in[22];
+	real_t temp212 = g_in[23];
+	real_t temp022 = g_in[24];
+	real_t temp122 = g_in[25];
+	real_t temp222 = g_in[26];
+
+//raw moments from density-probability functions
+	g_in[0] = m00;
+	g_in[1] = temp100 + temp101 + temp102 + temp110 + temp111 + temp112 + temp120 + temp121 + temp122 - temp200 - temp201 - temp202 - temp210 - temp211 - temp212 - temp220 - temp221 - temp222;
+	g_in[2] = temp100 + temp101 + temp102 + temp110 + temp111 + temp112 + temp120 + temp121 + temp122 + temp200 + temp201 + temp202 + temp210 + temp211 + temp212 + temp220 + temp221 + temp222;
+	g_in[3] = temp010 + temp011 + temp012 - temp020 - temp021 - temp022 + temp110 + temp111 + temp112 - temp120 - temp121 - temp122 + temp210 + temp211 + temp212 - temp220 - temp221 - temp222;
+	g_in[4] = temp110 + temp111 + temp112 - temp120 - temp121 - temp122 - temp210 - temp211 - temp212 + temp220 + temp221 + temp222;
+	g_in[5] = temp110 + temp111 + temp112 - temp120 - temp121 - temp122 + temp210 + temp211 + temp212 - temp220 - temp221 - temp222;
+	g_in[6] = temp010 + temp011 + temp012 + temp020 + temp021 + temp022 + temp110 + temp111 + temp112 + temp120 + temp121 + temp122 + temp210 + temp211 + temp212 + temp220 + temp221 + temp222;
+	g_in[7] = temp110 + temp111 + temp112 + temp120 + temp121 + temp122 - temp210 - temp211 - temp212 - temp220 - temp221 - temp222;
+	g_in[8] = temp110 + temp111 + temp112 + temp120 + temp121 + temp122 + temp210 + temp211 + temp212 + temp220 + temp221 + temp222;
+	g_in[9] = temp001 - temp002 + temp011 - temp012 + temp021 - temp022 + temp101 - temp102 + temp111 - temp112 + temp121 - temp122 + temp201 - temp202 + temp211 - temp212 + temp221 - temp222;
+	g_in[10] = temp101 - temp102 + temp111 - temp112 + temp121 - temp122 - temp201 + temp202 - temp211 + temp212 - temp221 + temp222;
+	g_in[11] = temp101 - temp102 + temp111 - temp112 + temp121 - temp122 + temp201 - temp202 + temp211 - temp212 + temp221 - temp222;
+	g_in[12] = temp011 - temp012 - temp021 + temp022 + temp111 - temp112 - temp121 + temp122 + temp211 - temp212 - temp221 + temp222;
+	g_in[13] = temp111 - temp112 - temp121 + temp122 - temp211 + temp212 + temp221 - temp222;
+	g_in[14] = temp111 - temp112 - temp121 + temp122 + temp211 - temp212 - temp221 + temp222;
+	g_in[15] = temp011 - temp012 + temp021 - temp022 + temp111 - temp112 + temp121 - temp122 + temp211 - temp212 + temp221 - temp222;
+	g_in[16] = temp111 - temp112 + temp121 - temp122 - temp211 + temp212 - temp221 + temp222;
+	g_in[17] = temp111 - temp112 + temp121 - temp122 + temp211 - temp212 + temp221 - temp222;
+	g_in[18] = temp001 + temp002 + temp011 + temp012 + temp021 + temp022 + temp101 + temp102 + temp111 + temp112 + temp121 + temp122 + temp201 + temp202 + temp211 + temp212 + temp221 + temp222;
+	g_in[19] = temp101 + temp102 + temp111 + temp112 + temp121 + temp122 - temp201 - temp202 - temp211 - temp212 - temp221 - temp222;
+	g_in[20] = temp101 + temp102 + temp111 + temp112 + temp121 + temp122 + temp201 + temp202 + temp211 + temp212 + temp221 + temp222;
+	g_in[21] = temp011 + temp012 - temp021 - temp022 + temp111 + temp112 - temp121 - temp122 + temp211 + temp212 - temp221 - temp222;
+	g_in[22] = temp111 + temp112 - temp121 - temp122 - temp211 - temp212 + temp221 + temp222;
+	g_in[23] = temp111 + temp112 - temp121 - temp122 + temp211 + temp212 - temp221 - temp222;
+	g_in[24] = temp011 + temp012 + temp021 + temp022 + temp111 + temp112 + temp121 + temp122 + temp211 + temp212 + temp221 + temp222;
+	g_in[25] = temp111 + temp112 + temp121 + temp122 - temp211 - temp212 - temp221 - temp222;
+	g_in[26] = temp111 + temp112 + temp121 + temp122 + temp211 + temp212 + temp221 + temp222;
+	//central moments from raw moments
+	temp000 = g_in[0];
+	temp100 = -g_in[0]*u.x + g_in[1];
+	temp200 = -g_in[0]*u.y + g_in[3];
+	temp010 = -g_in[0]*u.z + g_in[9];
+	temp110 = g_in[0]*uxuy - g_in[3]*u.x - g_in[1]*u.y + g_in[4];
+	temp210 = g_in[0]*uyuz - g_in[9]*u.y - g_in[3]*u.z + g_in[12];
+	temp020 = g_in[0]*uxuz - g_in[9]*u.x - g_in[1]*u.z + g_in[10];
+	temp120 = 2.*g_in[0]*ux2 - g_in[0]*uy2 - g_in[0]*uz2 + 2.*g_in[9]*u.z - g_in[18] + 2.*g_in[3]*u.y - g_in[6] - 4.*g_in[1]*u.x + 2.*g_in[2];
+	temp220 = g_in[0]*uy2 - g_in[0]*uz2 + 2.*g_in[9]*u.z - g_in[18] - 2.*g_in[3]*u.y + g_in[6];
+	temp001 = g_in[0]*ux2 + g_in[0]*uy2 + g_in[0]*uz2 - g_in[0] - 2.*g_in[9]*u.z + g_in[18] - 2.*g_in[3]*u.y + g_in[6] - 2.*g_in[1]*u.x + g_in[2];
+	temp101 = -3.*g_in[0]*u.x*uy2 - 3.*g_in[0]*u.x*uz2 + 2.*g_in[0]*u.x + 6.*g_in[9]*uxuz - 3.*g_in[18]*u.x + 6.*g_in[3]*uxuy - 3.*g_in[6]*u.x + 3.*g_in[1]*uy2 + 3.*g_in[1]*uz2 - 2.*g_in[1] - 6.*g_in[10]*u.z + 3.*g_in[19] - 6.*g_in[4]*u.y + 3.*g_in[7];
+	temp201 = -3.*g_in[0]*ux2*u.y - 3.*g_in[0]*u.y*uz2 + 2.*g_in[0]*u.y + 6.*g_in[9]*uyuz - 3.*g_in[18]*u.y + 3.*g_in[3]*ux2 + 3.*g_in[3]*uz2 - 2.*g_in[3] - 6.*g_in[12]*u.z + 3.*g_in[21] + 6.*g_in[1]*uxuy - 6.*g_in[4]*u.x - 3.*g_in[2]*u.y + 3.*g_in[5];
+	temp011 = -3.*g_in[0]*ux2*u.z - 3.*g_in[0]*uy2*u.z + 2.*g_in[0]*u.z + 3.*g_in[9]*ux2 + 3.*g_in[9]*uy2 - 2.*g_in[9] + 6.*g_in[3]*uyuz - 6.*g_in[12]*u.y - 3.*g_in[6]*u.z + 3.*g_in[15] + 6.*g_in[1]*uxuz - 6.*g_in[10]*u.x - 3.*g_in[2]*u.z + 3.*g_in[11];
+	temp111 = -g_in[0]*u.x*uy2 + g_in[0]*u.x*uz2 - 2.*g_in[9]*uxuz + g_in[18]*u.x + 2.*g_in[3]*uxuy - g_in[6]*u.x + g_in[1]*uy2 - g_in[1]*uz2 + 2.*g_in[10]*u.z - g_in[19] - 2.*g_in[4]*u.y + g_in[7];
+	temp211 = g_in[0]*ux2*u.y - g_in[0]*u.y*uz2 + 2.*g_in[9]*uyuz - g_in[18]*u.y - g_in[3]*ux2 + g_in[3]*uz2 - 2.*g_in[12]*u.z + g_in[21] - 2.*g_in[1]*uxuy + 2.*g_in[4]*u.x + g_in[2]*u.y - g_in[5];
+	temp021 = -g_in[0]*ux2*u.z + g_in[0]*uy2*u.z + g_in[9]*ux2 - g_in[9]*uy2 - 2.*g_in[3]*uyuz + 2.*g_in[12]*u.y + g_in[6]*u.z - g_in[15] + 2.*g_in[1]*uxuz - 2.*g_in[10]*u.x - g_in[2]*u.z + g_in[11];
+	temp121 = -g_in[0]*uxuy*u.z + g_in[9]*uxuy + g_in[3]*uxuz - g_in[12]*u.x + g_in[1]*uyuz - g_in[10]*u.y - g_in[4]*u.z + g_in[13];
+	temp221 = 3.*g_in[0]*ux2*uy2 + 3.*g_in[0]*ux2*uz2 - 2.*g_in[0]*ux2 + 3.*g_in[0]*uy2*uz2 - 2.*g_in[0]*uy2 - 2.*g_in[0]*uz2 + g_in[0] - 6.*g_in[9]*ux2*u.z - 6.*g_in[9]*uy2*u.z + 4.*g_in[9]*u.z + 3.*g_in[18]*ux2 + 3.*g_in[18]*uy2 - 2.*g_in[18] - 6.*g_in[3]*ux2*u.y - 6.*g_in[3]*u.y*uz2 + 4.*g_in[3]*u.y + 12.*g_in[12]*uyuz - 6.*g_in[21]*u.y + 3.*g_in[6]*ux2 + 3.*g_in[6]*uz2 - 2.*g_in[6] - 6.*g_in[15]*u.z + 3.*g_in[24] - 6.*g_in[1]*u.x*uy2 - 6.*g_in[1]*u.x*uz2 + 4.*g_in[1]*u.x + 12.*g_in[10]*uxuz - 6.*g_in[19]*u.x + 12.*g_in[4]*uxuy - 6.*g_in[7]*u.x + 3.*g_in[2]*uy2 + 3.*g_in[2]*uz2 - 2.*g_in[2] - 6.*g_in[11]*u.z + 3.*g_in[20] - 6.*g_in[5]*u.y + 3.*g_in[8];
+	temp002 = 3.*g_in[0]*ux2*uy2 + 3.*g_in[0]*ux2*uz2 - 2.*g_in[0]*ux2 - 6.*g_in[0]*uy2*uz2 + g_in[0]*uy2 + g_in[0]*uz2 - 6.*g_in[9]*ux2*u.z + 12.*g_in[9]*uy2*u.z - 2.*g_in[9]*u.z + 3.*g_in[18]*ux2 - 6.*g_in[18]*uy2 + g_in[18] - 6.*g_in[3]*ux2*u.y + 12.*g_in[3]*u.y*uz2 - 2.*g_in[3]*u.y - 24.*g_in[12]*uyuz + 12.*g_in[21]*u.y + 3.*g_in[6]*ux2 - 6.*g_in[6]*uz2 + g_in[6] + 12.*g_in[15]*u.z - 6.*g_in[24] - 6.*g_in[1]*u.x*uy2 - 6.*g_in[1]*u.x*uz2 + 4.*g_in[1]*u.x + 12.*g_in[10]*uxuz - 6.*g_in[19]*u.x + 12.*g_in[4]*uxuy - 6.*g_in[7]*u.x + 3.*g_in[2]*uy2 + 3.*g_in[2]*uz2 - 2.*g_in[2] - 6.*g_in[11]*u.z + 3.*g_in[20] - 6.*g_in[5]*u.y + 3.*g_in[8];
+	temp102 = 3.*g_in[0]*ux2*uy2 - 3.*g_in[0]*ux2*uz2 - g_in[0]*uy2 + g_in[0]*uz2 + 6.*g_in[9]*ux2*u.z - 2.*g_in[9]*u.z - 3.*g_in[18]*ux2 + g_in[18] - 6.*g_in[3]*ux2*u.y + 2.*g_in[3]*u.y + 3.*g_in[6]*ux2 - g_in[6] - 6.*g_in[1]*u.x*uy2 + 6.*g_in[1]*u.x*uz2 - 12.*g_in[10]*uxuz + 6.*g_in[19]*u.x + 12.*g_in[4]*uxuy - 6.*g_in[7]*u.x + 3.*g_in[2]*uy2 - 3.*g_in[2]*uz2 + 6.*g_in[11]*u.z - 3.*g_in[20] - 6.*g_in[5]*u.y + 3.*g_in[8];
+	temp202 = 3.*g_in[0]*uxuy*uz2 - g_in[0]*uxuy - 6.*g_in[9]*uxuy*u.z + 3.*g_in[18]*uxuy - 3.*g_in[3]*u.x*uz2 + g_in[3]*u.x + 6.*g_in[12]*uxuz - 3.*g_in[21]*u.x - 3.*g_in[1]*u.y*uz2 + g_in[1]*u.y + 6.*g_in[10]*uyuz - 3.*g_in[19]*u.y + 3.*g_in[4]*uz2 - g_in[4] - 6.*g_in[13]*u.z + 3.*g_in[22];
+	temp012 = 3.*g_in[0]*ux2*uyuz - g_in[0]*uyuz - 3.*g_in[9]*ux2*u.y + g_in[9]*u.y - 3.*g_in[3]*ux2*u.z + g_in[3]*u.z + 3.*g_in[12]*ux2 - g_in[12] - 6.*g_in[1]*uxuy*u.z + 6.*g_in[10]*uxuy + 6.*g_in[4]*uxuz - 6.*g_in[13]*u.x + 3.*g_in[2]*uyuz - 3.*g_in[11]*u.y - 3.*g_in[5]*u.z + 3.*g_in[14];
+	temp112 = 3.*g_in[0]*u.x*uy2*u.z - g_in[0]*uxuz - 3.*g_in[9]*u.x*uy2 + g_in[9]*u.x - 6.*g_in[3]*uxuy*u.z + 6.*g_in[12]*uxuy + 3.*g_in[6]*uxuz - 3.*g_in[15]*u.x - 3.*g_in[1]*uy2*u.z + g_in[1]*u.z + 3.*g_in[10]*uy2 - g_in[10] + 6.*g_in[4]*uyuz - 6.*g_in[13]*u.y - 3.*g_in[7]*u.z + 3.*g_in[16];
+	temp212 = -9.*g_in[0]*u.x*uy2*uz2 + 3.*g_in[0]*u.x*uy2 + 3.*g_in[0]*u.x*uz2 - g_in[0]*u.x + 18.*g_in[9]*u.x*uy2*u.z - 6.*g_in[9]*uxuz - 9.*g_in[18]*u.x*uy2 + 3.*g_in[18]*u.x + 18.*g_in[3]*uxuy*uz2 - 6.*g_in[3]*uxuy - 36.*g_in[12]*uxuy*u.z + 18.*g_in[21]*uxuy - 9.*g_in[6]*u.x*uz2 + 3.*g_in[6]*u.x + 18.*g_in[15]*uxuz - 9.*g_in[24]*u.x + 9.*g_in[1]*uy2*uz2 - 3.*g_in[1]*uy2 - 3.*g_in[1]*uz2 + g_in[1] - 18.*g_in[10]*uy2*u.z + 6.*g_in[10]*u.z + 9.*g_in[19]*uy2 - 3.*g_in[19] - 18.*g_in[4]*u.y*uz2 + 6.*g_in[4]*u.y + 36.*g_in[13]*uyuz - 18.*g_in[22]*u.y + 9.*g_in[7]*uz2 - 3.*g_in[7] - 18.*g_in[16]*u.z + 9.*g_in[25];
+	temp022 = -9.*g_in[0]*ux2*u.y*uz2 + 3.*g_in[0]*ux2*u.y + 3.*g_in[0]*u.y*uz2 - g_in[0]*u.y + 18.*g_in[9]*ux2*uyuz - 6.*g_in[9]*uyuz - 9.*g_in[18]*ux2*u.y + 3.*g_in[18]*u.y + 9.*g_in[3]*ux2*uz2 - 3.*g_in[3]*ux2 - 3.*g_in[3]*uz2 + g_in[3] - 18.*g_in[12]*ux2*u.z + 6.*g_in[12]*u.z + 9.*g_in[21]*ux2 - 3.*g_in[21] + 18.*g_in[1]*uxuy*uz2 - 6.*g_in[1]*uxuy - 36.*g_in[10]*uxuy*u.z + 18.*g_in[19]*uxuy - 18.*g_in[4]*u.x*uz2 + 6.*g_in[4]*u.x + 36.*g_in[13]*uxuz - 18.*g_in[22]*u.x - 9.*g_in[2]*u.y*uz2 + 3.*g_in[2]*u.y + 18.*g_in[11]*uyuz - 9.*g_in[20]*u.y + 9.*g_in[5]*uz2 - 3.*g_in[5] - 18.*g_in[14]*u.z + 9.*g_in[23];
+	temp122 = -9.*g_in[0]*ux2*uy2*u.z + 3.*g_in[0]*ux2*u.z + 3.*g_in[0]*uy2*u.z - g_in[0]*u.z + 9.*g_in[9]*ux2*uy2 - 3.*g_in[9]*ux2 - 3.*g_in[9]*uy2 + g_in[9] + 18.*g_in[3]*ux2*uyuz - 6.*g_in[3]*uyuz - 18.*g_in[12]*ux2*u.y + 6.*g_in[12]*u.y - 9.*g_in[6]*ux2*u.z + 3.*g_in[6]*u.z + 9.*g_in[15]*ux2 - 3.*g_in[15] + 18.*g_in[1]*u.x*uy2*u.z - 6.*g_in[1]*uxuz - 18.*g_in[10]*u.x*uy2 + 6.*g_in[10]*u.x - 36.*g_in[4]*uxuy*u.z + 36.*g_in[13]*uxuy + 18.*g_in[7]*uxuz - 18.*g_in[16]*u.x - 9.*g_in[2]*uy2*u.z + 3.*g_in[2]*u.z + 9.*g_in[11]*uy2 - 3.*g_in[11] + 18.*g_in[5]*uyuz - 18.*g_in[14]*u.y - 9.*g_in[8]*u.z + 9.*g_in[17];
+	temp222 = 27.*g_in[0]*ux2*uy2*uz2 - 9.*g_in[0]*ux2*uy2 - 9.*g_in[0]*ux2*uz2 + 3.*g_in[0]*ux2 - 9.*g_in[0]*uy2*uz2 + 3.*g_in[0]*uy2 + 3.*g_in[0]*uz2 - g_in[0] - 54.*g_in[9]*ux2*uy2*u.z + 18.*g_in[9]*ux2*u.z + 18.*g_in[9]*uy2*u.z - 6.*g_in[9]*u.z + 27.*g_in[18]*ux2*uy2 - 9.*g_in[18]*ux2 - 9.*g_in[18]*uy2 + 3.*g_in[18] - 54.*g_in[3]*ux2*u.y*uz2 + 18.*g_in[3]*ux2*u.y + 18.*g_in[3]*u.y*uz2 - 6.*g_in[3]*u.y + 108.*g_in[12]*ux2*uyuz - 36.*g_in[12]*uyuz - 54.*g_in[21]*ux2*u.y + 18.*g_in[21]*u.y + 27.*g_in[6]*ux2*uz2 - 9.*g_in[6]*ux2 - 9.*g_in[6]*uz2 + 3.*g_in[6] - 54.*g_in[15]*ux2*u.z + 18.*g_in[15]*u.z + 27.*g_in[24]*ux2 - 9.*g_in[24] - 54.*g_in[1]*u.x*uy2*uz2 + 18.*g_in[1]*u.x*uy2 + 18.*g_in[1]*u.x*uz2 - 6.*g_in[1]*u.x + 108.*g_in[10]*u.x*uy2*u.z - 36.*g_in[10]*uxuz - 54.*g_in[19]*u.x*uy2 + 18.*g_in[19]*u.x + 108.*g_in[4]*uxuy*uz2 - 36.*g_in[4]*uxuy - 216.*g_in[13]*uxuy*u.z + 108.*g_in[22]*uxuy - 54.*g_in[7]*u.x*uz2 + 18.*g_in[7]*u.x + 108.*g_in[16]*uxuz - 54.*g_in[25]*u.x + 27.*g_in[2]*uy2*uz2 - 9.*g_in[2]*uy2 - 9.*g_in[2]*uz2 + 3.*g_in[2] - 54.*g_in[11]*uy2*u.z + 18.*g_in[11]*u.z + 27.*g_in[20]*uy2 - 9.*g_in[20] - 54.*g_in[5]*u.y*uz2 + 18.*g_in[5]*u.y + 108.*g_in[14]*uyuz - 54.*g_in[23]*u.y + 27.*g_in[8]*uz2 - 9.*g_in[8] - 54.*g_in[17]*u.z + 27.*g_in[26];
+
+	//collision in central moments space
+	//collide
+	g_in[0] = m00;
+	g_in[1] = 1/2.*F_total.x/rho - m00*u.x + u.x;
+	g_in[2] = m00*ux2 + 1/3.*m00 - ux2;
+	g_in[3] = 1/2.*F_total.y/rho - m00*u.y + u.y;
+	g_in[4] = omega_nu*uxuy*(m00 - 1.) - temp110*(omega_nu - 1.);
+	g_in[5] = -(1/6.*F_total.y*(omega_nu - 2.) + rho*(omega_nu*u.y*(m00*ux2 + 1/3.*m00 - ux2 - 1/3.) + temp210*(omega_nu - 1.)))/rho;
+	g_in[6] = omega_nu*(m00*uy2 + 1/3.*m00 - uy2) - temp020*(omega_nu - 1.);
+	g_in[7] = -(1/18.*F_total.x*(omega_bulk + 2.*omega_nu - 6.) + 1/6.*F_total.z*(omega_bulk - omega_nu) + 1/3.*rho*(temp001*(omega_bulk - omega_nu) + temp120*(omega_bulk + 2.*omega_nu - 3.) + temp220*(omega_bulk - omega_nu) + u.x*(omega_bulk + 2.*omega_nu)*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.) + u.z*(m00 - 1.)*(omega_bulk - omega_nu) - (omega_bulk - omega_nu)*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2)))/rho;
+	g_in[8] = -(1/18.*F_total.x*(omega_bulk - omega_nu) + 1/6.*F_total.z*(omega_bulk - omega_nu) + 1/3.*rho*(temp001*(omega_bulk - omega_nu) + temp120*(omega_bulk - omega_nu) + temp220*(omega_bulk + 2.*omega_nu - 3.) + u.x*(omega_bulk - omega_nu)*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.) + u.z*(m00 - 1.)*(omega_bulk - omega_nu) - (omega_bulk + 2.*omega_nu)*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2)))/rho;
+	g_in[9] = -(1/18.*F_total.x*(omega_bulk - omega_nu) + 1/6.*F_total.z*(omega_bulk + 2.*omega_nu - 6.) + 1/3.*rho*(temp001*(omega_bulk + 2.*omega_nu - 3.) + temp120*(omega_bulk - omega_nu) + temp220*(omega_bulk - omega_nu) + u.x*(omega_bulk - omega_nu)*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.) + u.z*(m00 - 1.)*(omega_bulk + 2.*omega_nu) - (omega_bulk - omega_nu)*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2)))/rho;
+	g_in[10] = uxuz*(m00 - 1.);
+	g_in[11] = (1/6.*F_total.z - rho*u.z*(m00*ux2 + 1/3.*m00 - ux2 - 1/3.))/rho;
+	g_in[12] = uyuz*(m00 - 1.);
+	g_in[13] = -u.z*uxuy*(m00 - 1.);
+	g_in[14] = uyuz*(m00*ux2 + 1/3.*m00 - ux2 - 1/3.);
+	g_in[15] = (1/6.*F_total.z - rho*u.z*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.))/rho;
+	g_in[16] = uxuz*(m00*uy2 + 1/3.*m00 - uy2 - 1/3.);
+	g_in[17] = (1/18.*F_total.z - rho*u.z*(m00*ux2*uy2 + 1/3.*m00*ux2 + 1/3.*m00*uy2 + 1/9.*m00 - ux2*uy2 - 1/3.*ux2 - 1/3.*uy2 - 1/9.))/rho;
+	g_in[18] = m00*uz2 + 1/3.*m00 - uz2;
+	g_in[19] = (1/6.*F_total.x - rho*u.x*(m00*uz2 + 1/3.*m00 - uz2 - 1/3.))/rho;
+	g_in[20] = m00*ux2*uz2 + 1/3.*m00*ux2 + 1/3.*m00*uz2 + 1/9.*m00 - ux2*uz2 - 1/3.*ux2 - 1/3.*uz2;
+	g_in[21] = (1/6.*F_total.y - rho*u.y*(m00*uz2 + 1/3.*m00 - uz2 - 1/3.))/rho;
+	g_in[22] = uxuy*(m00*uz2 + 1/3.*m00 - uz2 - 1/3.);
+	g_in[23] = (1/18.*F_total.y - rho*u.y*(m00*ux2*uz2 + 1/3.*m00*ux2 + 1/3.*m00*uz2 + 1/9.*m00 - ux2*uz2 - 1/3.*ux2 - 1/3.*uz2 - 1/9.))/rho;
+	g_in[24] = m00*uy2*uz2 + 1/3.*m00*uy2 + 1/3.*m00*uz2 + 1/9.*m00 - uy2*uz2 - 1/3.*uy2 - 1/3.*uz2;
+	g_in[25] = (1/18.*F_total.x - rho*u.x*(m00*uy2*uz2 + 1/3.*m00*uy2 + 1/3.*m00*uz2 + 1/9.*m00 - uy2*uz2 - 1/3.*uy2 - 1/3.*uz2 - 1/9.))/rho;
+	g_in[26] = m00*ux2*uy2*uz2 + 1/3.*m00*ux2*uy2 + 1/3.*m00*ux2*uz2 + 1/9.*m00*ux2 + 1/3.*m00*uy2*uz2 + 1/9.*m00*uy2 + 1/9.*m00*uz2 + 1/27.*m00 - ux2*uy2*uz2 - 1/3.*ux2*uy2 - 1/3.*ux2*uz2 - 1/9.*ux2 - 1/3.*uy2*uz2 - 1/9.*uy2 - 1/9.*uz2;
+	//back to raw moments
+	temp000 = g_in[0];
+	temp100 = g_in[0]*u.x + g_in[1];
+	temp200 = g_in[0]*ux2 + 1/3.*g_in[0] + 1/3.*g_in[9] + 2.*g_in[1]*u.x + 1/3.*g_in[7];
+	temp010 = g_in[0]*u.y + g_in[2];
+	temp110 = g_in[0]*uxuy + g_in[1]*u.y + g_in[4] + g_in[2]*u.x;
+	temp210 = g_in[0]*ux2*u.y + 2.*g_in[1]*uxuy + 2.*g_in[4]*u.x + g_in[2]*ux2 + 1/3.*g_in[2] + 1/6.*g_in[11] - 1/2.*g_in[14] + 1/3.*u.y*(g_in[0] + g_in[9] + g_in[7]);
+	temp020 = g_in[0]*uy2 + 1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 2.*g_in[2]*u.y + 1/2.*g_in[8];
+	temp120 = g_in[0]*u.x*uy2 + g_in[1]*uy2 + 1/3.*g_in[1] + 1/6.*g_in[10] + 2.*g_in[4]*u.y + 1/2.*g_in[13] + 2.*g_in[2]*uxuy + u.x*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]);
+	temp220 = g_in[0]*ux2*uy2 + 1/9.*g_in[0] + 2/9.*g_in[9] + 1/18.*g_in[18] + 2.*g_in[1]*u.x*uy2 + 1/6.*g_in[19] + 4.*g_in[4]*uxuy + 1/18.*g_in[7] + 2.*g_in[2]*ux2*u.y + 1/6.*g_in[8] + 1/9.*g_in[17] + ux2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]) + 2.*u.x*(1/3.*g_in[1] + 1/6.*g_in[10] + 1/2.*g_in[13]) + 1/3.*uy2*(g_in[0] + g_in[9] + g_in[7]) + 2.*u.y*(1/3.*g_in[2] + 1/6.*g_in[11] - 1/2.*g_in[14]);
+	temp001 = g_in[0]*u.z + g_in[3];
+	temp101 = g_in[0]*uxuz + g_in[3]*u.x + g_in[6] + g_in[1]*u.z;
+	temp201 = g_in[0]*ux2*u.z + g_in[3]*ux2 + 1/3.*g_in[3] + 1/6.*g_in[12] + 2.*g_in[6]*u.x + 1/2.*g_in[15] + 2.*g_in[1]*uxuz + 1/3.*u.z*(g_in[0] + g_in[9] + g_in[7]);
+	temp011 = g_in[0]*uyuz + g_in[3]*u.y + g_in[2]*u.z + g_in[5];
+	temp111 = g_in[0]*uxuy*u.z + g_in[3]*uxuy + g_in[6]*u.y + g_in[1]*uyuz + g_in[4]*u.z + g_in[16] + g_in[2]*uxuz + g_in[5]*u.x;
+	temp211 = g_in[0]*ux2*uyuz + g_in[3]*ux2*u.y + 1/3.*g_in[21] + 2.*g_in[6]*uxuy + 2.*g_in[1]*uxuy*u.z + 2.*g_in[4]*uxuz + 2.*g_in[16]*u.x + g_in[2]*ux2*u.z + g_in[5]*ux2 + 1/3.*g_in[5] + 1/3.*uyuz*(g_in[0] + g_in[9] + g_in[7]) + u.y*(1/3.*g_in[3] + 1/6.*g_in[12] + 1/2.*g_in[15]) + u.z*(1/3.*g_in[2] + 1/6.*g_in[11] - 1/2.*g_in[14]);
+	temp021 = g_in[0]*uy2*u.z + g_in[3]*uy2 + 1/3.*g_in[3] + 1/6.*g_in[12] - 1/2.*g_in[15] + 2.*g_in[2]*uyuz + 2.*g_in[5]*u.y + u.z*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]);
+	temp121 = g_in[0]*u.x*uy2*u.z + g_in[3]*u.x*uy2 + g_in[6]*uy2 + 1/3.*g_in[6] + g_in[1]*uy2*u.z + 2.*g_in[4]*uyuz + 1/3.*g_in[22] + 2.*g_in[16]*u.y + 2.*g_in[2]*uxuy*u.z + 2.*g_in[5]*uxuy + uxuz*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]) + u.x*(1/3.*g_in[3] + 1/6.*g_in[12] - 1/2.*g_in[15]) + u.z*(1/3.*g_in[1] + 1/6.*g_in[10] + 1/2.*g_in[13]);
+	temp221 = g_in[0]*ux2*uy2*u.z + g_in[3]*ux2*uy2 + 1/9.*g_in[3] + 1/9.*g_in[12] + 2.*g_in[6]*u.x*uy2 + 2.*g_in[1]*u.x*uy2*u.z + 4.*g_in[4]*uxuy*u.z + 4.*g_in[16]*uxuy + 1/9.*g_in[25] + 2.*g_in[2]*ux2*uyuz + 2.*g_in[5]*ux2*u.y + ux2*u.z*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]) + ux2*(1/3.*g_in[3] + 1/6.*g_in[12] - 1/2.*g_in[15]) + 2.*uxuz*(1/3.*g_in[1] + 1/6.*g_in[10] + 1/2.*g_in[13]) + 2/3.*u.x*(g_in[6] + g_in[22]) + 1/3.*uy2*u.z*(g_in[0] + g_in[9] + g_in[7]) + uy2*(1/3.*g_in[3] + 1/6.*g_in[12] + 1/2.*g_in[15]) + 2.*uyuz*(1/3.*g_in[2] + 1/6.*g_in[11] - 1/2.*g_in[14]) + 2/3.*u.y*(g_in[21] + g_in[5]) + u.z*(1/9.*g_in[0] + 2/9.*g_in[9] + 1/18.*g_in[18] + 1/6.*g_in[19] + 1/18.*g_in[7] + 1/6.*g_in[8] + 1/9.*g_in[17]);
+	temp002 = g_in[0]*uz2 + 1/3.*g_in[0] + 1/3.*g_in[9] + 2.*g_in[3]*u.z - 1/6.*g_in[7] - 1/2.*g_in[8];
+	temp102 = g_in[0]*u.x*uz2 + 2.*g_in[3]*uxuz + 2.*g_in[6]*u.z + g_in[1]*uz2 + 1/3.*g_in[1] + 1/6.*g_in[10] - 1/2.*g_in[13] + u.x*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]);
+	temp202 = g_in[0]*ux2*uz2 + 1/9.*g_in[0] + 2/9.*g_in[9] + 1/18.*g_in[18] + 2.*g_in[3]*ux2*u.z + 4.*g_in[6]*uxuz + 2.*g_in[1]*u.x*uz2 - 1/6.*g_in[19] + 1/18.*g_in[7] - 1/6.*g_in[8] + 1/9.*g_in[17] + ux2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]) + 2.*u.x*(1/3.*g_in[1] + 1/6.*g_in[10] - 1/2.*g_in[13]) + 1/3.*uz2*(g_in[0] + g_in[9] + g_in[7]) + 2.*u.z*(1/3.*g_in[3] + 1/6.*g_in[12] + 1/2.*g_in[15]);
+	temp012 = g_in[0]*u.y*uz2 + 2.*g_in[3]*uyuz + g_in[2]*uz2 + 1/3.*g_in[2] + 1/6.*g_in[11] + 2.*g_in[5]*u.z + 1/2.*g_in[14] + u.y*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]);
+	temp112 = g_in[0]*uxuy*uz2 + 2.*g_in[3]*uxuy*u.z + 2.*g_in[6]*uyuz + g_in[1]*u.y*uz2 + g_in[4]*uz2 + 1/3.*g_in[4] + 2.*g_in[16]*u.z + g_in[2]*u.x*uz2 + 1/3.*g_in[20] + 2.*g_in[5]*uxuz + uxuy*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]) + u.x*(1/3.*g_in[2] + 1/6.*g_in[11] + 1/2.*g_in[14]) + u.y*(1/3.*g_in[1] + 1/6.*g_in[10] - 1/2.*g_in[13]);
+	temp212 = g_in[0]*ux2*u.y*uz2 + 2.*g_in[3]*ux2*uyuz + 4.*g_in[6]*uxuy*u.z + 1/9.*g_in[24] + 2.*g_in[1]*uxuy*uz2 + 2.*g_in[4]*u.x*uz2 + 4.*g_in[16]*uxuz + g_in[2]*ux2*uz2 + 1/9.*g_in[2] + 1/9.*g_in[11] + 2.*g_in[5]*ux2*u.z + ux2*u.y*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]) + ux2*(1/3.*g_in[2] + 1/6.*g_in[11] + 1/2.*g_in[14]) + 2.*uxuy*(1/3.*g_in[1] + 1/6.*g_in[10] - 1/2.*g_in[13]) + 2/3.*u.x*(g_in[4] + g_in[20]) + 1/3.*u.y*uz2*(g_in[0] + g_in[9] + g_in[7]) + 2.*uyuz*(1/3.*g_in[3] + 1/6.*g_in[12] + 1/2.*g_in[15]) + u.y*(1/9.*g_in[0] + 2/9.*g_in[9] + 1/18.*g_in[18] - 1/6.*g_in[19] + 1/18.*g_in[7] - 1/6.*g_in[8] + 1/9.*g_in[17]) + uz2*(1/3.*g_in[2] + 1/6.*g_in[11] - 1/2.*g_in[14]) + 2/3.*u.z*(g_in[21] + g_in[5]);
+	temp022 = g_in[0]*uy2*uz2 + 1/9.*g_in[0] + 2/9.*g_in[9] - 1/9.*g_in[18] + 2.*g_in[3]*uy2*u.z - 1/9.*g_in[7] + 2.*g_in[2]*u.y*uz2 + 4.*g_in[5]*uyuz + 1/9.*g_in[17] + uy2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]) + 2.*u.y*(1/3.*g_in[2] + 1/6.*g_in[11] + 1/2.*g_in[14]) + uz2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]) + 2.*u.z*(1/3.*g_in[3] + 1/6.*g_in[12] - 1/2.*g_in[15]);
+	temp122 = g_in[0]*u.x*uy2*uz2 + 2.*g_in[3]*u.x*uy2*u.z + 2.*g_in[6]*uy2*u.z + g_in[1]*uy2*uz2 + 1/9.*g_in[1] + 1/9.*g_in[10] + 2.*g_in[4]*u.y*uz2 + 4.*g_in[16]*uyuz + 2.*g_in[2]*uxuy*uz2 + 4.*g_in[5]*uxuy*u.z + 1/9.*g_in[23] + u.x*uy2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]) + 2.*uxuy*(1/3.*g_in[2] + 1/6.*g_in[11] + 1/2.*g_in[14]) + u.x*uz2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]) + 2.*uxuz*(1/3.*g_in[3] + 1/6.*g_in[12] - 1/2.*g_in[15]) + u.x*(1/9.*g_in[0] + 2/9.*g_in[9] - 1/9.*g_in[18] - 1/9.*g_in[7] + 1/9.*g_in[17]) + uy2*(1/3.*g_in[1] + 1/6.*g_in[10] - 1/2.*g_in[13]) + 2/3.*u.y*(g_in[4] + g_in[20]) + uz2*(1/3.*g_in[1] + 1/6.*g_in[10] + 1/2.*g_in[13]) + 2/3.*u.z*(g_in[6] + g_in[22]);
+	temp222 = g_in[0]*ux2*uy2*uz2 + 1/27.*g_in[0] + 1/9.*g_in[9] + 2.*g_in[3]*ux2*uy2*u.z + 4.*g_in[6]*u.x*uy2*u.z + 2.*g_in[1]*u.x*uy2*uz2 + 4.*g_in[4]*uxuy*uz2 + 8.*g_in[16]*uxuy*u.z + 2.*g_in[2]*ux2*u.y*uz2 + 4.*g_in[5]*ux2*uyuz + 1/9.*g_in[17] + 1/27.*g_in[26] + ux2*uy2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] - 1/2.*g_in[8]) + 2.*ux2*u.y*(1/3.*g_in[2] + 1/6.*g_in[11] + 1/2.*g_in[14]) + ux2*uz2*(1/3.*g_in[0] + 1/3.*g_in[9] - 1/6.*g_in[7] + 1/2.*g_in[8]) + 2.*ux2*u.z*(1/3.*g_in[3] + 1/6.*g_in[12] - 1/2.*g_in[15]) + ux2*(1/9.*g_in[0] + 2/9.*g_in[9] - 1/9.*g_in[18] - 1/9.*g_in[7] + 1/9.*g_in[17]) + 2.*u.x*uy2*(1/3.*g_in[1] + 1/6.*g_in[10] - 1/2.*g_in[13]) + 4/3.*uxuy*(g_in[4] + g_in[20]) + 2.*u.x*uz2*(1/3.*g_in[1] + 1/6.*g_in[10] + 1/2.*g_in[13]) + 4/3.*uxuz*(g_in[6] + g_in[22]) + 2/9.*u.x*(g_in[1] + g_in[10] + g_in[23]) + 1/3.*uy2*uz2*(g_in[0] + g_in[9] + g_in[7]) + 2.*uy2*u.z*(1/3.*g_in[3] + 1/6.*g_in[12] + 1/2.*g_in[15]) + uy2*(1/9.*g_in[0] + 2/9.*g_in[9] + 1/18.*g_in[18] - 1/6.*g_in[19] + 1/18.*g_in[7] - 1/6.*g_in[8] + 1/9.*g_in[17]) + 2.*u.y*uz2*(1/3.*g_in[2] + 1/6.*g_in[11] - 1/2.*g_in[14]) + 4/3.*uyuz*(g_in[21] + g_in[5]) + 2/9.*u.y*(g_in[24] + g_in[2] + g_in[11]) + uz2*(1/9.*g_in[0] + 2/9.*g_in[9] + 1/18.*g_in[18] + 1/6.*g_in[19] + 1/18.*g_in[7] + 1/6.*g_in[8] + 1/9.*g_in[17]) + 2/9.*u.z*(g_in[3] + g_in[12] + g_in[25]);
+	//back to density-probability functions
+	g_in[0] = temp000 - temp002 - temp020 + temp022 - temp200 + temp202 + temp220 - temp222;
+	g_in[1] = 1/2.*temp100 - 1/2.*temp102 - 1/2.*temp120 + 1/2.*temp122 + 1/2.*temp200 - 1/2.*temp202 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[2] = -1/2.*temp100 + 1/2.*temp102 + 1/2.*temp120 - 1/2.*temp122 + 1/2.*temp200 - 1/2.*temp202 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[3] = 1/2.*temp010 - 1/2.*temp012 + 1/2.*temp020 - 1/2.*temp022 - 1/2.*temp210 + 1/2.*temp212 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[4] = 1/4.*temp110 - 1/4.*temp112 + 1/4.*temp120 - 1/4.*temp122 + 1/4.*temp210 - 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[5] = -1/4.*temp110 + 1/4.*temp112 - 1/4.*temp120 + 1/4.*temp122 + 1/4.*temp210 - 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[6] = -1/2.*temp010 + 1/2.*temp012 + 1/2.*temp020 - 1/2.*temp022 + 1/2.*temp210 - 1/2.*temp212 - 1/2.*temp220 + 1/2.*temp222;
+	g_in[7] = -1/4.*temp110 + 1/4.*temp112 + 1/4.*temp120 - 1/4.*temp122 - 1/4.*temp210 + 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[8] = 1/4.*temp110 - 1/4.*temp112 - 1/4.*temp120 + 1/4.*temp122 - 1/4.*temp210 + 1/4.*temp212 + 1/4.*temp220 - 1/4.*temp222;
+	g_in[9] = 1/2.*temp001 + 1/2.*temp002 - 1/2.*temp021 - 1/2.*temp022 - 1/2.*temp201 - 1/2.*temp202 + 1/2.*temp221 + 1/2.*temp222;
+	g_in[10] = 1/4.*temp101 + 1/4.*temp102 - 1/4.*temp121 - 1/4.*temp122 + 1/4.*temp201 + 1/4.*temp202 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[11] = -1/4.*temp101 - 1/4.*temp102 + 1/4.*temp121 + 1/4.*temp122 + 1/4.*temp201 + 1/4.*temp202 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[12] = 1/4.*temp011 + 1/4.*temp012 + 1/4.*temp021 + 1/4.*temp022 - 1/4.*temp211 - 1/4.*temp212 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[13] = 1/8.*temp111 + 1/8.*temp112 + 1/8.*temp121 + 1/8.*temp122 + 1/8.*temp211 + 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[14] = -1/8.*temp111 - 1/8.*temp112 - 1/8.*temp121 - 1/8.*temp122 + 1/8.*temp211 + 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[15] = -1/4.*temp011 - 1/4.*temp012 + 1/4.*temp021 + 1/4.*temp022 + 1/4.*temp211 + 1/4.*temp212 - 1/4.*temp221 - 1/4.*temp222;
+	g_in[16] = -1/8.*temp111 - 1/8.*temp112 + 1/8.*temp121 + 1/8.*temp122 - 1/8.*temp211 - 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[17] = 1/8.*temp111 + 1/8.*temp112 - 1/8.*temp121 - 1/8.*temp122 - 1/8.*temp211 - 1/8.*temp212 + 1/8.*temp221 + 1/8.*temp222;
+	g_in[18] = -1/2.*temp001 + 1/2.*temp002 + 1/2.*temp021 - 1/2.*temp022 + 1/2.*temp201 - 1/2.*temp202 - 1/2.*temp221 + 1/2.*temp222;
+	g_in[19] = -1/4.*temp101 + 1/4.*temp102 + 1/4.*temp121 - 1/4.*temp122 - 1/4.*temp201 + 1/4.*temp202 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[20] = 1/4.*temp101 - 1/4.*temp102 - 1/4.*temp121 + 1/4.*temp122 - 1/4.*temp201 + 1/4.*temp202 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[21] = -1/4.*temp011 + 1/4.*temp012 - 1/4.*temp021 + 1/4.*temp022 + 1/4.*temp211 - 1/4.*temp212 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[22] = -1/8.*temp111 + 1/8.*temp112 - 1/8.*temp121 + 1/8.*temp122 - 1/8.*temp211 + 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;
+	g_in[23] = 1/8.*temp111 - 1/8.*temp112 + 1/8.*temp121 - 1/8.*temp122 - 1/8.*temp211 + 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;
+	g_in[24] = 1/4.*temp011 - 1/4.*temp012 - 1/4.*temp021 + 1/4.*temp022 - 1/4.*temp211 + 1/4.*temp212 + 1/4.*temp221 - 1/4.*temp222;
+	g_in[25] = 1/8.*temp111 - 1/8.*temp112 - 1/8.*temp121 + 1/8.*temp122 + 1/8.*temp211 - 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;
+	g_in[26] = -1/8.*temp111 + 1/8.*temp112 + 1/8.*temp121 - 1/8.*temp122 + 1/8.*temp211 - 1/8.*temp212 - 1/8.*temp221 + 1/8.*temp222;
+*/
+
 }
+
 
 
 CudaDeviceFunction void CM_hydro(real_t g_in[27], real_t rho, real_t omega_nu, vector_t u, vector_t F_total, int F){
