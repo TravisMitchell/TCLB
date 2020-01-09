@@ -1,4 +1,9 @@
 <?R
+# V01: When made, the hdf5 output in parallel did not support compression
+#	however, this was by default set to true. As such version 01 
+#	specifies this as false and also asks for point data to be output
+#  MOD: 08-01-2020
+#
 # THIS TEMPLATE FILE GENERATES RUNFILES FOR TAYLOR BUBBLES IN AN 
 # ANNULAR PIPE OVER A RANGE OF DIMENSIONLESS PARAMETERS
 #
@@ -96,9 +101,9 @@ for (i in 1:nrow(prmSweep)) {
 	</None>
 </Geometry>
 <Param	name="M" value="0.05" />
-<HDF5 what="PhaseField,U,P,WallBoundary"/>
+<HDF5 compress="false" point_data="true"/>
 <Solve Iterations="<?%f 100*ts ?>">
-	<HDF5 Iterations="<?%f 5*ts ?>"  what="PhaseField,U,P,WallBoundary"/>
+	<HDF5 Iterations="<?%f 5*ts ?>" compress="false" point_data="true"/>
 	<Log  Iterations="<?%f 0.01*ts ?>"/>
 	<Failcheck Iterations="<?%f ts ?>"/>
 </Solve>

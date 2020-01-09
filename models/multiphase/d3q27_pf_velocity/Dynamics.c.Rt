@@ -175,6 +175,13 @@ CudaDeviceFunction vector_t getNormal(){
 	return n;
 }
 
+CudaDeviceFunction real_t getWallBoundary(){
+	real_t WallCheck;
+	if ( IamWall || IamSolid ) { WallCheck = 1.0; }
+	else { WallCheck = 0.0; }
+	return WallCheck;
+}
+
 // 	HELPER FUNCTIONS:
 CudaDeviceFunction vector_t calcGradPhi(){
 	vector_t gradPhi = {0.0,0.0,0.0};

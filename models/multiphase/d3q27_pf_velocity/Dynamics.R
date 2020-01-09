@@ -99,6 +99,7 @@ AddQuantity(name="PhaseField",unit="1")
 AddQuantity(name="U",	  unit="m/s",vector=T)
 AddQuantity(name="P",	  unit="Pa")
 AddQuantity(name="Normal", unit=1, vector=T)
+AddQuantity(name="WallBoundary", unit=1)
 #	Inputs: For phasefield evolution
 AddSetting(name="Density_h", default=1, comment='High density')
 AddSetting(name="Density_l", default=1, comment='Low  density')
