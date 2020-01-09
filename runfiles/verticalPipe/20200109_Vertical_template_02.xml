@@ -1,0 +1,122 @@
+<?R
+# V01: When made, the hdf5 output in parallel did not support compression
+#	however, this was by default set to true. As such version 01 
+#	specifies this as false and also asks for point data to be output
+#  MOD: 08-01-2020
+#
+# V02: Added a handler to stop the simulation if the bubbles propage close
+#	to the wall top
+#
+#
+#
+# THIS TEMPLATE FILE GENERATES RUNFILES FOR TAYLOR BUBBLES IN AN 
+# ANNULAR PIPE OVER A RANGE OF DIMENSIONLESS PARAMETERS
+#
+# AUTHOR: T. MITCHELL
+# DATE:   10-12-2019
+
+#ASSUMPTIONS:
+# DENSITY RATIO   = 1000
+# VISCOSITY RATIO = 100
+# DIAMETER RATIO  = 2
+# CONCENTRIC PIPES
+
+D = 128
+d = D/2
+
+EoRng = c(10, 20, 40, 100, 200, 400, 700)
+MoRng = c(1e-6, 1e-4, 1e-2, 1e0)
+
+prmSweep <- expand.grid(Eo = EoRng, Mo = MoRng)
+prmSweep$ts  = 12000.0
+prmSweep$d1  = D
+prmSweep$d2  = d
+prmSweep$rho_h = 1.0
+prmSweep$rho_l = 1.0/1000.0
+prmSweep$invN  = (prmSweep$Eo^3 / prmSweep$Mo)^0.25
+
+prmSweep$dh   = prmSweep$d1 - prmSweep$d2
+prmSweep$dr   = prmSweep$d1/prmSweep$d2 
+prmSweep$de   = prmSweep$d1 + prmSweep$d2
+
+prmSweep$name = paste0("AnnularTaylorBubble_prmSweep_",prmSweep$Eo,"_",prmSweep$Mo,"_",prmSweep$d1,"_",prmSweep$ts)
+prmSweep$xml = paste0(prmSweep$name,".xml")
+
+prmSweep$g  = prmSweep$dh/prmSweep$ts^2 
+	
+prmSweep$mu_h = sqrt((prmSweep$rho_h - prmSweep$rho_l)*prmSweep$rho_h*prmSweep$g*prmSweep$dh^3)/prmSweep$invN
+prmSweep$mu_l = prmSweep$mu_h/100
+
+prmSweep$Viscosity_h  = prmSweep$mu_h/prmSweep$rho_h
+prmSweep$Viscosity_l  = prmSweep$mu_l/prmSweep$rho_l
+prmSweep$GravitationY = -1 * prmSweep$g
+prmSweep$sigma        = (prmSweep$rho_h - prmSweep$rho_l)*prmSweep$g*prmSweep$dh^2/prmSweep$Eo
+
+write.csv(prmSweep, paste0("SimulationDetails.csv"), row.names=FALSE)
+
+for (i in 1:nrow(prmSweep)) {
+	attach(prmSweep[i,,drop=FALSE])
+	print(xml)
+	sink(xml)
+?>
+<?xml version="1.0"?>
+<!--<CLBConfig version="2.0" output="<?%s paste0("/scratch/eait/uqtmitc3/ParameterSweep/") ?>">-->
+<CLBConfig version="2.0" output="<?%s paste0("/home/uqtmitc3/scratch/prmSweep/") ?>">
+<!-- d1=<?%f D ?>; d2=<?%f d ?>; Mo= <?%.4e prmSweep$Mo[i] ?>; Eo= <?%.2f prmSweep$Eo[i] ?> -->	
+<Geometry nx="<?%f D ?>" ny="<?%f 15*D ?>" nz="<?%f D ?>">
+	<MRT><Box /></MRT>
+	<Smoothing><Box /></Smoothing>
+	<Wall mask="ALL">
+	    <PipeY dx="1" dy="1" dz="1" nx="<?%f D-2 ?>" ny="<?%f 15*D  ?>" nz="<?%f D-2 ?>" />
+	    <Box   ny="1"  />
+	    <Box   dy="-1" />
+	    <YPipe x="<?%f 0.5*D-1 ?>" z="<?%f 0.5*D-1 ?>" R="<?%f 0.5 * d-0.5 ?>" />
+	</Wall>
+</Geometry>
+<Model>
+	<Param name="Density_h" value="<?%f rho_h ?>" />    
+	<Param name="Density_l" value="<?%f rho_l ?>" />    
+
+	<Param name="Viscosity_h" value="<?%f Viscosity_h ?>" />    
+	<Param name="Viscosity_l" value="<?%f Viscosity_l ?>" />    
+
+	<Param name="PhaseField_h" value="1" />    
+	<Param name="PhaseField_l" value="0" />    
+	<Param name="PhaseField"   value="1" />    
+
+	<Param name="Donut_xyz"   value="1" />
+	<Param name="CenterX"   value="<?%f 0.5*D-1 ?>" />    
+	<Param name="CenterZ"   value="<?%f 0.5*D-1 ?>" />    
+	<Param name="DonutTime" value="<?%.4f 0.5*(D + d)/2 ?>"/>
+	<Param name="Donut_h"   value="<?%.4f dh/6 ?>" />
+	<Param name="Donut_D"   value="<?%.2f 0.1*D ?>"/>
+	<Param name="Donut_x0"  value="<?%f 3*D ?>" />
+
+	<Param name="M"        value="0.1" />   
+	<Param name="IntWidth" value="5"   /> 
+	<Param name="sigma"    value="<?%.8f sigma ?>" />
+
+	<Param name="GravitationY" value="<?%.8f GravitationY ?>" />
+	<Param name="ContactAngle" value="22" />
+</Model>
+<Solve Iterations="10"/>
+<Geometry>
+	<None mask="ADDITIONALS">
+		<Box />
+	</None>
+</Geometry>
+<Param	name="M" value="0.05" />
+<HDF5 compress="false" point_data="true"/>
+<Solve Iterations="<?%f 100*ts ?>">
+	<HDF5 Iterations="<?%f 5*ts ?>" compress="false" point_data="true"/>
+	<Log  Iterations="<?%f 0.01*ts ?>"/>
+	<Failcheck Iterations="<?%f ts ?>"/>
+	<StopMax BubbleFrontMax="<?%f 0.9*15*D ?>" Times="2" Iterations="<?%f 0.25*ts ?>" />
+</Solve>
+<HDF5 compress="false" point_data="true"/>
+</CLBConfig>
+<?R
+    sink()
+    detach()
+}
+?>
