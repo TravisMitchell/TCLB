@@ -764,11 +764,11 @@ if (Options$RT) {
 	C(g, invM %*% m)
 ?>
 // Locate the front of the bubble
-real_t location_X;
-if (C < 0.5 && PhaseF(1,0,0) > 0.5)
+real_t location_Y;
+if (C < 0.5 && PhaseF(0,1,0) > 0.5)
 {
-	location_X = X + (C-0.5)/(C-PhaseF(1,0,0));
-	AddToBubbleFront( location_X );
+	location_Y = Y + (C-0.5)/(C-PhaseF(0,1,0));
+	AddToBubbleFront( location_Y );
 }
 
 // 09.09.2019 - Comment out of unnecessary globals
