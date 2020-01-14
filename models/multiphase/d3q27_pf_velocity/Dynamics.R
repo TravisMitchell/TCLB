@@ -177,6 +177,7 @@ AddNodeType(name="EConvect", group="BOUNDARY")
 #AddGlobal(name="OutletFlux", comment='pressure loss', unit="1m2/s")
 #AddGlobal(name="InletFlux", comment='pressure loss', unit="1m2/s")
 AddGlobal(name="BubbleFront", op="MAX", comment='Maximum location in Y direction of interface')
+AddGlobal(name="HeightCut", op="MAX", comment='Specifically for bubble height cut off')
 AddGlobal(name="TotalDensity", comment='Mass conservation check', unit="1kg/m3")
 AddGlobal(name="KineticEnergy",comment='Measure of kinetic energy', unit="J")
 

@@ -770,6 +770,11 @@ if (C < 0.5 && PhaseF(0,1,0) > 0.5)
 	location_Y = Y + (C-0.5)/(C-PhaseF(0,1,0));
 	AddToBubbleFront( location_Y );
 }
+if (C < 0.05 && PhaseF(0,1,0) > 0.05)
+{
+	location_Y = Y + (C-0.05)/(C-PhaseF(0,1,0));
+	AddToHeightCut( location_Y );
+}
 
 // 09.09.2019 - Comment out of unnecessary globals
 /*	switch (NodeType & NODE_ADDITIONALS) {

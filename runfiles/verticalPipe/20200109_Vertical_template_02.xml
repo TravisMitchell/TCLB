@@ -111,7 +111,7 @@ for (i in 1:nrow(prmSweep)) {
 	<HDF5 Iterations="<?%f 5*ts ?>" compress="false" point_data="true"/>
 	<Log  Iterations="<?%f 0.01*ts ?>"/>
 	<Failcheck Iterations="<?%f ts ?>"/>
-	<StopMax BubbleFrontAbove="<?%f 0.9*15*D ?>" Times="2" Iterations="<?%f 0.25*ts ?>" />
+	<Stop HeightCutAbove="<?%f 0.9*15*D ?>" Times="2" Iterations="<?%f 0.25*ts ?>" />
 </Solve>
 <HDF5 compress="false" point_data="true"/>
 </CLBConfig>
