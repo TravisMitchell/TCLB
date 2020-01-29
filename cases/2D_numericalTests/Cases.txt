@@ -1,0 +1,2 @@
+TM: 
+   In 2D I think it could be good to show tests that indicate the reduction in spurious currents as well as improvement in Galilean invariance

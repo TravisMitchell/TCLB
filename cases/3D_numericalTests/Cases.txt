@@ -1,0 +1,7 @@
+TM:
+   In 3D I think it is a good opportunity to show the robustness of the model. I would like to include a three-phase contact scenario such as a bouncing droplet. So perhaps something like:
+** 1: Compare Rayleigh-Taylor with my 3D model published in Int. J. Multiphase Flow.
+** 2: Droplet falling, perhaps compared with some of the work of Fakhari
+** 3: Bubble rising, can compare either with some of my previous work in a recent 3D conference paper or any of the other numerous works
+** 4: Dissociation of a jet OR droplet contact on a thin film
+** 5: Bouncing of a droplet on a solid surface  
