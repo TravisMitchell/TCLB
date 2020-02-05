@@ -169,7 +169,7 @@ if (Options$debug){
 	AddGlobal(name="F_phiY", comment='Forcing term for interface tracking Y', unit="")
 }
 #	Node things
-if (Options$CM){
+if (Options$CM || Options$GCM){
 	AddNodeType(name="CM", group="COLLISION")  # Central Moments collision
 }
 AddNodeType(name="Smoothing", group="ADDITIONALS")  #  To smooth phase field interface during initialization.
