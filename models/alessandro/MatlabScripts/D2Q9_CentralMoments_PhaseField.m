@@ -118,8 +118,8 @@ k_eq = simplify(T*feq); % equilibrium central moments
 k_force = simplify(T*Force); % forcing term central moments
 k_pre(5) = k4_pre;
 k_pre(6) = k5_pre;
-k_star = simplify((Id-K)*k_pre + K*k_eq + (Id-K/2)*k_force) %post-collision central moments
-
+k_star = simplify((Id-K)*k_pre + K*k_eq + (Id-K/2)*k_force); %post-collision central moments
+ccode(k_star)
 %post-collision populations
 k_sym = [Press k1_star k2_star k3_star k4_star k5_star k6_star k7_star k8_star];
 for i=1:np
@@ -127,14 +127,16 @@ for i=1:np
         k_star(i) = k_sym(i);
     end
 end
-f_post_collision_onestep = collect(simplify(T \ k_star), k_star)
+f_post_collision_onestep = collect(simplify(T \ k_star), k_star);
 
 % two-steps approach
-raw_moments = simplify(N^(-1)*k_star)
+raw_moments = simplify(N^(-1)*k_star);
+ccode(raw_moments)
 syms r0 r1 r2 r3 r4 r5 r6 r7 r8 real
 r = [r0 r1 r2 r3 r4 r5 r6 r7 r8]'; %symbolic raw moments
-f_post_collision_twosteps = collect(simplify(M\r),k_star)
-
+f_post_collision_twosteps = collect(simplify(M\r),k_star);
+f_in = collect(simplify(M\r),k_star);
+ccode(f_in)
 
 %% PHASE
 k_pre_g = simplify(T*g); %pre-collision central moments
@@ -142,8 +144,8 @@ k_eq_g = simplify(T*geq); % equilibrium central moments
 k_force_g = simplify(T*Force); % forcing term central moments
 k_pre_g(2) = k1_pre;
 k_pre_g(3) = k2_pre;
-k_star_g = simplify((Id-K_phase)*k_pre_g + K_phase*k_eq_g + (Id-K_phase/2)*k_force_g ) %post-collision central moments
-
+k_star_g = simplify((Id-K_phase)*k_pre_g + K_phase*k_eq_g + (Id-K_phase/2)*k_force_g ); %post-collision central moments
+ccode(k_star_g)
 %post-collision populations
 syms k1_g_star k2_g_star k3_g_star k4_g_star k5_g_star k6_g_star k7_g_star k8_g_star real
 k_sym_g = [Phi k1_g_star k2_g_star k3_g_star k4_g_star k5_g_star k6_g_star k7_g_star k8_g_star];
@@ -152,13 +154,15 @@ for i=1:np
         k_star_g(i) = k_sym_g(i);
     end
 end
-g_post_collision_onestep = collect(simplify(T \ k_star_g), k_star_g)
+g_post_collision_onestep = collect(simplify(T \ k_star_g), k_star_g);
 
 % two-steps approach
-raw_moments_g = simplify(N^(-1)*k_star_g)
+raw_moments_g = simplify(N^(-1)*k_star_g);
+ccode(raw_moments_g)
 syms r0_g r1_g r2_g r3_g r4_g r5_g r6_g r7_g r8_g real
 r_g = [r0_g r1_g r2_g r3_g r4_g r5_g r6_g r7_g r8_g]'; %symbolic raw moments
-g_post_collision_twosteps = collect(simplify(M\r_g),k_star_g)
-
+g_post_collision_twosteps = collect(simplify(M\r_g),k_star_g);
+f_in = collect(simplify(M\r_g),k_star_g);
+ccode(f_in)
 
         
