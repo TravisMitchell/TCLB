@@ -1,0 +1,48 @@
+
+<?xml version="1.0"?>
+<CLBConfig version="2.0" output="output/">
+<!-- 
+	Model:	d2q9_pf_velocity_GCM 
+		Can also be run with d2q9_pf_velocity_CM if the collision type is changed.
+
+	Testing of Alessandro's full hermite polynomial expansion
+	
+	This is the test case from Yos et al. (2019) - Journal of Computational Physics
+	Density ratio:10
+	Viscosity ratio: 6.324555
+	Eotvos number = 100
+	Reynolds = 10
+	t* = 3750
+
+   Created: 	14-08-2017 
+    By:		T.Mitchell
+-->
+<Geometry nx="64.000000" ny="64.000000" >
+	<CM><Box /></CM>
+</Geometry>
+<Model>
+	<Param name="Density_h" value="1.000000" />    
+	<Param name="Density_l" value="1.000000" />    
+
+	<Param name="Viscosity_h" value="0.1666667" />    
+	<Param name="Viscosity_l" value="0.1666667" />    
+
+	<Param name="PhaseField_h" value="1" />    
+	<Param name="PhaseField_l" value="0" />    
+	<Param name="PhaseField_init"   value="1" />    
+
+	<Param name="Radius"   value="16.0000" />
+	<Param name="CenterX"  value="32.0000" />
+	<Param name="CenterY"  value="32.0000" />
+	<Param name="BubbleType"  value="-1" />
+
+	<Param name="M"     value="0.020" />   
+	<Param name="W"     value="4.0000" /> 
+	<Param name="sigma" value="0.0001" />
+</Model>
+<VTK />
+<Solve Iterations="50.000000">
+	<VTK Iterations="1" />
+	<Failcheck Iterations="100.000000"/>
+</Solve>
+</CLBConfig>
