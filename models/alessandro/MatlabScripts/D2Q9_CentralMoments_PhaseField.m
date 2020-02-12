@@ -116,10 +116,16 @@ syms k1_star k2_star k3_star k4_star k5_star k6_star k7_star k8_star real
 k_pre = simplify(T*f); %pre-collision central moments
 k_eq = simplify(T*feq); % equilibrium central moments
 k_force = simplify(T*Force); % forcing term central moments
+ccode(k_pre(5))
 k_pre(5) = k4_pre;
+ccode(k_pre(6))
 k_pre(6) = k5_pre;
 k_star = simplify((Id-K)*k_pre + K*k_eq + (Id-K/2)*k_force); %post-collision central moments
+disp('post collision with force')
 ccode(k_star)
+disp('post collision without force')
+ccode(simplify((Id-K)*k_pre + K*k_eq))
+
 %post-collision populations
 k_sym = [Press k1_star k2_star k3_star k4_star k5_star k6_star k7_star k8_star];
 for i=1:np

@@ -985,26 +985,26 @@ CudaDeviceFunction void calcWallPhaseIter(){
 		
 		//raw moments from density-probability functions
 		//[m00, m10, m01, m20, m02, m11, m21, m12, m22]
-		f_in[0] = m00;
-		f_in[1] = temp[1] - temp[3] + temp[5] - temp[6] - temp[7] + temp[8];
-		f_in[2] = temp[2] - temp[4] + temp[5] + temp[6] - temp[7] - temp[8];
-		f_in[3] = temp[1] + temp[3] + temp[5] + temp[6] + temp[7] + temp[8];
-		f_in[4] = temp[2] + temp[4] + temp[5] + temp[6] + temp[7] + temp[8];
-		f_in[5] = temp[5] - temp[6] + temp[7] - temp[8];
-		f_in[6] = temp[5] + temp[6] - temp[7] - temp[8];
-		f_in[7] = temp[5] - temp[6] - temp[7] + temp[8];
-		f_in[8] = temp[5] + temp[6] + temp[7] + temp[8];
+		//f_in[0] = m00;
+		//f_in[1] = temp[1] - temp[3] + temp[5] - temp[6] - temp[7] + temp[8];
+		//f_in[2] = temp[2] - temp[4] + temp[5] + temp[6] - temp[7] - temp[8];
+		//f_in[3] = temp[1] + temp[3] + temp[5] + temp[6] + temp[7] + temp[8];
+		//f_in[4] = temp[2] + temp[4] + temp[5] + temp[6] + temp[7] + temp[8];
+		//f_in[5] = temp[5] - temp[6] + temp[7] - temp[8];
+		//f_in[6] = temp[5] + temp[6] - temp[7] - temp[8];
+		//f_in[7] = temp[5] - temp[6] - temp[7] + temp[8];
+		//f_in[8] = temp[5] + temp[6] + temp[7] + temp[8];
 		
 		//central moments from raw moments
-		temp[0] = f_in[0];
-		temp[1] = f_in[1] - u.x*f_in[0];
-		temp[2] = f_in[2] - u.y*f_in[0];
-		temp[3] = f_in[3] - 2*u.x*f_in[1] - 2*u.y*f_in[2] + f_in[0]*(ux2 + uy2);
-		temp[4] = f_in[4] - 2*u.x*f_in[1] + 2*u.y*f_in[2] + f_in[0]*(ux2 - uy2);
-		temp[5] = f_in[5] - u.x*f_in[2] - u.y*f_in[1] + uxuy*f_in[0];
-		temp[6] = f_in[6] - 2*u.x*f_in[5] - (u.y*f_in[3])/2.0 - (u.y*f_in[4])/2.0 + ux2*f_in[2] + 2*uxuy*f_in[1] - ux2*u.y*f_in[0];
-		temp[7] = f_in[7] - (u.x*f_in[3])/2.0 + (u.x*f_in[4])/2.0 - 2*u.y*f_in[5] + uy2*f_in[1] + 2*uxuy*f_in[2] - u.x*uy2*f_in[0];
-		temp[8] = f_in[8] - 2*u.x*f_in[7] - 2*u.y*f_in[6] + f_in[3]*(ux2/2 + uy2/2) - f_in[4]*(ux2/2 - uy2/2) + ux2*uy2*f_in[0] + 4*uxuy*f_in[5] - 2*u.x*uy2*f_in[1] - 2*ux2*u.y*f_in[2];
+		//temp[0] = f_in[0];
+		//temp[1] = f_in[1] - u.x*f_in[0];
+		//temp[2] = f_in[2] - u.y*f_in[0];
+		//temp[3] = f_in[3] - 2*u.x*f_in[1] - 2*u.y*f_in[2] + f_in[0]*(ux2 + uy2);
+		//temp[4] = f_in[4] - 2*u.x*f_in[1] + 2*u.y*f_in[2] + f_in[0]*(ux2 - uy2);
+		//temp[5] = f_in[5] - u.x*f_in[2] - u.y*f_in[1] + uxuy*f_in[0];
+		//temp[6] = f_in[6] - 2*u.x*f_in[5] - (u.y*f_in[3])/2.0 - (u.y*f_in[4])/2.0 + ux2*f_in[2] + 2*uxuy*f_in[1] - ux2*u.y*f_in[0];
+		//temp[7] = f_in[7] - (u.x*f_in[3])/2.0 + (u.x*f_in[4])/2.0 - 2*u.y*f_in[5] + uy2*f_in[1] + 2*uxuy*f_in[2] - u.x*uy2*f_in[0];
+		//temp[8] = f_in[8] - 2*u.x*f_in[7] - 2*u.y*f_in[6] + f_in[3]*(ux2/2 + uy2/2) - f_in[4]*(ux2/2 - uy2/2) + ux2*uy2*f_in[0] + 4*uxuy*f_in[5] - 2*u.x*uy2*f_in[1] - 2*ux2*u.y*f_in[2];
 		//Differences:
 		//temp[3] = f_in[0]*ux2 - 2*f_in[1]*u.x + f_in[3];
 		//temp[4] = f_in[0]*uy2 - 2*f_in[2]*u.y + f_in[4];
@@ -1014,32 +1014,44 @@ CudaDeviceFunction void calcWallPhaseIter(){
 		
 		//collision in central moments space
 		//calculate equilibrium distributions in cm space
-		cm_eq[0] = m00;
-		cm_eq[1] = -u.x*(m00 - 1.0);
-		cm_eq[2] = -u.y*(m00 - 1.0);
-		cm_eq[3] = m00*(2.0/3.0)+m00*(ux2)+m00*(uy2)-ux2-uy2;
+		//cm_eq[0] = m00;
+		//cm_eq[1] = -u.x*(m00 - 1.0);
+		//cm_eq[2] = -u.y*(m00 - 1.0);
+		//cm_eq[3] = m00*(2.0/3.0)+m00*(ux2)+m00*(uy2)-ux2-uy2;
 		//cm_eq[3] = m00*ux2 + 1./3.*m00 - ux2;
-		cm_eq[4] = (ux2-uy2)*(m00-1.0);
+		//cm_eq[4] = (ux2-uy2)*(m00-1.0);
 		//cm_eq[4] = m00*uy2 + 1./3.*m00 - uy2;
-		cm_eq[5] = uxuy*(m00 - 1.0);
-		cm_eq[6] = -u.y*(m00*ux2 + 1./3.*m00 - ux2 - 1./3.);
-		cm_eq[7] = -u.x*(m00*uy2 + 1./3.*m00 - uy2 - 1./3.);
-		cm_eq[8] = m00*ux2*uy2 + 1./3.*m00*ux2 + 1./3.*m00*uy2 + 1./9.*m00 - ux2*uy2 - 1./3.*ux2 - 1./3.*uy2;
+		//cm_eq[5] = uxuy*(m00 - 1.0);
+		//cm_eq[6] = -u.y*(m00*ux2 + 1./3.*m00 - ux2 - 1./3.);
+		//cm_eq[7] = -u.x*(m00*uy2 + 1./3.*m00 - uy2 - 1./3.);
+		//cm_eq[8] = m00*ux2*uy2 + 1./3.*m00*ux2 + 1./3.*m00*uy2 + 1./9.*m00 - ux2*uy2 - 1./3.*ux2 - 1./3.*uy2;
 		
 		//collide eq: -S*(cm - cm_eq)
-		f_in[0] = cm_eq[0] - temp[0];
-		f_in[1] = cm_eq[1] - temp[1];
-		f_in[2] = cm_eq[2] - temp[2];
-		f_in[3] = cm_eq[3] - temp[3];
-		f_in[4] = s_v*(cm_eq[4] - temp[4]);
-		f_in[5] = s_v*(cm_eq[5] - temp[5]);
+		//f_in[0] = cm_eq[0] - temp[0];
+		//f_in[1] = cm_eq[1] - temp[1];
+		//f_in[2] = cm_eq[2] - temp[2];
+		//f_in[3] = cm_eq[3] - temp[3];
+		//f_in[4] = s_v*(cm_eq[4] - temp[4]);
+		//f_in[5] = s_v*(cm_eq[5] - temp[5]);
 		//f_in[3] = 0.5*(cm_eq[3] - temp[3])*(s_b + s_v) + 0.5*(cm_eq[4] - temp[4])*(s_b - s_v);
 		//f_in[4] = 0.5*(cm_eq[3] - temp[3])*(s_b - s_v) + 0.5*(cm_eq[4] - temp[4])*(s_b + s_v);
 		//f_in[5] = s_v*(cm_eq[5] - temp[5]);
-		f_in[6] = cm_eq[6] - temp[6];
-		f_in[7] = cm_eq[7] - temp[7];
-		f_in[8] = cm_eq[8] - temp[8];
+		//f_in[6] = cm_eq[6] - temp[6];
+		//f_in[7] = cm_eq[7] - temp[7];
+		//f_in[8] = cm_eq[8] - temp[8];
 		
+		//Collision Check
+		real_t k4_pre = f_in[1]*(pow(u.x-1.0,2.0)-uy2)-f_in[2]*(pow(u.y-1.0,2.0)-ux2)+f_in[3]*(pow(u.x+1.0,2.0)-uy2)-f_in[4]*(pow(u.y+1.0,2.0)-ux2)+f_in[5]*(pow(u.x-1.0,2.0)-pow(u.y-1.0,2.0))+f_in[6]*(pow(u.x+1.0,2.0)-pow(u.y-1.0,2.0))+f_in[7]*(pow(u.x+1.0,2.0)-pow(u.y+1.0,2.0))+f_in[8]*(pow(u.x-1.0,2.0)-pow(u.y+1.0,2.0))+f_in[0]*(ux2-uy2);
+		real_t k5_pre = f_in[5]*(u.x-1.0)*(u.y-1.0)+f_in[6]*(u.x+1.0)*(u.x-1.0)+f_in[7]*(u.x+1.0)*(u.y+1.0)+f_in[8]*(u.x-1.0)*(u.y+1.0)+u.x*u.y*f_in[0]+V*f_in[1]*(u.x-1.0)+u.x*f_in[2]*(u.y-1.0)+u.y*f_in[3]*(u.x+1.0)+u.x*f_in[4]*(u.y+1.0);
+		f_in[0] = m00;
+        f_in[1] = -u.x*(m00-1.0);
+        f_in[2] = -u.y*(m00-1.0);
+        f_in[3] = m00*(2.0/3.0)+m00*(ux2)+m00*(uy2)-ux2-uy2;
+        f_in[4] = -k4_pre*(s_v-1.0)+s_v*(ux2-uy2)*(m00-1.0);
+        f_in[5] = -k5_pre*(s_v-1.0)+u.x*u.y*s_v*(m00-1.0);
+        f_in[6] = -(u.y*((ux2)*3.0+1.0)*(m00-1.0))/3.0;
+        f_in[7] = -(u.x*((uy2)*3.0+1.0)*(m00-1.0))/3.0;
+        f_in[8] = m00/9.0+(m00*(ux2))/3.0+(m00*(uy2))/3.0-(ux2)/3.0-(uy2)/3.0-(ux2)*(uy2)+m00*(ux2)*(uy2);
 		//back to raw moments
 		temp[0] = f_in[0];
 		temp[1] = f_in[0]*u.x + f_in[1];
@@ -1087,53 +1099,67 @@ CudaDeviceFunction void calcWallPhaseIter(){
 			temp[i] = f_in[i];}
 		//raw moments from density-probability functions
 		//[m00, m10, m01, m20, m02, m11, m21, m12, m22]
-		f_in[0] = m00;
-		f_in[1] = temp[1] - temp[3] + temp[5] - temp[6] - temp[7] + temp[8];
-		f_in[2] = temp[2] - temp[4] + temp[5] + temp[6] - temp[7] - temp[8];
-		f_in[3] = temp[1] + temp[3] + temp[5] + temp[6] + temp[7] + temp[8];
-		f_in[4] = temp[2] + temp[4] + temp[5] + temp[6] + temp[7] + temp[8];
-		f_in[5] = temp[5] - temp[6] + temp[7] - temp[8];
-		f_in[6] = temp[5] + temp[6] - temp[7] - temp[8];
-		f_in[7] = temp[5] - temp[6] - temp[7] + temp[8];
-		f_in[8] = temp[5] + temp[6] + temp[7] + temp[8];
+		//f_in[0] = m00;
+		//f_in[1] = temp[1] - temp[3] + temp[5] - temp[6] - temp[7] + temp[8];
+		//f_in[2] = temp[2] - temp[4] + temp[5] + temp[6] - temp[7] - temp[8];
+		//f_in[3] = temp[1] + temp[3] + temp[5] + temp[6] + temp[7] + temp[8];
+		//f_in[4] = temp[2] + temp[4] + temp[5] + temp[6] + temp[7] + temp[8];
+		//f_in[5] = temp[5] - temp[6] + temp[7] - temp[8];
+		//f_in[6] = temp[5] + temp[6] - temp[7] - temp[8];
+		//f_in[7] = temp[5] - temp[6] - temp[7] + temp[8];
+		//f_in[8] = temp[5] + temp[6] + temp[7] + temp[8];
 		
 
 		//central moments from raw moments
-		temp[0] = f_in[0];
-		temp[1] = f_in[1] - u.x*f_in[0];
-		temp[2] = f_in[2] - u.y*f_in[0];
-		temp[3] = f_in[3] - 2*u.x*f_in[1] - 2*u.y*f_in[2] + f_in[0]*(ux2 + uy2);
-		temp[4] = f_in[4] - 2*u.x*f_in[1] + 2*u.y*f_in[2] + f_in[0]*(ux2 - uy2);
-		temp[5] = f_in[5] - u.x*f_in[2] - u.y*f_in[1] + uxuy*f_in[0];
-		temp[6] = f_in[6] - 2*u.x*f_in[5] - (u.y*f_in[3])/2.0 - (u.y*f_in[4])/2.0 + ux2*f_in[2] + 2*uxuy*f_in[1] - ux2*u.y*f_in[0];
-		temp[7] = f_in[7] - (u.x*f_in[3])/2.0 + (u.x*f_in[4])/2.0 - 2*u.y*f_in[5] + uy2*f_in[1] + 2*uxuy*f_in[2] - u.x*uy2*f_in[0];
-		temp[8] = f_in[8] - 2*u.x*f_in[7] - 2*u.y*f_in[6] + f_in[3]*(ux2/2 + uy2/2) - f_in[4]*(ux2/2 - uy2/2) + ux2*uy2*f_in[0] + 4*uxuy*f_in[5] - 2*u.x*uy2*f_in[1] - 2*ux2*u.y*f_in[2];
+		//temp[0] = f_in[0];
+		//temp[1] = f_in[1] - u.x*f_in[0];
+		//temp[2] = f_in[2] - u.y*f_in[0];
+		//temp[3] = f_in[3] - 2*u.x*f_in[1] - 2*u.y*f_in[2] + f_in[0]*(ux2 + uy2);
+		//temp[4] = f_in[4] - 2*u.x*f_in[1] + 2*u.y*f_in[2] + f_in[0]*(ux2 - uy2);
+		//temp[5] = f_in[5] - u.x*f_in[2] - u.y*f_in[1] + uxuy*f_in[0];
+		//temp[6] = f_in[6] - 2*u.x*f_in[5] - (u.y*f_in[3])/2.0 - (u.y*f_in[4])/2.0 + ux2*f_in[2] + 2*uxuy*f_in[1] - ux2*u.y*f_in[0];
+		//temp[7] = f_in[7] - (u.x*f_in[3])/2.0 + (u.x*f_in[4])/2.0 - 2*u.y*f_in[5] + uy2*f_in[1] + 2*uxuy*f_in[2] - u.x*uy2*f_in[0];
+		//temp[8] = f_in[8] - 2*u.x*f_in[7] - 2*u.y*f_in[6] + f_in[3]*(ux2/2 + uy2/2) - f_in[4]*(ux2/2 - uy2/2) + ux2*uy2*f_in[0] + 4*uxuy*f_in[5] - 2*u.x*uy2*f_in[1] - 2*ux2*u.y*f_in[2];
 		
 
 		//collision in central moments space
 		//calculate equilibrium distributions in cm space
-		cm_eq[0] = m00;
-		cm_eq[1] = -u.x*(m00 - 1.0);
-		cm_eq[2] = -u.y*(m00 - 1.0);
-		cm_eq[3] = m00*(2.0/3.0)+m00*(ux2)+m00*(uy2)-ux2-uy2;
+		//cm_eq[0] = m00;
+		//cm_eq[1] = -u.x*(m00 - 1.0);
+		//cm_eq[2] = -u.y*(m00 - 1.0);
+		//cm_eq[3] = m00*(2.0/3.0)+m00*(ux2)+m00*(uy2)-ux2-uy2;
 		//cm_eq[3] = m00*ux2 + 1./3.*m00 - ux2;
-		cm_eq[4] = (ux2-uy2)*(m00-1.0);
+		//cm_eq[4] = (ux2-uy2)*(m00-1.0);
 		//cm_eq[4] = m00*uy2 + 1./3.*m00 - uy2;
-		cm_eq[5] = uxuy*(m00 - 1.0);
-		cm_eq[6] = -u.y*(m00*ux2 + 1./3.*m00 - ux2 - 1./3.);
-		cm_eq[7] = -u.x*(m00*uy2 + 1./3.*m00 - uy2 - 1./3.);
-		cm_eq[8] = m00*ux2*uy2 + 1./3.*m00*ux2 + 1./3.*m00*uy2 + 1./9.*m00 - ux2*uy2 - 1./3.*ux2 - 1./3.*uy2;
+		//cm_eq[5] = uxuy*(m00 - 1.0);
+		//cm_eq[6] = -u.y*(m00*ux2 + 1./3.*m00 - ux2 - 1./3.);
+		//cm_eq[7] = -u.x*(m00*uy2 + 1./3.*m00 - uy2 - 1./3.);
+		//cm_eq[8] = m00*ux2*uy2 + 1./3.*m00*ux2 + 1./3.*m00*uy2 + 1./9.*m00 - ux2*uy2 - 1./3.*ux2 - 1./3.*uy2;
 
 		//calculate forces in cm space
-		f_in[0] = cm_eq[0] - temp[0];
-		f_in[1] = cm_eq[1] - temp[1] + 0.5*Fhydro.x/rho;
-		f_in[2] = cm_eq[2] - temp[2] + 0.5*Fhydro.y/rho;
-		f_in[3] = cm_eq[3] - temp[3];
-		f_in[4] = s_v*(cm_eq[4] - temp[4]);
-		f_in[5] = s_v*(cm_eq[5] - temp[5]);
-		f_in[6] = cm_eq[6] - temp[6] + 1./6.*Fhydro.y/rho;
-		f_in[7] = cm_eq[7] - temp[7] + 1./6.*Fhydro.x/rho;
-		f_in[8] = cm_eq[8] - temp[8];
+		//f_in[0] = cm_eq[0] - temp[0];
+		//f_in[1] = cm_eq[1] - temp[1] + 0.5*Fhydro.x/rho;
+		//f_in[2] = cm_eq[2] - temp[2] + 0.5*Fhydro.y/rho;
+		//f_in[3] = cm_eq[3] - temp[3];
+		//f_in[4] = s_v*(cm_eq[4] - temp[4]);
+		//f_in[5] = s_v*(cm_eq[5] - temp[5]);
+		//f_in[6] = cm_eq[6] - temp[6] + 1./6.*Fhydro.y/rho;
+		//f_in[7] = cm_eq[7] - temp[7] + 1./6.*Fhydro.x/rho;
+		//f_in[8] = cm_eq[8] - temp[8];
+		
+		//collisionCheck
+		real_t k4_pre = f_in[1]*(pow(u.x-1.0,2.0)-uy2)-f_in[2]*(pow(u.y-1.0,2.0)-ux2)+f_in[3]*(pow(u.x+1.0,2.0)-uy2)-f_in[4]*(pow(u.y+1.0,2.0)-ux2)+f_in[5]*(pow(u.x-1.0,2.0)-pow(u.y-1.0,2.0))+f_in[6]*(pow(u.x+1.0,2.0)-pow(u.y-1.0,2.0))+f_in[7]*(pow(u.x+1.0,2.0)-pow(u.y+1.0,2.0))+f_in[8]*(pow(u.x-1.0,2.0)-pow(u.y+1.0,2.0))+f_in[0]*(ux2-uy2);
+		real_t k5_pre = f_in[5]*(u.x-1.0)*(u.y-1.0)+f_in[6]*(u.x+1.0)*(u.x-1.0)+f_in[7]*(u.x+1.0)*(u.y+1.0)+f_in[8]*(u.x-1.0)*(u.y+1.0)+u.x*u.y*f_in[0]+V*f_in[1]*(u.x-1.0)+u.x*f_in[2]*(u.y-1.0)+u.y*f_in[3]*(u.x+1.0)+u.x*f_in[4]*(u.y+1.0);
+		f_in[0] = m00;
+        f_in[1] = Fhydro.x/2.0-u.x*(m00-1.0);
+        f_in[2] = Fhydro.y/2.0-u.y*(m00-1.0);
+        f_in[3] = m00*(2.0/3.0)+m00*(ux2)+m00*(uy2)-ux2-uy2;
+        f_in[4] = -k4_pre*(s_v-1.0)+s_v*(ux2-uy2)*(m00-1.0);
+        f_in[5] = -k5_pre*(s_v-1.0)+u.x*u.y*s_v*(m00-1.0);
+        f_in[6] = Fhydro.y/6.0-(u.y*((ux2)*3.0+1.0)*(m00-1.0))/3.0;
+        f_in[7] = Fhydro.x/6.0-(u.x*((uy2)*3.0+1.0)*(m00-1.0))/3.0;
+        f_in[8] = m00/9.0+(m00*(ux2))/3.0+(m00*(uy2))/3.0-(ux2)/3.0-(uy2)/3.0-(ux2)*(uy2)+m00*(ux2)*(uy2);
+		
 		//f_in[0] = cm_eq[0];
 		//f_in[1] = 0.5*Fhydro.x/rho + cm_eq[1];
 		//f_in[2] = 0.5*Fhydro.y/rho + cm_eq[2];

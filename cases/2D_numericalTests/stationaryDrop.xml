@@ -41,8 +41,8 @@
 	<Param name="sigma" value="0.0001" />
 </Model>
 <VTK />
-<Solve Iterations="50.000000">
-	<VTK Iterations="1" />
+<Solve Iterations="5000.000000">
+	<VTK Iterations="500" />
 	<Failcheck Iterations="100.000000"/>
 </Solve>
 </CLBConfig>
