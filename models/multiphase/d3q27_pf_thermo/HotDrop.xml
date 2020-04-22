@@ -10,7 +10,7 @@
 			<Box/>
 		</MRT>
         <None name="droplet">
-            <OffgridSphere R="20" x="64" y="120" z="64"/>
+            <OffgridSphere R="20" x="64" y="160" z="64"/>
         </None>
 		<Wall mask="ALL" name="BottomWall">
 			<Box ny="1"/>
@@ -50,6 +50,6 @@
 	<Failcheck nx="10"	Iterations="5"/>
 	<Solve 		Iterations="20000">
 		<VTK 	Iterations="1000" what="PhaseField,U,T,P" />
-		<Log	Iterations="200"/>
+		<Log	Iterations="20"/>
 	</Solve>
 </CLBConfig>

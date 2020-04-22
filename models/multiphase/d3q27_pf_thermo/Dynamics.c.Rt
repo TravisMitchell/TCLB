@@ -311,9 +311,9 @@ CudaDeviceFunction void TempUpdate(){
 			gradK.z += d3q27_ez[i]*wg[i]*Cond_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]);
 			lapT += wg[i] * (Temp_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]) - Temp);
 		}
-		gradT.x *= (1.0/3.0); gradT.y *= (1.0/3.0); gradT.z *= (1.0/3.0);
-		gradK.x *= (1.0/3.0); gradK.y *= (1.0/3.0); gradK.z *= (1.0/3.0);
-		lapT *= (2.0/3.0);
+		gradT.x *= (3.0); gradT.y *= (3.0); gradT.z *= (3.0);
+		gradK.x *= (3.0); gradK.y *= (3.0); gradK.z *= (3.0);
+		lapT *= (2.0*3.0);
 
 		UpdateT = -1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + myK*lapT);
 		Temp += UpdateT;
@@ -676,11 +676,11 @@ CudaDeviceFunction void CollisionMRT(){
 
 	if ( C > 0.5 ) 
 	{
-	    AddToLiqTotalVelocity( sqrt(U*U + V*V + W*W));
-	    AddToLiqTotalVelocityX( U );
-	    AddToLiqTotalVelocityY( V );
-	    AddToLiqTotalVelocityZ( W );
-	    AddToLiqCells(1);
+	    AddToLiqTotalVelocity( sqrt(U*C*U*C + V*C*V*C + W*C*W*C));
+	    AddToLiqTotalVelocityX( U*C );
+	    AddToLiqTotalVelocityY( V*C );
+	    AddToLiqTotalVelocityZ( W*C );
+	    AddToLiqCells(C);
 	}	
 	real_t m0[27];
 <?R
@@ -743,9 +743,9 @@ CudaDeviceFunction void CollisionMRT(){
 		gradSig.y += wg[i]*d3q27_ey[i]*(SurfaceTension_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i])); 
 		gradSig.z += wg[i]*d3q27_ez[i]*(SurfaceTension_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]));
 	}
-	gradSig.x *= (1.0/3.0);	// multiply by c/cs^2 
-	gradSig.y *= (1.0/3.0); 
-	gradSig.z *= (1.0/3.0);
+	gradSig.x *= (3.0);	// multiply by c/cs^2 
+	gradSig.y *= (3.0); 
+	gradSig.z *= (3.0);
 
 	dotTMP = dotProduct(gradSig,gradPhi);
 	magnPhi2 = magnPhi*magnPhi;
