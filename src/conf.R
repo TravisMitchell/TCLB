@@ -19,6 +19,8 @@ if (!exists("SYMALGEBRA")) SYMALGEBRA=FALSE
 options(stringsAsFactors=FALSE)
 format.list = function(x,...) sapply(x, class)
 
+#source("fun_v3.R")
+
 if (! SYMALGEBRA) {
 	library(polyAlgebra,quietly=TRUE,warn.conflicts=FALSE)
 } else {
@@ -28,7 +30,7 @@ if (! SYMALGEBRA) {
 
 if (is.null(Options$autosym)) Options$autosym = FALSE
 
-#source("linemark.R")
+source("linemark.R")
 
 rows = function(x) {
 	rows_df= function(x) {
@@ -696,6 +698,9 @@ Consts = rbind(Consts, data.frame(name="ZONE_MAX",value=ZoneMax))
 Consts = rbind(Consts, data.frame(name="DT_OFFSET",value=ZoneMax*nrow(ZoneSettings)))
 Consts = rbind(Consts, data.frame(name="GRAD_OFFSET",value=2*ZoneMax*nrow(ZoneSettings)))
 Consts = rbind(Consts, data.frame(name="TIME_SEG",value=4*ZoneMax*nrow(ZoneSettings)))
+
+Consts = rbind(Consts, data.frame(name="ACTIONS", value=length(Actions)))
+Consts = rbind(Consts, data.frame(name=paste0(" ACTION_", names(Actions), " "),value=seq_len(length(Actions))-1))
 
 offsets = function(d2=FALSE, cpu=FALSE) {
   def.cpu = cpu
