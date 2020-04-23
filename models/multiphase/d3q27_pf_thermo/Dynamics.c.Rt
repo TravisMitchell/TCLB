@@ -296,7 +296,7 @@ CudaDeviceFunction void TempUpdate(){
 		myK  = interp(PhaseF, k_h, k_l);
 		myCp = interp(PhaseF, cp_h, cp_l);
 		rho  = interp(PhaseF, Density_h, Density_l);
-		lapT = 0.0;
+		/*lapT = 0.0;
 		for (i=0;i<27;i++) {
 			//tmpT = Temp_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]) - Temp_dyn(-1*d3q27_ex[i],-1*d3q27_ey[i],-1*d3q27_ez[i]);
 			//tmpK = Cond_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]) - Cond_dyn(-1*d3q27_ex[i],-1*d3q27_ey[i],-1*d3q27_ez[i]);
@@ -314,6 +314,60 @@ CudaDeviceFunction void TempUpdate(){
 		gradT.x *= (3.0); gradT.y *= (3.0); gradT.z *= (3.0);
 		gradK.x *= (3.0); gradK.y *= (3.0); gradK.z *= (3.0);
 		lapT *= (2.0*3.0);
+		*/
+
+		gradT.x = 16.00 * (Temp(1,0,0) - Temp(-1,0,0))
+					+ Temp(1,1,1) - Temp(-1,1,1) + Temp(1,-1,1) - Temp(-1,-1,1)
+					+ Temp(1,1,-1)- Temp(-1,1,-1)+ Temp(1,-1,-1)- Temp(-1,-1,-1)
+					+  4.00 * (Temp(1,1,0) - Temp(-1,1,0) + Temp(1,-1,0) - Temp(-1,-1,0)
+					+  Temp(1,0,1) - Temp(-1,0,1) + Temp(1,0,-1) - Temp(-1,0,-1));
+		gradT.y = 16.00 * (Temp(0,1,0) - Temp(0,-1,0))
+					+ Temp(1,1,1) + Temp(-1,1,1) - Temp(1,-1,1) - Temp(-1,-1,1)
+					+ Temp(1,1,-1)+ Temp(-1,1,-1)- Temp(1,-1,-1)- Temp(-1,-1,-1)
+					+  4.00 * (Temp(1,1,0) + Temp(-1,1,0) - Temp(1,-1,0) - Temp(-1,-1,0)
+						+  Temp(0,1,1) - Temp(0,-1,1) + Temp(0,1,-1) - Temp(0,-1,-1));
+		gradT.z = 16.00 * (Temp(0,0,1) - Temp(0,0,-1))
+					+ Temp(1,1,1) + Temp(-1,1,1) + Temp(1,-1,1) + Temp(-1,-1,1)
+					- Temp(1,1,-1)- Temp(-1,1,-1)- Temp(1,-1,-1)- Temp(-1,-1,-1)
+					+  4.00 * (Temp(1,0,1) + Temp(-1,0,1) - Temp(1,0,-1) - Temp(-1,0,-1)
+						+  Temp(0,1,1) + Temp(0,-1,1) - Temp(0,1,-1) - Temp(0,-1,-1));
+		gradT.x /= 72.0;
+		gradT.y /= 72.0;
+		gradT.z /= 72.0;
+		gradK.x = 16.00 * (Cond(1,0,0) - Cond(-1,0,0))
+					+ Cond(1,1,1) - Cond(-1,1,1) + Cond(1,-1,1) - Cond(-1,-1,1)
+					+ Cond(1,1,-1)- Cond(-1,1,-1)+ Cond(1,-1,-1)- Cond(-1,-1,-1)
+					+  4.00 * (Cond(1,1,0) - Cond(-1,1,0) + Cond(1,-1,0) - Cond(-1,-1,0)
+					+  Cond(1,0,1) - Cond(-1,0,1) + Cond(1,0,-1) - Cond(-1,0,-1));
+		gradK.y = 16.00 * (Cond(0,1,0) - Cond(0,-1,0))
+					+ Cond(1,1,1) + Cond(-1,1,1) - Cond(1,-1,1) - Cond(-1,-1,1)
+					+ Cond(1,1,-1)+ Cond(-1,1,-1)- Cond(1,-1,-1)- Cond(-1,-1,-1)
+					+  4.00 * (Cond(1,1,0) + Cond(-1,1,0) - Cond(1,-1,0) - Cond(-1,-1,0)
+						+  Cond(0,1,1) - Cond(0,-1,1) + Cond(0,1,-1) - Cond(0,-1,-1));
+		gradK.z = 16.00 * (Cond(0,0,1) - Cond(0,0,-1))
+					+ Cond(1,1,1) + Cond(-1,1,1) + Cond(1,-1,1) + Cond(-1,-1,1)
+					- Cond(1,1,-1)- Cond(-1,1,-1)- Cond(1,-1,-1)- Cond(-1,-1,-1)
+					+  4.00 * (Cond(1,0,1) + Cond(-1,0,1) - Cond(1,0,-1) - Cond(-1,0,-1)
+						+  Cond(0,1,1) + Cond(0,-1,1) - Cond(0,1,-1) - Cond(0,-1,-1));
+		gradK.x /= 72.0;
+		gradK.y /= 72.0;
+		gradK.z /= 72.0;
+
+		lapT = 16.0 *((Temp(1,0,0)) + (Temp(-1,0,0))
+					+ (Temp(0,1,0)) + (Temp(0,-1,0))
+					+ (Temp(0,0,1)) + (Temp(0,0,-1)))
+				+ 1.0 *((Temp(1,1,1)) + (Temp(-1,1,1))
+					  + (Temp(1,-1,1))+ (Temp(-1,-1,1))
+				      + (Temp(1,1,-1))+ (Temp(-1,1,-1))
+					  + (Temp(1,-1,-1))+(Temp(-1,-1,-1)))
+				+ 4.0 *((Temp(1,1,0)) + (Temp(-1,1,0))
+					+ (Temp(1,-1,0))+ (Temp(-1,-1,0))
+					+ (Temp(1,0,1)) + (Temp(-1,0,1))
+					+ (Temp(1,0,-1))+ (Temp(-1,0,-1))
+					+ (Temp(0,1,1)) + (Temp(0,-1,1))
+					+ (Temp(0,1,-1))+ (Temp(0,-1,-1)))
+			- 152.0 * Temp(0,0,0);
+		lapT /= 36.0;
 
 		UpdateT = -1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + myK*lapT);
 		Temp += UpdateT;
@@ -352,7 +406,7 @@ CudaDeviceFunction void calcWallPhase(){
 	} 
 }
 
-CudaDeviceFunction real_t calcMu(real_t C){
+CudaDeviceFunction real_t calcMu(real_t C, real_t st){
 	real_t pfavg, lpPhi, mu;
 	pfavg = 0.5*(PhaseField_l+PhaseField_h);
 
@@ -410,8 +464,8 @@ CudaDeviceFunction real_t calcMu(real_t C){
 #endif
 	lpPhi /= 36.0;
 
-	mu = 4.0*(12.0*sigma/IntWidth)*(C-PhaseField_l)*(C-PhaseField_h)*(C-pfavg)
-	       - (1.5 *sigma*IntWidth) * lpPhi;
+	mu = 4.0*(12.0*st/IntWidth)*(C-PhaseField_l)*(C-PhaseField_h)*(C-pfavg)
+	       - (1.5 *st*IntWidth) * lpPhi;
 	return mu;
 }
 
@@ -646,6 +700,8 @@ CudaDeviceFunction void Run() {
 CudaDeviceFunction void CollisionMRT(){
 
 	PhaseF = PhaseF(0,0,0);
+	Temp = Temp(0,0,0);
+	SurfaceTension = sigma + sigma_T*(Temp - T_ref);
 
 	int i, j;
 	real_t C = PhaseF(0,0,0), mu;
@@ -659,7 +715,7 @@ CudaDeviceFunction void CollisionMRT(){
 	real_t m[27]; 					//MRT Details
 
 // Find Macroscopic Details
-	mu = calcMu( C );
+	mu = calcMu( C, SurfaceTension );
 	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l)/(PhaseField_h - PhaseField_l);
 	
 	AddToTotalDensity( rho ); // Add globals of post-stream, pre-collide macroscopic globals.
@@ -674,14 +730,6 @@ CudaDeviceFunction void CollisionMRT(){
 	    AddToGasCells(1);
 	}
 
-	if ( C > 0.5 ) 
-	{
-	    AddToLiqTotalVelocity( sqrt(U*C*U*C + V*C*V*C + W*C*W*C));
-	    AddToLiqTotalVelocityX( U*C );
-	    AddToLiqTotalVelocityY( V*C );
-	    AddToLiqTotalVelocityZ( W*C );
-	    AddToLiqCells(C);
-	}	
 	real_t m0[27];
 <?R
 	EQ = MRT_eq(U,PV(1),u,mat=t(M))
@@ -735,27 +783,37 @@ CudaDeviceFunction void CollisionMRT(){
 	// CALCULATE THERMOCAPILLARY SURFACE TENSION AND FORCE
 	real_t F_thermoSurf[3];
 	real_t tmpSig, delta_s, dotTMP, magnPhi2;
-	delta_s = 1.5*IntWidth*magnPhi*magnPhi;
-	vector_t gradSig = {0.0,0.0,0.0};
+	magnPhi2 = magnPhi*magnPhi;
+	delta_s = 1.5*magnPhi2;
+	vector_t gradSig;
 	vector_t F_thermo;
-	for (i=0;i<27;i++) {
-		gradSig.x += wg[i]*d3q27_ex[i]*(SurfaceTension_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i])); 
-		gradSig.y += wg[i]*d3q27_ey[i]*(SurfaceTension_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i])); 
-		gradSig.z += wg[i]*d3q27_ez[i]*(SurfaceTension_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]));
-	}
-	gradSig.x *= (3.0);	// multiply by c/cs^2 
-	gradSig.y *= (3.0); 
-	gradSig.z *= (3.0);
+	gradSig.x = 16.00 * (SurfaceTension(1,0,0) - SurfaceTension(-1,0,0))
+				+ SurfaceTension(1,1,1) - SurfaceTension(-1,1,1) + SurfaceTension(1,-1,1) - SurfaceTension(-1,-1,1)
+				+ SurfaceTension(1,1,-1)- SurfaceTension(-1,1,-1)+ SurfaceTension(1,-1,-1)- SurfaceTension(-1,-1,-1)
+				+  4.00 * (SurfaceTension(1,1,0) - SurfaceTension(-1,1,0) + SurfaceTension(1,-1,0) - SurfaceTension(-1,-1,0)
+				+  SurfaceTension(1,0,1) - SurfaceTension(-1,0,1) + SurfaceTension(1,0,-1) - SurfaceTension(-1,0,-1));
+	gradSig.y = 16.00 * (SurfaceTension(0,1,0) - SurfaceTension(0,-1,0))
+				+ SurfaceTension(1,1,1) + SurfaceTension(-1,1,1) - SurfaceTension(1,-1,1) - SurfaceTension(-1,-1,1)
+				+ SurfaceTension(1,1,-1)+ SurfaceTension(-1,1,-1)- SurfaceTension(1,-1,-1)- SurfaceTension(-1,-1,-1)
+				+  4.00 * (SurfaceTension(1,1,0) + SurfaceTension(-1,1,0) - SurfaceTension(1,-1,0) - SurfaceTension(-1,-1,0)
+					+  SurfaceTension(0,1,1) - SurfaceTension(0,-1,1) + SurfaceTension(0,1,-1) - SurfaceTension(0,-1,-1));
+	gradSig.z = 16.00 * (SurfaceTension(0,0,1) - SurfaceTension(0,0,-1))
+				+ SurfaceTension(1,1,1) + SurfaceTension(-1,1,1) + SurfaceTension(1,-1,1) + SurfaceTension(-1,-1,1)
+				- SurfaceTension(1,1,-1)- SurfaceTension(-1,1,-1)- SurfaceTension(1,-1,-1)- SurfaceTension(-1,-1,-1)
+				+  4.00 * (SurfaceTension(1,0,1) + SurfaceTension(-1,0,1) - SurfaceTension(1,0,-1) - SurfaceTension(-1,0,-1)
+					+  SurfaceTension(0,1,1) + SurfaceTension(0,-1,1) - SurfaceTension(0,1,-1) - SurfaceTension(0,-1,-1));
+	gradSig.x /= 72.0;
+	gradSig.y /= 72.0;
+	gradSig.z /= 72.0;
 
 	dotTMP = dotProduct(gradSig,gradPhi);
-	magnPhi2 = magnPhi*magnPhi;
 	F_thermo.x = gradSig.x - gradSig.x*(dotTMP)/(magnPhi2);
 	F_thermo.y = gradSig.y - gradSig.y*(dotTMP)/(magnPhi2);
 	F_thermo.z = gradSig.z - gradSig.z*(dotTMP)/(magnPhi2);
 	// Non-varying surface tension component:
-	F_thermoSurf[0] = mu*gradPhi.x - F_thermo.x*delta_s;
-	F_thermoSurf[1] = mu*gradPhi.y - F_thermo.y*delta_s;
-	F_thermoSurf[2] = mu*gradPhi.z - F_thermo.z*delta_s;
+	F_thermoSurf[0] = (mu*gradPhi.x - F_thermo.x)*delta_s;
+	F_thermoSurf[1] = (mu*gradPhi.y - F_thermo.y)*delta_s;
+	F_thermoSurf[2] = (mu*gradPhi.z - F_thermo.z)*delta_s;
 
 //  Viscous Force:
 //	1. determine stress tensor
@@ -868,6 +926,14 @@ for (j=0;j<2;j++) {
 				AddToRTIBubble(location);
 			}
 	}
+	if ( C > 0.5 ) 
+	{
+	    AddToLiqTotalVelocity( sqrt(U*C*U*C + V*C*V*C + W*C*W*C));
+	    AddToLiqTotalVelocityX( U*C );
+	    AddToLiqTotalVelocityY( V*C );
+	    AddToLiqTotalVelocityZ( W*C );
+	    AddToLiqCells(C);
+	}	
 }
 #endif
 
@@ -1080,6 +1146,7 @@ CudaDeviceFunction float2 Color() {
 
 #ifdef OPTIONS_BGK
 CudaDeviceFunction void CollisionBGK(){
+	SurfaceTension = SurfaceTension(0,0,0);
 	int i, j;
 	real_t C = PhaseF(0,0,0), mu;
 	real_t tau, DynVisc, rho, p;			// Macroscopic Properties
@@ -1092,7 +1159,7 @@ CudaDeviceFunction void CollisionBGK(){
 	real_t F_i[27];					// Momentum distribution forcing term
 
 // Find Macroscopic Details
-	mu = calcMu( C );
+	mu = calcMu( C, SurfaceTension );
 	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l)/(PhaseField_h - PhaseField_l);
 	p = <?R C(sum(g)) ?>;
 
