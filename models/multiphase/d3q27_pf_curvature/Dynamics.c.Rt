@@ -290,25 +290,84 @@ CudaDeviceFunction void calcPhaseF(){
 	}
 
 	PhaseF = <?R C(sum(h))?>;
-	Temp   = Temp(0,0,0);
-	Cond   = interp(PhaseF,k_h,k_l);
 }
 
 //UPDATE temperature field
+CudaDeviceFunction void TempCopy(){
+    // Save everything from buffer 1 to 2.
+    g0  = g0(0,0,0);
+    g1  = g1(0,0,0);
+    g2  = g2(0,0,0);
+    g3  = g3(0,0,0);
+    g4  = g4(0,0,0);
+    g5  = g5(0,0,0);
+    g6  = g6(0,0,0);
+    g7  = g7(0,0,0);
+    g8  = g8(0,0,0);
+    g9  = g9(0,0,0);
+    g10 = g10(0,0,0);
+    g11 = g11(0,0,0);
+    g12 = g12(0,0,0);
+    g13 = g13(0,0,0);
+    g14 = g14(0,0,0);
+    g15 = g15(0,0,0);
+    g16 = g16(0,0,0);
+    g17 = g17(0,0,0);
+    g18 = g18(0,0,0);
+    g19 = g19(0,0,0);
+    g20 = g20(0,0,0);
+    g21 = g21(0,0,0);
+    g22 = g22(0,0,0);
+    g23 = g23(0,0,0);
+    g24 = g24(0,0,0);
+    g25 = g25(0,0,0);
+    g26 = g26(0,0,0);
+
+    h0 = h0(0,0,0);
+    h1 = h1(0,0,0);
+    h2 = h2(0,0,0);
+    h3 = h3(0,0,0);
+    h4 = h3(0,0,0);
+    h5 = h4(0,0,0);
+    h6 = h5(0,0,0);
+    h7 = h7(0,0,0);
+    h8 = h8(0,0,0);
+    h9 = h9(0,0,0);
+    h10 = h10(0,0,0);
+    h11 = h11(0,0,0);
+    h12 = h12(0,0,0);
+    h13 = h13(0,0,0);
+    h14 = h14(0,0,0);
+
+    U = U(0,0,0);
+    V = V(0,0,0);
+    W = W(0,0,0);
+
+    nw_x = nw_x(0,0,0);
+    nw_y = nw_y(0,0,0);
+    nw_z = nw_z(0,0,0);
+
+    PhaseF = PhaseF(0,0,0);
+
+    Temp = Temp(0,0,0); 
+    Cond = Cond(0,0,0); 
+    npx = npx(0,0,0);
+    npy = npy(0,0,0);
+    npz = npz(0,0,0);
+    SurfaceTension = SurfaceTension(0,0,0);
+}
+
 CudaDeviceFunction void TempUpdate1(){
 	PhaseF = PhaseF(0,0,0);
-	Temp = Temp(0,0,0);
-	Cond = Cond(0,0,0);
     if (IamWall || IamSolid) {
-        RK1 = Temp;
+        RK1 = Temp(0,0,0);
 	} else {
 		//TODO: Perform Runge-Kutta update, currently just 1st order F.D.
-		real_t myK, myCp, lapT, rho, tmpT, tmpK, UpdateT;
+		real_t myCp, lapT, rho, tmpT, tmpK, UpdateT;
 		int i;
 		vector_t gradT = {0.0,0.0,0.0};
 		vector_t gradK = {0.0,0.0,0.0}; 
-		vector_t vel   = {U, V, W};
-		myK  = interp(PhaseF, k_h, k_l);
+		vector_t vel   = {U(0,0,0), V(0,0,0), W(0,0,0)};
 		myCp = interp(PhaseF, cp_h, cp_l);
 		rho  = interp(PhaseF, Density_h, Density_l);
 
@@ -365,35 +424,24 @@ CudaDeviceFunction void TempUpdate1(){
 			- 152.0 * Temp;
 		lapT /= 36.0;
 
-		RK1 = Temp + 0.5*(-1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + myK*lapT));
+		RK1 = Temp(0,0,0) + 0.5*(-1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + Cond(0,0,0)*lapT));
         // RK2 = Tn + 0.5h1
 	}
-    if (X == 80 && Y==80 && Z==80) printf("RK1 = %.4f", RK1);
-	SurfaceTension = sigma + sigma_T*(Temp - T_ref);
-	// determine normal phase directions
-	vector_t gradPhi = calcGradPhi();
-	real_t magPhi = sqrt(gradPhi.x*gradPhi.x + gradPhi.y*gradPhi.y + gradPhi.z*gradPhi.z + 1e-8);
-	npx = gradPhi.x / magPhi;
-	npy = gradPhi.y / magPhi;
-	npz = gradPhi.z / magPhi;
+    if (X == 80.5 && Y==80.5 && Z==80.5) printf("Temp=%.4f, RK1 = %.4f \n", Temp(0,0,0), RK1);
 }
 
 CudaDeviceFunction void TempUpdate2(){
 	PhaseF = PhaseF(0,0,0);
-    Temp = Temp(0,0,0);
 	RK1 = RK1(0,0,0);
-    if (X == 80 && Y==80 && Z==80) printf("RK1 = %.4f", RK1);
-	Cond = Cond(0,0,0);
     if (IamWall || IamSolid) {
-        RK2 = Temp;
+        RK2 = Temp(0,0,0);
 	} else {
 		//TODO: Perform Runge-Kutta update, currently just 1st order F.D.
-		real_t myK, myCp, lapT, rho, tmpT, tmpK, UpdateT;
+		real_t myCp, lapT, rho, tmpT, tmpK, UpdateT;
 		int i;
 		vector_t gradT = {0.0,0.0,0.0};
 		vector_t gradK = {0.0,0.0,0.0}; 
-		vector_t vel   = {U, V, W};
-		myK  = interp(PhaseF, k_h, k_l);
+		vector_t vel   = {U(0,0,0), V(0,0,0), W(0,0,0)};
 		myCp = interp(PhaseF, cp_h, cp_l);
 		rho  = interp(PhaseF, Density_h, Density_l);
 
@@ -450,25 +498,23 @@ CudaDeviceFunction void TempUpdate2(){
 			- 152.0 * RK1;
 		lapT /= 36.0;
 
-		RK2 = Temp + 0.5*(-1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + myK*lapT));
+		RK2 = Temp(0,0,0) + 0.5*(-1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + Cond(0,0,0)*lapT));
+        if (X == 80.5 && Y==80.5 && Z==80.5) printf("Temp=%.4f, RK1 = %.4f, RK2 = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f,%.4f,%.4f,%.4f,%.4f\n", Temp(0,0,0), RK1(0,0,0), RK2, vel.x, vel.y, vel.z, gradT.x, gradT.y, gradT.z, rho, myCp, gradK.x,gradK.y,gradK.z,lapT,Cond(0,0,0));
 	}
 }
 
 CudaDeviceFunction void TempUpdate3(){
 	PhaseF = PhaseF(0,0,0);
-    Temp = Temp(0,0,0);
 	RK2 = RK2(0,0,0);
-	Cond = Cond(0,0,0);
     if (IamWall || IamSolid) {
-        RK3 = Temp;
+        RK3 = Temp(0,0,0);
 	} else {
 		//TODO: Perform Runge-Kutta update, currently just 1st order F.D.
-		real_t myK, myCp, lapT, rho, tmpT, tmpK, UpdateT;
+		real_t myCp, lapT, rho, tmpT, tmpK, UpdateT;
 		int i;
 		vector_t gradT = {0.0,0.0,0.0};
 		vector_t gradK = {0.0,0.0,0.0}; 
-		vector_t vel   = {U, V, W};
-		myK  = interp(PhaseF, k_h, k_l);
+		vector_t vel   = {U(0,0,0), V(0,0,0), W(0,0,0)};
 		myCp = interp(PhaseF, cp_h, cp_l);
 		rho  = interp(PhaseF, Density_h, Density_l);
 
@@ -525,27 +571,24 @@ CudaDeviceFunction void TempUpdate3(){
 			- 152.0 * RK2;
 		lapT /= 36.0;
 
-		RK3 = Temp + -1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + myK*lapT);
-		Temp += UpdateT;
-		AddToTempChange(UpdateT*UpdateT);
+		RK3 = Temp(0,0,0) + -1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + Cond(0,0,0)*lapT);
 	}
+    if (X == 80.5 && Y==80.5 && Z==80.5) printf("Temp=%.4f, RK1 = %.4f, RK2 = %.4f, RK3 = %.4f\n", Temp(0,0,0), RK1(0,0,0), RK2(0,0,0), RK3);
 }
 
 CudaDeviceFunction void TempUpdate4(){
 	PhaseF = PhaseF(0,0,0);
-    Temp = Temp(0,0,0);
 	RK3 = RK3(0,0,0);
-	Cond = Cond(0,0,0);
     if (IamWall || IamSolid) {
 		SurfaceTension = sigma + sigma_T*(T_init - T_ref);
+        Temp = Temp(0,0,0);
 	} else {
 		//TODO: Perform Runge-Kutta update, currently just 1st order F.D.
-		real_t myK, myCp, lapT, rho, tmpT, tmpK, UpdateT;
+		real_t myCp, lapT, rho, tmpT, tmpK, UpdateT;
 		int i;
 		vector_t gradT = {0.0,0.0,0.0};
 		vector_t gradK = {0.0,0.0,0.0}; 
-		vector_t vel   = {U, V, W};
-		myK  = interp(PhaseF, k_h, k_l);
+		vector_t vel   = {U(0,0,0), V(0,0,0), W(0,0,0)};
 		myCp = interp(PhaseF, cp_h, cp_l);
 		rho  = interp(PhaseF, Density_h, Density_l);
 
@@ -602,11 +645,11 @@ CudaDeviceFunction void TempUpdate4(){
 			- 152.0 * RK3;
 		lapT /= 36.0;
 
-        UpdateT = Temp;
-		Temp = 2*RK1 + 4*RK2 + 2*RK3 - 1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + myK*lapT);
-		Temp /= 6.0;
+        UpdateT = Temp(0,0,0);
+		Temp = (1-4.0/3.0)*UpdateT + (2*RK1(0,0,0) + 4*RK2(0,0,0) + 2*RK3(0,0,0) - 1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + Cond(0,0,0)*lapT))/6.0;
 		AddToTempChange( (Temp-UpdateT)*(Temp-UpdateT)  );
 	}
+        if (X == 80.5 && Y==80.5 && Z==80.5) printf("Temp=%.4f, RK1 = %.4f, RK2 = %.4f, RK3 = %.4f\n", Temp, RK1(0,0,0), RK2(0,0,0), RK3(0,0,0));
 	SurfaceTension = sigma + sigma_T*(Temp - T_ref);
 	// determine normal phase directions
 	vector_t gradPhi = calcGradPhi();
@@ -670,7 +713,7 @@ CudaDeviceFunction void Init() {
 		Temp = dT*Y;
 	}
 	SurfaceTension = sigma + sigma_T*(Temp - T_ref);
-	Cond   = interp(PhaseF, k_h, k_l);
+	Cond = interp(PhaseF, k_h, k_l);
     // Pre-defined Initialisation patterns:
 	// Diffuse interface sphere
 	   // BubbleType = -1 refers to light fluid bubble.
@@ -806,7 +849,6 @@ CudaDeviceFunction void Init_distributions(){
 	C(g, press*w_g + (gammag-w_g) )
 ?>
 
-	PhaseF = <?R C(sum(h)) ?>;
 	Cond   = interp(PhaseF, k_h, k_l);
 #ifdef OPTIONS_OutFlow
         if ((NodeType & NODE_BOUNDARY) == NODE_EConvect){
@@ -874,7 +916,9 @@ CudaDeviceFunction void Run() {
 
 #ifndef OPTIONS_BGK
 CudaDeviceFunction void CollisionMRT(){
-
+    nw_x = nw_x(0,0,0);
+    nw_y = nw_y(0,0,0);
+    nw_z = nw_z(0,0,0);
 	PhaseF = PhaseF(0,0,0);
 	Temp = Temp(0,0,0);
 	SurfaceTension = sigma + sigma_T*(Temp - T_ref);
