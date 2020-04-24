@@ -355,6 +355,9 @@ CudaDeviceFunction void TempCopy(){
     npy = npy(0,0,0);
     npz = npz(0,0,0);
     SurfaceTension = SurfaceTension(0,0,0);
+    RK1 = 0.0;
+    RK2 = 0.0;
+    RK3 = 0.0;
 }
 
 CudaDeviceFunction void TempUpdate1(){
@@ -425,7 +428,7 @@ CudaDeviceFunction void TempUpdate1(){
 		lapT /= 36.0;
 
 		RK1 = Temp(0,0,0) + 0.5*(-1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + Cond(0,0,0)*lapT));
-        // RK2 = Tn + 0.5h1
+        // RK1 = Tn + 0.5h1
 	}
     if (X == 80.5 && Y==80.5 && Z==80.5) printf("Temp=%.4f, RK1 = %.4f \n", Temp(0,0,0), RK1);
 }
@@ -497,10 +500,18 @@ CudaDeviceFunction void TempUpdate2(){
 					+ (RK1(0,1,-1))+ (RK1(0,-1,-1)))
 			- 152.0 * RK1;
 		lapT /= 36.0;
-
+        
 		RK2 = Temp(0,0,0) + 0.5*(-1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + Cond(0,0,0)*lapT));
-        if (X == 80.5 && Y==80.5 && Z==80.5) printf("Temp=%.4f, RK1 = %.4f, RK2 = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f,%.4f,%.4f,%.4f,%.4f\n", Temp(0,0,0), RK1(0,0,0), RK2, vel.x, vel.y, vel.z, gradT.x, gradT.y, gradT.z, rho, myCp, gradK.x,gradK.y,gradK.z,lapT,Cond(0,0,0));
-	}
+        // RK2 = Tn + 0.5h2
+        if (X == 80.5 && Y==80.5 && Z==80.5){ 
+            printf("Temp=%.4f, RK1 = %.4f, RK2 = %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f,%.4f,%.4f,%.4f,%.4f\n", Temp(0,0,0), RK1(0,0,0), RK2, vel.x, vel.y, vel.z, gradT.x, gradT.y, gradT.z, rho, myCp, gradK.x,gradK.y,gradK.z,lapT,Cond(0,0,0));
+            printf("%.4f\n",RK1(0,0,0));
+            printf("%.4f\n",RK1(1,0,0));
+            printf("%.4f\n",RK1(0,1,0));
+            printf("%.4f\n",RK1(0,0,1));
+            printf("%.4f\n",RK1(-1,0,0));
+        }
+    }
 }
 
 CudaDeviceFunction void TempUpdate3(){
@@ -572,6 +583,7 @@ CudaDeviceFunction void TempUpdate3(){
 		lapT /= 36.0;
 
 		RK3 = Temp(0,0,0) + -1.0*dotProduct(vel, gradT) + (1.0/(rho*myCp)) * (dotProduct(gradK,gradT) + Cond(0,0,0)*lapT);
+        // RK3 = Tn + h3
 	}
     if (X == 80.5 && Y==80.5 && Z==80.5) printf("Temp=%.4f, RK1 = %.4f, RK2 = %.4f, RK3 = %.4f\n", Temp(0,0,0), RK1(0,0,0), RK2(0,0,0), RK3);
 }
