@@ -31,8 +31,8 @@
 		<Param name="PhaseField"    value="1.0" zone="droplet"/>
         <Param name="T_init"        value="16"/>
 		<Param name="T_ref"        	value="16"/>
-		<Param name="dT"			value="0.1"/>
-		<Param name="sigma_T" 		value="0.0"/>
+		<!--<Param name="dT"			value="0.1"/>-->
+		<Param name="sigma_T" 		value="-1e-4"/>
 		<Param name="T_init"        value="0" zone="BottomWall"/>
         <Param name="T_init"        value="16" zone="droplet"/>
 		<Param name="T_init"        value="32" zone="TopWall"/>
@@ -41,15 +41,8 @@
         <Param name="k_h" 			value="0.2"/>
         <Param name="k_l" 			value="0.2"/>
 	</Model>
-	<Init/>
-	<Container>
-		<Stop TempChangeBelow="1e-3" Times="2" Iterations="100"/>
-		<RunAction name="TempToSteadyState"  Iterations="100000"/>
-	</Container>
-	<VTK what="PhaseField,U,T,ST,NPhi" />
 	<Failcheck nx="10"	Iterations="5"/>
-	<Solve 		Iterations="20000">
-		<VTK 	Iterations="1000" what="PhaseField,U,T,ST,NPhi" />
-		<Log	Iterations="20"/>
+	<Solve 		Iterations="10">
+		<VTK 	Iterations="10" what="PhaseField,U,T,P,ST,NPhi" />
 	</Solve>
 </CLBConfig>
