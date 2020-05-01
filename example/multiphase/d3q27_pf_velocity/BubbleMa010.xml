@@ -21,13 +21,13 @@
 		<Param name="CenterX" 		value="80"/>
 		<Param name="CenterY" 		value="160"/>
 		<Param name="CenterZ" 		value="80"/>
-		<Param name="BubbleType" 	value="1"/>
+		<Param name="BubbleType" 	value="-1"/>
 		<Param name="Density_h"     value="1"/>
     	<Param name="Density_l"     value="1"/>
 		<Param name="Viscosity_h"   value="0.1"/>
 		<Param name="Viscosity_l"   value="0.1"/>
 		<Param name="sigma"         value="5e-3"/>
-		<Param name="M"             value="0.005"/>
+		<Param name="M"             value="0.05"/>
 		<Param name="IntWidth"      value="4"/>
         <Param name="T_init"        value="16"/>
 		<Param name="T_ref"        	value="16"/>

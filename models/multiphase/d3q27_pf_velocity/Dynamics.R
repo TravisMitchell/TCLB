@@ -117,6 +117,14 @@ if (Options$thermo){
 	AddField("Temp",stencil3d=1, group="Thermal")
 	AddField("Cond",stencil3d=1, group="Thermal")
 	AddField("SurfaceTension",stencil3d=1, group="Thermal")
+
+	#AddDensity("gradPhix", dx=0, dy=0, dz=0, group="Thermal")
+	#AddDensity("gradPhiy", dx=0, dy=0, dz=0, group="Thermal")
+	#AddDensity("gradPhiz", dx=0, dy=0, dz=0, group="Thermal")
+	#AddField("gradPhix",stencil3d=1, group="Thermal")
+	#AddField("gradPhiy",stencil3d=1, group="Thermal")
+	#AddField("gradPhiz",stencil3d=1, group="Thermal")
+
 	AddQuantity(name="T",unit="K")
 	AddSetting("sigma_T",			comment="Derivative describing how surface tension changes with temp")
 	AddSetting("T_ref",				comment="Reference temperature at which sigma is set")
@@ -131,6 +139,9 @@ if (Options$thermo){
 		AddSetting("T_c", default="10")
 		AddSetting("T_h", default="20")
 		AddSetting("T_0", default="4")
+		AddSetting("myL", default="100")
+		AddSetting("MIDPOINT", default="51")
+		AddSetting("PLUSMINUS", default="1")
 		AddNodeType("BWall",group="ADDITIONALS")
 		AddNodeType("TWall",group="ADDITIONALS")
 	}
@@ -143,7 +154,7 @@ if (Options$thermo){
 
 	AddStage("CopyDistributions", "TempCopy",  save=Fields$group %in% c("g","h","Vel","nw", "PF","Thermal"))
 	AddStage("RK_1", "TempUpdate1", save=Fields$name=="RK1", load=DensityAll$group=="Vel")
-	AddStage("RK_2", "TempUpdate2", save=Fields$name=="RK2", load=DensityAll$name %in % c("U","V","W","RK1")
+	AddStage("RK_2", "TempUpdate2", save=Fields$name=="RK2", load=DensityAll$name %in% c("U","V","W","RK1"))
 	AddStage("RK_3", "TempUpdate3", save=Fields$name=="RK3", load=DensityAll$name %in% c("U","V","W","RK1","RK2"))
 	AddStage("RK_4", "TempUpdate4", save=Fields$name %in% c("Temp","SurfaceTension"), load=DensityAll$name %in% c("U","V","W","RK1","RK2","RK3"))
 	AddAction("TempToSteadyState", c("CopyDistributions","RK_1", "RK_2", "RK_3", "RK_4"))	

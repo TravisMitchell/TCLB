@@ -5,37 +5,47 @@
 	Created: 17/04/2020
      	Responsible: @TravisMitchell
 -->
-	<Geometry nx="160" ny="321" nz="160">
+	<Geometry nx="512" ny="256" nz="10">
 		<MRT>
 			<Box/>
 		</MRT>
-        <None name="droplet">
-            <OffgridSphere R="20" x="80" y="160" z="80"/>
-        </None>
+		<TWall>
+			<Box dy="-1"/>
+		</TWall>
+		<BWall>
+			<Box ny="1"/>
+		</BWall>
 		<Wall mask="ALL" name="BottomWall">
 			<Box ny="1"/>
 		</Wall>
 		<Wall mask="ALL" name="TopWall">
 			<Box dy="-1"/>
 		</Wall>
+		<TWall>
+			<Box dy="-1"/>
+		</TWall>
+		<BWall>
+			<Box ny="1"/>
+		</BWall>
 	</Geometry>
 	<Model>
+        <Param name="myL"     value="256"/>
+        <Param name="MIDPOINT"     value="128"/>
+        <Param name="PLUSMINUS"     value="1"/>
+        <Param name="T_h"     value="20"/>
+        <Param name="T_c"     value="10"/>
+        <Param name="T_0"     value="4"/>
 		<Param name="Density_h"     value="1"/>
     	<Param name="Density_l"     value="1"/>
 		<Param name="Viscosity_h"   value="0.2"/>
 		<Param name="Viscosity_l"   value="0.2"/>
-		<Param name="sigma"         value="2.5e-3"/>
+		<Param name="sigma"         value="2.5e-2"/>
 		<Param name="M"             value="0.05"/>
-		<Param name="IntWidth"      value="4"/>
-		<Param name="PhaseField"    value="0.0"/>
-		<Param name="PhaseField"    value="1.0" zone="droplet"/>
-        <Param name="T_init"        value="16"/>
-		<Param name="T_ref"        	value="16"/>
-		<Param name="dT"			value="0.1"/>
-		<Param name="sigma_T" 		value="0.0"/>
-		<Param name="T_init"        value="0" zone="BottomWall"/>
-        <Param name="T_init"        value="16" zone="droplet"/>
-		<Param name="T_init"        value="32" zone="TopWall"/>
+		<Param name="IntWidth"      value="5"/>
+        <Param name="T_init"        value="10"/>
+        <Param name="T_init"        value="10" zone="TopWall"/>
+		<Param name="T_ref"        	value="10"/>
+		<Param name="sigma_T" 		value="-5e-4"/>
         <Param name="cp_h"          value="1"/>
         <Param name="cp_l"			value="1"/>
         <Param name="k_h" 			value="0.2"/>
@@ -43,13 +53,13 @@
 	</Model>
 	<Init/>
 	<Container>
-		<Stop TempChangeBelow="1e-3" Times="2" Iterations="100"/>
+		<Stop TempChangeBelow="1e-4" Times="2" Iterations="1000"/>
 		<RunAction name="TempToSteadyState"  Iterations="100000"/>
 	</Container>
-	<VTK what="PhaseField,U,T,ST,NPhi" />
+	<VTK />
 	<Failcheck nx="10"	Iterations="5"/>
-	<Solve 		Iterations="20000">
-		<VTK 	Iterations="1000" what="PhaseField,U,T,ST,NPhi" />
-		<Log	Iterations="20"/>
+	<Solve 		Iterations="400000">
+		<VTK 	Iterations="100000" />
+		<Log	Iterations="100"/>
 	</Solve>
 </CLBConfig>

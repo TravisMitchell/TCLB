@@ -150,9 +150,11 @@ CudaDeviceFunction real_t getRho(){
 	rho = Density_l + (Density_h-Density_l) * (PhaseF(0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
 	return rho;
 }
+#ifdef OPTIONS_thermo
 CudaDeviceFunction real_t getT(){
 	return Temp(0,0,0);
 }
+#endif
 CudaDeviceFunction real_t getPhaseField(){
 	return PhaseF(0,0,0);
 }
@@ -749,17 +751,17 @@ CudaDeviceFunction void Init() {
 			Temp = dT*Y;
 		}
 		#ifdef OPTIONS_planarBenchmark
-			//Note that this is designed to be in a domain 160x80x10
 			if ( (NodeType & NODE_ADDITIONALS) == NODE_BWall) { //bottom wall
 				real_t x, omega;
-				x = X - 80;
-				omega = 2.0*3.1415926535897 / 160;
+				x = (X-0.5) - myL;
+				omega = 3.1415926535897 / myL;
 				Temp = T_h + T_0 * cos(omega * x);
-				printf("test1\n");
+				printf("y,x=%.4lf,%.4lf\n", Y,x);
 			} else if ( (NodeType & NODE_ADDITIONALS) == NODE_TWall) {
 				Temp = T_c;
-				printf("Test\n");
+				printf("y,x=%.4lf,%.4lf\n", Y, X);
 			}
+			PhaseF = 0.5 + PLUSMINUS * (0.5) * tanh( (Y - MIDPOINT)/(IntWidth/2) );
 		#endif
 		SurfaceTension = sigma + sigma_T*(Temp - T_ref);
 		Cond = interp(PhaseF, k_h, k_l);
@@ -1063,7 +1065,7 @@ CudaDeviceFunction void CollisionMRT(){
 		Cond = Cond(0,0,0);
 		real_t tmpSig, delta_s, dotTMP, magnPhi2;
 		magnPhi2 = magnPhi*magnPhi;
-		vector_t gradSig;
+		vector_t gradSig, gradT;
 		gradSig.x = 16.00 * (SurfaceTension(1,0,0) - SurfaceTension(-1,0,0))
 						+ SurfaceTension(1,1,1) - SurfaceTension(-1,1,1) + SurfaceTension(1,-1,1) - SurfaceTension(-1,-1,1)
 						+ SurfaceTension(1,1,-1)- SurfaceTension(-1,1,-1)+ SurfaceTension(1,-1,-1)- SurfaceTension(-1,-1,-1)
@@ -1082,11 +1084,34 @@ CudaDeviceFunction void CollisionMRT(){
 		gradSig.x /= 72.0;
 		gradSig.y /= 72.0;
 		gradSig.z /= 72.0;
-		dotTMP = dotProduct(gradSig,n);
+		gradT.x = 16.00 * (Temp(1,0,0) - Temp(-1,0,0))
+						+ Temp(1,1,1) - Temp(-1,1,1) + Temp(1,-1,1) - Temp(-1,-1,1)
+						+ Temp(1,1,-1)- Temp(-1,1,-1)+ Temp(1,-1,-1)- Temp(-1,-1,-1)
+					+  4.00 * (Temp(1,1,0) - Temp(-1,1,0) + Temp(1,-1,0) - Temp(-1,-1,0)
+							+  Temp(1,0,1) - Temp(-1,0,1) + Temp(1,0,-1) - Temp(-1,0,-1));
+		gradT.y = 16.00 * (Temp(0,1,0) - Temp(0,-1,0))
+						+ Temp(1,1,1) + Temp(-1,1,1) - Temp(1,-1,1) - Temp(-1,-1,1)
+						+ Temp(1,1,-1)+ Temp(-1,1,-1)- Temp(1,-1,-1)- Temp(-1,-1,-1)
+					+  4.00 * (Temp(1,1,0) + Temp(-1,1,0) - Temp(1,-1,0) - Temp(-1,-1,0)
+						+  Temp(0,1,1) - Temp(0,-1,1) + Temp(0,1,-1) - Temp(0,-1,-1));
+		gradT.z = 16.00 * (Temp(0,0,1) - Temp(0,0,-1))
+						+ Temp(1,1,1) + Temp(-1,1,1) + Temp(1,-1,1) + Temp(-1,-1,1)
+						- Temp(1,1,-1)- Temp(-1,1,-1)- Temp(1,-1,-1)- Temp(-1,-1,-1)
+					+  4.00 * (Temp(1,0,1) + Temp(-1,0,1) - Temp(1,0,-1) - Temp(-1,0,-1)
+							+  Temp(0,1,1) + Temp(0,-1,1) - Temp(0,1,-1) - Temp(0,-1,-1));
+		gradT.x /= 72.0;
+		gradT.y /= 72.0;
+		gradT.z /= 72.0;
+		/*dotTMP = dotProduct(gradSig,n);
     	delta_s = 1.5*IntWidth*magnPhi2;
 		F_surf[0] = mu * gradPhi.x + delta_s*( gradSig.x - n.x*(dotTMP) );
     	F_surf[1] = mu * gradPhi.y + delta_s*( gradSig.y - n.y*(dotTMP) );
-    	F_surf[2] = mu * gradPhi.z + delta_s*( gradSig.z - n.z*(dotTMP) );
+    	F_surf[2] = mu * gradPhi.z + delta_s*( gradSig.z - n.z*(dotTMP) );*/
+		dotTMP = dotProduct(gradT,gradPhi);
+    	delta_s = 1.5*IntWidth*sigma_T;
+		F_surf[0] = mu * gradPhi.x + delta_s*( magnPhi2*gradT.x - dotTMP*gradPhi.x );
+    	F_surf[1] = mu * gradPhi.y + delta_s*( magnPhi2*gradT.y - dotTMP*gradPhi.y );
+    	F_surf[2] = mu * gradPhi.z + delta_s*( magnPhi2*gradT.z - dotTMP*gradPhi.z );
 	#else
 		F_surf[0] = mu * gradPhi.x;
 		F_surf[1] = mu * gradPhi.y;
