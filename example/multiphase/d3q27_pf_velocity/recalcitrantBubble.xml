@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<CLBConfig version="2.0" output="/scratch/eait/uqtmitc3/thermocapillary/" permissive="true">
+	<!-- MODEL: d3q27_pf_thermocapillary
+     First test of temp field
+	Created: 17/04/2020
+     	Responsible: @TravisMitchell
+-->
+	<Geometry nx="256" ny="128" nz="128">
+		<MRT>
+			<Box/>
+		</MRT>
+ <!--       <WVelocity name="west">
+            <Box nx="2"/>
+        </WVelocity>
+        <EVelocity name="east">
+            <Box dx="-2"/>
+        </EVelocity>-->
+        <ConstantTemp>
+            <Box nx="2"/>
+            <Box dx="-2"/>
+        </ConstantTemp>
+		<Wall mask="ALL" name="BottomWall">
+			<Box ny="1"/>
+		</Wall>
+		<Wall mask="ALL" name="TopWall">
+			<Box dy="-1"/>
+		</Wall>
+	</Geometry>
+	<Model>
+		<Param name="Radius" 		value="20"/>
+		<Param name="CenterX" 		value="192"/>
+		<Param name="CenterY" 		value="64"/>
+		<Param name="CenterZ" 		value="64"/>
+		<Param name="BubbleType" 	value="-1"/>
+        
+		<Param name="Density_h"     value="1"/>
+    	<Param name="Density_l"     value="0.1"/>
+		<Param name="Viscosity_h"   value="0.01"/>
+		<Param name="Viscosity_l"   value="0.05"/>
+		<Param name="sigma"         value="8e-4"/>
+		<Param name="M"             value="0.1"/>
+		<Param name="IntWidth"      value="4"/>
+
+        <Param name="T_init"        value="0.5"/>
+		<Param name="T_ref"        	value="0.5"/>
+		<Param name="dTx"			value="0.00078125"/>
+		<Param name="sigma_T" 		value="0.02"/>
+        <Param name="surfPower"     value="2"/>
+
+        <Param name="cp_h"          value="20"/>
+        <Param name="cp_l"			value="20"/>
+        <Param name="k_h" 			value="7"/>
+        <Param name="k_l" 			value="0.007"/>
+
+        <Param name="HEIGHT"        value="128" />
+        <Param name="Uavg"          value="1e-5"/>
+	</Model>
+	<Init/>
+    <VTK what="T,U,PhaseField,BOUNDARY,ADDITIONALS"/>
+	<Container>
+		<Stop TempChangeBelow="1e-4" Times="2" Iterations="100"/>
+		<RunAction name="TempToSteadyState"  Iterations="10000"/>
+	</Container>
+	<VTK what="T,U,PhaseField,BOUNDARY,ADDITIONALS"/>
+	<Failcheck nx="10"	Iterations="5"/>
+	<Solve 		Iterations="10">
+		<VTK 	Iterations="2" what="T,U,PhaseField,BOUNDARY,ADDITIONALS"/>
+		<Log	Iterations="100"/>
+	</Solve>
+</CLBConfig>

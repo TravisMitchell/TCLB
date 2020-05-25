@@ -46,15 +46,15 @@
         <Param name="T_init"        value="10" zone="TopWall"/>
 		<Param name="T_ref"        	value="10"/>
 		<Param name="sigma_T" 		value="-5e-4"/>
-        <Param name="cp_h"          value="1"/>
-        <Param name="cp_l"			value="1"/>
+        <Param name="cp_h"          value="0.5"/>
+        <Param name="cp_l"			value="1.0"/>
         <Param name="k_h" 			value="0.2"/>
         <Param name="k_l" 			value="0.2"/>
 	</Model>
 	<Init/>
 	<Container>
 		<Stop TempChangeBelow="1e-4" Times="2" Iterations="1000"/>
-		<RunAction name="TempToSteadyState"  Iterations="100000"/>
+		<RunAction name="TempToSteadyState"  Iterations="200000"/>
 	</Container>
 	<VTK />
 	<Failcheck nx="10"	Iterations="5"/>

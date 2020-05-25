@@ -46,8 +46,8 @@
         <Param name="T_init"        value="10" zone="TopWall"/>
 		<Param name="T_ref"        	value="10"/>
 		<Param name="sigma_T" 		value="-5e-4"/>
-        <Param name="cp_h"          value="1"/>
-        <Param name="cp_l"			value="1"/>
+        <Param name="cp_h"          value="0.2"/>
+        <Param name="cp_l"			value="2.2"/>
         <Param name="k_h" 			value="0.04"/>
         <Param name="k_l" 			value="0.2"/>
 	</Model>
