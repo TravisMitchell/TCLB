@@ -152,16 +152,14 @@ if (Options$thermo){
 
 	AddStage("CopyDistributions", "TempCopy",  save=Fields$group %in% c("g","h","Vel","nw", "PF","Thermal"))
 	AddStage("CopyThermal","ThermalCopy", save=Fields$name %in% c("Temp","Cond","SurfaceTension"), load=DensityAll$name %in% c("Temp","Cond","SurfaceTension"))
-	AddStage("RK_1", "TempUpdate1", save=Fields$name=="RK1", load=DensityAll$group=="Vel")
-	AddStage("RK_2", "TempUpdate2", save=Fields$name=="RK2", load=DensityAll$name %in% c("U","V","W","RK1"))
-	AddStage("RK_3", "TempUpdate3", save=Fields$name=="RK3", load=DensityAll$name %in% c("U","V","W","RK1","RK2"))
-	AddStage("RK_4", "TempUpdate4", save=Fields$name %in% c("Temp","SurfaceTension"), load=DensityAll$name %in% c("U","V","W","RK1","RK2","RK3"))	
+	AddStage("RK_1", "TempUpdate1", save=Fields$name=="RK1", load=DensityAll$name %in% c("U","V","W","Cond","PhaseF","Temp"))
+	AddStage("RK_2", "TempUpdate2", save=Fields$name=="RK2", load=DensityAll$name %in% c("U","V","W","RK1","Cond","PhaseF","Temp"))
+	AddStage("RK_3", "TempUpdate3", save=Fields$name=="RK3", load=DensityAll$name %in% c("U","V","W","RK1","RK2","Cond","PhaseF","Temp"))
+	AddStage("RK_4", "TempUpdate4", save=Fields$name %in% c("Temp","SurfaceTension"), load=DensityAll$name %in% c("U","V","W","RK1","RK2","RK3","Cond","PhaseF","Temp"))	
 
-#AddStage("NonLocalTemp","NonLocalT", save=Fields$name %in% c("Temp","SurfaceTension"), load=DensityAll$name %in% c("Temp"))
-#AddAction("TempToSteadyState", c("CopyDistributions","RK_1", "RK_2", "RK_3", "RK_4","NonLocalTemp"))	
-	AddAction("TempToSteadyState", c("CopyDistributions","RK_1", "RK_2", "RK_3", "RK_4"))	
+	AddStage("NonLocalTemp","BoundUpdate", save=Fields$name %in% c("Temp","SurfaceTension"), load=DensityAll$name %in% c("Temp"))
 	AddNodeType("ConstantTemp",group="ADDITIONALS")
-#AddNodeType("EAdiabatic",group="ADDITIONALS")
+	AddNodeType("EAdiabatic",group="ADDITIONALS")
 }
 
 AddSetting("HEIGHT", default="0",	comment="Height of channel for 2D Poiseuille flow")
@@ -172,37 +170,37 @@ AddStage("WallInit"  , "Init_wallNorm", save=Fields$group=="nw")
 AddStage("calcWall"  , "calcWallPhase", save=Fields$name=="PhaseF", load=DensityAll$group=="nw")
 
 if (Options$OutFlow & Options$thermo){
-	AddStage("PhaseInit" , "Init", save=Fields$group %in% c("PF","Thermal") )
+    AddStage("PhaseInit" , "Init", save=Fields$group %in% c("PF","Thermal") )
     AddStage("BaseInit"  , "Init_distributions", save=Fields$group %in% c("g","h","gold","hold","Vel","PF"))
     AddStage("calcPhase" , "calcPhaseF",	     save=Fields$name=="PhaseF", 
 					                             load=DensityAll$group %in% c("g","h","gold","hold","Vel","nw") )
     AddStage("BaseIter"  , "Run"       ,         save=Fields$group %in% c("g","h","gold","hold","Vel","nw","Thermal"), 
 	                                	         load=DensityAll$group %in% c("g","h","gold","hold","Vel","nw","Thermal","PF"))
 } else if (Options$OutFlow){
-	AddStage("PhaseInit" , "Init", save=Fields$name=="PhaseF")
+    AddStage("PhaseInit" , "Init", save=Fields$name=="PhaseF")
     AddStage("BaseInit"  , "Init_distributions", save=Fields$group %in% c("g","h","Vel","gold","hold","PF"))
     AddStage("calcPhase" , "calcPhaseF",	 save=Fields$name=="PhaseF", 
                                                  load=DensityAll$group %in% c("g","h","Vel","gold","hold","nw"))
-    AddStage("BaseIter"  , "Run"       ,         save=Fields$group %in% c("g","h","Vel","nw","gold","hold","nw"), 
+    AddStage("BaseIter"  , "Run"       ,     save=Fields$group %in% c("g","h","Vel","nw","gold","hold","nw"), 
 	                                         load=DensityAll$group %in% c("g","h","Vel","nw","gold","hold","nw"))
 } else if (Options$thermo){
-	AddStage("PhaseInit" , "Init", save=Fields$group %in% c("PF","Thermal") )
+    AddStage("PhaseInit" , "Init", save=Fields$group %in% c("PF","Thermal") )
     AddStage("BaseInit"  , "Init_distributions", save=Fields$group %in% c("g","h","Vel","PF"))
     AddStage("calcPhase" , "calcPhaseF",	     save=Fields$name=="PhaseF", 
 					                             load=DensityAll$group %in% c("g","h","Vel","nw") )
     AddStage("BaseIter"  , "Run"       ,         save=Fields$group %in% c("g","h","Vel","nw","Thermal"), 
 	                                	         load=DensityAll$group %in% c("g","h","Vel","nw","Thermal","PF"))
 } else {
-	AddStage("PhaseInit" , "Init", save=Fields$name=="PhaseF")
+    AddStage("PhaseInit" , "Init", save=Fields$name=="PhaseF")
     AddStage("BaseInit"  , "Init_distributions", save=Fields$group %in% c("g","h","Vel","PF"))
     AddStage("calcPhase" , "calcPhaseF",	 save=Fields$name=="PhaseF", 
 					         load=DensityAll$group %in% c("g","h","Vel","nw") )
     AddStage("BaseIter"  , "Run"       ,         save=Fields$group %in% c("g","h","Vel","nw"), 
 	                                	 load=DensityAll$group %in% c("g","h","Vel","nw"))
 }
-if (Options$thermo){
-	#AddAction("Iteration", c("BaseIter", "calcPhase", "calcWall","RK_1", "RK_2", "RK_3", "RK_4","NonLocalTemp"))
-	AddAction("Iteration", c("BaseIter", "calcPhase", "calcWall","RK_1", "RK_2", "RK_3", "RK_4"))
+if (Options$thermo){	
+	AddAction("TempToSteadyState", c("CopyDistributions","RK_1", "RK_2", "RK_3", "RK_4","NonLocalTemp"))
+	AddAction("Iteration", c("BaseIter", "calcPhase", "calcWall","RK_1", "RK_2", "RK_3", "RK_4","NonLocalTemp"))
 	AddAction("IterationConstantTemp", c("BaseIter", "calcPhase", "calcWall","CopyThermal"))
 	AddAction("Init"     , c("PhaseInit","WallInit" , "calcWall","BaseInit"))
 } else {

@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<CLBConfig version="2.0" output="/scratch/cz84/tm9899/thermo/recalcitrantBubble/" permissive="true">
+	<Units>
+		<Param name="height" value="0.0008m" gauge="80" />
+		<Param name="rho" value="998kg/m3" gauge="1" />
+		<Param name="Temp" value="273K" gauge="0.5" />
+		<Param name="sigma" value="0.0306N/m" gauge="5e-5" />
+	</Units>
+	<Geometry nx="600" ny="80" nz="400">
+		<MRT>
+			<Box />
+		</MRT>
+		<WVelocity name="west">
+			<Box nx="2" />
+		</WVelocity>
+		<EConvect name="east">
+			<Box dx="-2" />
+		</EConvect>
+		<ConstantTemp>
+			<Box nx="2" />
+			<Box dx="-2" />
+		</ConstantTemp>
+		<Wall mask="ALL" name="BottomWall">
+			<Box ny="1" />
+		</Wall>
+		<Wall mask="ALL" name="TopWall">
+			<Box dy="-1" />
+		</Wall>
+	</Geometry>
+	<Model>
+		<Param name="Radius" value="0.00015m" />
+		<Param name="CenterX" value="0.004m" />
+		<Param name="CenterY" value="0.0004m" />
+		<Param name="CenterZ" value="0.002m" />
+		<Param name="BubbleType" value="-1" />
+		<Param name="Density_h" value="998kg/m3" />
+		<Param name="Density_l" value="1.2kg/m3" />
+		<Param name="Viscosity_h" value="2e-4m2/s" />
+		<Param name="Viscosity_l" value="2e-4m2/s" />
+		<Param name="sigma" value="0.0306N/m" />
+		<Param name="M" value="0.1" />
+		<Param name="IntWidth" value="4" />
+		<Param name="T_init" value="270.6K" />
+		<Param name="T_ref" value="273K" />
+		<Param name="dTx" value="800.0K/m" />
+		<Param name="sigma_TT" value="1.4744801512287e-5N/K2m" />
+		<Param name="surfPower" value="2" />
+		<Param name="cp_h" value="4200J/Kkg" />
+		<Param name="cp_l" value="1000J/Kkg" />
+		<Param name="k_h" value="0.606W/Km" />
+		<Param name="k_l" value="0.0333W/Km" />
+		<Param name="HEIGHT" value="0.0008m" />
+		<Param name="Uavg" value="0.0039m/s" />
+		<Param name="developedFlow" value="1" />
+		<Param name="PhaseField" value="1" />
+	</Model>
+	<Init />
+	<Container>
+		<Stop TempChangeBelow="1e-4" Times="5" Iterations="100" />
+		<RunAction name="TempToSteadyState" Iterations="10000" />
+	</Container>
+	<HDF5 what="U,PhaseField,ST" point_data="true" />
+	<Failcheck nx="10" Iterations="5" />
+	<Solve Iterations="2500">
+		<HDF5 Iterations="500" what="U,PhaseField,ST" point_data="true" />
+		<Log Iterations="100" />
+	</Solve>
+	<Solve Iterations="10000">
+		<HDF5 Iterations="10000" what="U,PhaseField,ST" point_data="true" />
+	</Solve>
+	<Run model="d3q27_pf_cap_OutFlow_thermo">
+		<Code version="v6.0-beta-1425-g39db6be" precision="double" cross="GPU" />
+	</Run>
+</CLBConfig>
