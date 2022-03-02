@@ -58,8 +58,39 @@ if (Options$Outflow){
 	U_loc = PV("U_local")
 	U_inv = PV("invU")
 }
+if (Options$thermo){
+	f = PV(Density$name[Density$group == "f"])
+}
 ?>
 //	EXPORTABLE QUANTITIES:
+#ifdef OPTIONS_thermo
+CudaDeviceFunction real_t gettemperature(){
+	return <?R 
+	if (Options$thermo){
+		C(sum(f)) 
+	} else {
+		0
+	}?>;
+}
+
+CudaDeviceFunction real_t getsurfaceTension(){
+		real_t surfaceTen;
+		real_t temperature = gettemperature();
+		if (surfPower > 1) {
+			surfaceTen = sigma + sigma_TT*pow((temperature - T_ref),surfPower) * (1.0/surfPower);
+		} else {
+			surfaceTen = sigma + sigma_T*(temperature - T_ref);
+		}
+		return surfaceTen;
+}
+
+CudaDeviceFunction real_t getthermalconductivity(){
+	real_t k;
+	k = k_l + (k_h-k_l) * (PhaseF(0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
+	return k;
+}
+#endif
+
 CudaDeviceFunction real_t getRho(){
 	real_t rho;
 	rho = Density_l + (Density_h-Density_l) * (PhaseF(0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
@@ -343,8 +374,112 @@ CudaDeviceFunction void Init_wallNorm(){
 	}
 }
 
-CudaDeviceFunction void Init_distributions(){
+#ifdef OPTIONS_thermo
+CudaDeviceFunction void temp_init_f(){
+	// Initialise f population at equilibrium distributions
+	U = VelocityX;
+	V = VelocityY;
+	real_t mag = U*U + V*V;
+	f[0] = calcGamma(0, U, V, mag);
+	f[1] = calcGamma(1, U, V, mag);
+	f[2] = calcGamma(2, U, V, mag);
+	f[3] = calcGamma(3, U, V, mag);
+	f[4] = calcGamma(4, U, V, mag);
+	f[5] = calcGamma(5, U, V, mag);
+	f[6] = calcGamma(6, U, V, mag);
+	f[7] = calcGamma(7, U, V, mag);
+	f[8] = calcGamma(8, U, V, mag);
+}
 
+CudaDeviceFunction void temp_iter_f(){
+	// Perform collision of f population distributions
+	// Initialise f population at equilibrium distributions
+	U = U(0,0);
+	V = V(0,0);
+	real_t mag = U*U + V*V;
+	f[0] = calcGamma(0, U, V, mag);
+	f[1] = calcGamma(1, U, V, mag);
+	f[2] = calcGamma(2, U, V, mag);
+	f[3] = calcGamma(3, U, V, mag);
+	f[4] = calcGamma(4, U, V, mag);
+	f[5] = calcGamma(5, U, V, mag);
+	f[6] = calcGamma(6, U, V, mag);
+	f[7] = calcGamma(7, U, V, mag);
+	f[8] = calcGamma(8, U, V, mag);
+}
+
+CudaDeviceFunction void Init_temp(){
+	// Initialise temperature field
+	Temp = T_init;
+	PhaseF = PhaseF(0,0);
+	Cond = k_l + (PhaseF(0,0,0) - PhaseField_l)*(k_h - k_l) / (PhaseField_h - PhaseField_l);
+	if (surfPower > 1) {
+		SurfaceTension = sigma + sigma_TT*pow((Temp - T_ref),surfPower) * (1.0/surfPower);
+	} else {
+		SurfaceTension = sigma + sigma_T*(Temp - T_ref);
+	}
+}
+
+CudaDeviceFunction void Iter_temp(){
+	Temp = gettemperature();
+	PhaseF = PhaseF(0,0);
+	Cond = k_l + (PhaseF(0,0,0) - PhaseField_l)*(k_h - k_l) / (PhaseField_h - PhaseField_l);
+	if (surfPower > 1) {
+		SurfaceTension = sigma + sigma_TT*pow((Temp - T_ref),surfPower) * (1.0/surfPower);
+	} else {
+		SurfaceTension = sigma + sigma_T*(Temp - T_ref);
+	}
+}
+
+CudaDeviceFunction void TempCopy(){
+// need to check with lukasz about if we can deal
+// with fields that have bracket
+	g[0]  = g[0];
+	g[1]  = g[1];
+	g[2]  = g[2];
+	g[3]  = g[3];
+	g[4]  = g[4];
+	g[5]  = g[5];
+	g[6]  = g[6];
+	g[7]  = g[7];
+	g[8]  = g[8];
+	g[9]  = g[9];
+
+	h[0] = h[0];
+	h[1] = h[1];
+	h[2] = h[2];
+	h[3] = h[3];
+	h[4] = h[3];
+	h[5] = h[4];
+	h[6] = h[5];
+	h[7] = h[7];
+	h[8] = h[8];
+	h[9] = h[9];
+
+	U = U(0,0);
+	V = V(0,0);
+
+	nw_x = nw_x(0,0);
+	nw_y = nw_y(0,0);
+
+	PhaseF = PhaseF(0,0);
+
+	Temp = Temp(0,0); 
+	Cond = Cond(0,0); 
+	SurfaceTension = SurfaceTension(0,0);
+}
+
+CudaDeviceFunction void ThermalCopy(){
+	Temp = Temp(0,0); 
+	Cond = Cond(0,0); 
+	SurfaceTension = SurfaceTension(0,0);
+}
+#endif
+
+CudaDeviceFunction void Init_distributions(){
+	#ifdef OPTIONS_thermo
+		temp_init_f();
+	#endif
 	// Find Gradients and normals:
 	real_t myPhaseF = PhaseF(0,0);
 
@@ -440,7 +575,12 @@ CudaDeviceFunction void calcHydroIter() {
 		#elif OPTIONS_CM
 			if (NodeType & NODE_CM) { CollisionCM();}
 		#else
-			if (NodeType & NODE_MRT) { CollisionMRT();}
+			if (NodeType & NODE_MRT) { 
+				CollisionMRT();
+				#ifdef OPTIONS_thermo
+					temp_iter_f();
+				#endif
+			}
 		#endif
 
 		myPhaseF = PhaseF(0,0);
@@ -1443,6 +1583,20 @@ CudaDeviceFunction void BounceBack()
 	h[6] = h[8];
 	h[8] = tmp;
 
+#ifdef Options_thermo
+	tmp = f[1];
+	f[1] = f[3];
+	f[3] = tmp;
+	tmp = f[2];
+	f[2] = f[4];
+	f[4] = tmp;
+	tmp = f[5];
+	f[5] = f[7];
+	f[7] = tmp;
+	tmp = f[6];
+	f[6] = f[8];
+	f[8] = tmp;
+#endif
 	//Summing the difference in momentum before/after collision
 	if((NodeType & NODE_BODY) == NODE_Body) {
 		p2.x = g[8] +g[1] +g[5] -g[6] -g[3] -g[7];

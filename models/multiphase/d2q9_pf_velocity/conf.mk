@@ -1,7 +1,8 @@
 ADJOINT=0
 TEST=FALSE
-OPT="(GF+RT+Outflow+GuoCM+debug+BGK+CM)*autosym"
+OPT="(thermo+GF+RT+Outflow+GuoCM+debug+BGK+CM)*autosym"
 
+# thermo: temperature fields for thermocapillary
 # GF: Guo Forcing - feature in MRT model;
 #	This is using a higher order Forcing scheme
 #	from the work of Guo et al. (2002) for the hydrodynamics
