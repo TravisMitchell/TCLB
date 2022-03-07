@@ -218,8 +218,13 @@ CudaDeviceFunction real_t calcMu(real_t myPhase){
 	// eq 5 from "Improved locality of the phase-field lattice Boltzmann 
 	// model for immiscible fluids at high density ratios"
 	real_t pfavg = 0.5*(PhaseField_l+PhaseField_h);
+	#ifdef OPTIONS_thermo
+	real_t mu = 4.0*(12.0*SurfaceTension(0,0)/W)*(myPhase-PhaseField_l)*(myPhase-PhaseField_h)*(myPhase-pfavg)
+		        - (1.5 *SurfaceTension(0,0)*W) * lpPhi; 
+	#else
 	real_t mu = 4.0*(12.0*sigma/W)*(myPhase-PhaseField_l)*(myPhase-PhaseField_h)*(myPhase-pfavg)
 		        - (1.5 *sigma*W) * lpPhi; 
+	#endif
 	return mu;
 }
 
@@ -380,6 +385,7 @@ CudaDeviceFunction void temp_init_f(){
 	U = VelocityX;
 	V = VelocityY;
 	real_t mag = U*U + V*V;
+	// Marius to check the f_eq formula for the thermal LBM
 	f[0] = calcGamma(0, U, V, mag);
 	f[1] = calcGamma(1, U, V, mag);
 	f[2] = calcGamma(2, U, V, mag);
@@ -412,7 +418,7 @@ CudaDeviceFunction void Init_temp(){
 	// Initialise temperature field
 	Temp = T_init;
 	PhaseF = PhaseF(0,0);
-	Cond = k_l + (PhaseF(0,0,0) - PhaseField_l)*(k_h - k_l) / (PhaseField_h - PhaseField_l);
+	Cond = k_l + (PhaseF(0,0) - PhaseField_l)*(k_h - k_l) / (PhaseField_h - PhaseField_l);
 	if (surfPower > 1) {
 		SurfaceTension = sigma + sigma_TT*pow((Temp - T_ref),surfPower) * (1.0/surfPower);
 	} else {
@@ -423,7 +429,7 @@ CudaDeviceFunction void Init_temp(){
 CudaDeviceFunction void Iter_temp(){
 	Temp = gettemperature();
 	PhaseF = PhaseF(0,0);
-	Cond = k_l + (PhaseF(0,0,0) - PhaseField_l)*(k_h - k_l) / (PhaseField_h - PhaseField_l);
+	Cond = k_l + (PhaseF(0,0) - PhaseField_l)*(k_h - k_l) / (PhaseField_h - PhaseField_l);
 	if (surfPower > 1) {
 		SurfaceTension = sigma + sigma_TT*pow((Temp - T_ref),surfPower) * (1.0/surfPower);
 	} else {
@@ -1146,8 +1152,15 @@ CudaDeviceFunction vector_t calcTotalHydrodynamicForceMRT(vector_t gradPhi, real
 	F_body[1] = -1.0*(rho-Density_l)*BuoyancyY + rho*GravitationY;
 	
 	// eq 4
-	F_surf_tension[0] = mu*gradPhi.x;
-	F_surf_tension[1] = mu*gradPhi.y;
+	#ifdef OPTIONS_thermo
+	// MARIUS to have ago updating to capture coupling force of
+	// thermocapilary flow (use d3q27_pf_velocity for inspiration)
+		F_surf_tension[0] = mu*gradPhi.x;
+		F_surf_tension[1] = mu*gradPhi.y;
+	#else
+		F_surf_tension[0] = mu*gradPhi.x;
+		F_surf_tension[1] = mu*gradPhi.y;
+	#endif
 
 	// Calculate viscous force
 	for (int j=0;j<fixedIterator;j++){
