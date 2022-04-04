@@ -296,6 +296,8 @@ CudaDeviceFunction real_t calcTau_T(real_t myPhaseF, real_t rho)
 	// eq 9 from Regularized thermal lattice Boltzmann method for natural 
 	//convection with large temperature differences
 	
+// I dont really understand what is going on here
+
 	real_t tau_v = calcTau(myPhaseF,rho);
 	real_t normPhaseF = (myPhaseF - PhaseField_l)/(PhaseField_h - PhaseField_l);
 	real_t dynamic_viscosity = dynamic_viscosity_l+(dynamic_viscosity_h-dynamic_viscosity_l)*normPhaseF;
@@ -307,8 +309,6 @@ CudaDeviceFunction real_t calcTau_T(real_t myPhaseF, real_t rho)
 	real_t Pr = momentum_diffusivity/thermal_diffusivity;
 	return tau_v/Pr;
 }
-
-
 
 CudaDeviceFunction real_t calcTau(real_t myPhaseF, real_t myRho)
 {
@@ -438,6 +438,22 @@ CudaDeviceFunction void temp_init_f(){
 	f[6] = calcGamma_T(6, U, V, mag);
 	f[7] = calcGamma_T(7, U, V, mag);
 	f[8] = calcGamma_T(8, U, V, mag);
+
+	// @MARIUS, you need to fix your initialisation of the thermo distribution
+	//          you will need to fix calcGamma_T for this. 
+	//          I think it would be good for you to write out the equations
+	//			that you are actually trying to solve. You will need these in
+	// 			your thesis and it would make it easier for me to say where you
+	// 			have gone wrong.
+	f[0] = wf[0]*T_init*(1 + 3.0 * (d2q9_ex[0]*U + d2q9_ey[0]*V));
+	f[1] = wf[1]*T_init*(1 + 3.0 * (d2q9_ex[1]*U + d2q9_ey[1]*V));
+	f[2] = wf[2]*T_init*(1 + 3.0 * (d2q9_ex[2]*U + d2q9_ey[2]*V));
+	f[3] = wf[3]*T_init*(1 + 3.0 * (d2q9_ex[3]*U + d2q9_ey[3]*V));
+	f[4] = wf[4]*T_init*(1 + 3.0 * (d2q9_ex[4]*U + d2q9_ey[4]*V));
+	f[5] = wf[5]*T_init*(1 + 3.0 * (d2q9_ex[5]*U + d2q9_ey[5]*V));
+	f[6] = wf[6]*T_init*(1 + 3.0 * (d2q9_ex[6]*U + d2q9_ey[6]*V));
+	f[7] = wf[7]*T_init*(1 + 3.0 * (d2q9_ex[7]*U + d2q9_ey[7]*V));
+	f[8] = wf[8]*T_init*(1 + 3.0 * (d2q9_ex[8]*U + d2q9_ey[8]*V));
 }
 
 CudaDeviceFunction void temp_iter_f(){
@@ -449,16 +465,17 @@ CudaDeviceFunction void temp_iter_f(){
 	real_t feq[9];
 	real_t R[9];
 	real_t S[9];
+	real_t temperature = <?R C(sum(f)) ?>;
 	//equilibrium functions
-	feq[0] = calcGamma_T(0, U, V, mag);
-	feq[1] = calcGamma_T(1, U, V, mag);
-	feq[2] = calcGamma_T(2, U, V, mag);
-	feq[3] = calcGamma_T(3, U, V, mag);
-	feq[4] = calcGamma_T(4, U, V, mag);
-	feq[5] = calcGamma_T(5, U, V, mag);
-	feq[6] = calcGamma_T(6, U, V, mag);
-	feq[7] = calcGamma_T(7, U, V, mag);
-	feq[8] = calcGamma_T(8, U, V, mag);
+	feq[0] = wf[0]*temperature*(1 + 3.0 * (d2q9_ex[0]*U + d2q9_ey[0]*V)); //calcGamma_T(0, U, V, mag);
+	feq[1] = wf[1]*temperature*(1 + 3.0 * (d2q9_ex[1]*U + d2q9_ey[1]*V)); //calcGamma_T(1, U, V, mag);
+	feq[2] = wf[2]*temperature*(1 + 3.0 * (d2q9_ex[2]*U + d2q9_ey[2]*V)); //calcGamma_T(2, U, V, mag);
+	feq[3] = wf[3]*temperature*(1 + 3.0 * (d2q9_ex[3]*U + d2q9_ey[3]*V)); //calcGamma_T(3, U, V, mag);
+	feq[4] = wf[4]*temperature*(1 + 3.0 * (d2q9_ex[4]*U + d2q9_ey[4]*V)); //calcGamma_T(4, U, V, mag);
+	feq[5] = wf[5]*temperature*(1 + 3.0 * (d2q9_ex[5]*U + d2q9_ey[5]*V)); //calcGamma_T(5, U, V, mag);
+	feq[6] = wf[6]*temperature*(1 + 3.0 * (d2q9_ex[6]*U + d2q9_ey[6]*V)); //calcGamma_T(6, U, V, mag);
+	feq[7] = wf[7]*temperature*(1 + 3.0 * (d2q9_ex[7]*U + d2q9_ey[7]*V)); //calcGamma_T(7, U, V, mag);
+	feq[8] = wf[8]*temperature*(1 + 3.0 * (d2q9_ex[8]*U + d2q9_ey[8]*V)); //calcGamma_T(8, U, V, mag);
 
 	real_t myPhaseF = PhaseF(0,0);
 	real_t rho = getRho();
@@ -470,8 +487,11 @@ CudaDeviceFunction void temp_iter_f(){
 	for (int i=0; i<9; i++){
 		R[i] = f[i]-feq[i];
 	}
+
+	//Perhaps just implement SRT for now
 	relaxMRT(R,tau); //replaced tau with 1/omega_k for temperature relaxation
 	
+	//I dont think you should be applying a buoyancy force to the thermal distributions?
 	real_t F_thermo_mag = sqrt(F_thermo.x*F_thermo.x+F_thermo.y*F_thermo.y);
 	
 	real_t u_mag = sqrt(U*U+V*V);
