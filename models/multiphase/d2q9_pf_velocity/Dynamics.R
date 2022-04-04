@@ -105,14 +105,16 @@ if (Options$thermo){
 
 	# Temperature inputs:
 	AddSetting("surfPower",	default="1", comment="Use for parabolic representation of surface tension")
-	AddSetting("sigma_T",			comment="Derivative describing how surface tension changes with temp unit=[N/m2]")
-	AddSetting("sigma_TT",			comment="Derivative describing how surface tension changes with temp unit=[N/m3]")
-	AddSetting("T_ref",				comment="Reference temperature at which sigma is set unit=[K]")
+	AddSetting("sigma_T",		default="-0.00017",	comment="Derivative describing how surface tension changes with temp unit=[N/m2]")
+	AddSetting("sigma_TT",			default="1",comment="Derivative describing how surface tension changes with temp unit=[N/m3]")
+	AddSetting("T_ref",			default="1",	comment="Reference temperature at which sigma is set unit=[K]")
 	AddSetting("T_init",zonal=T, 	comment="Initial temperature field unit=[K]")
-	AddSetting("cp_h",				comment="specific heat for heavy phase unit=[J/kg/K]")
-	AddSetting("cp_l",				comment="specific heat for light phase unit=[J/kg/K]")
-	AddSetting("k_h", 				comment="thermal conductivity for heavy phase unit=[W/m/K]")
-	AddSetting("k_l", 				comment="thermal conductivity for light phase unit=[W/m/K]")
+	AddSetting("cp_h",			default="2",	comment="specific heat for heavy phase unit=[J/kg/K]")
+	AddSetting("cp_l",			default="1",	comment="specific heat for light phase unit=[J/kg/K]")
+	AddSetting("k_h", 			default="0.5",	comment="thermal conductivity for heavy phase unit=[W/m/K]")
+	AddSetting("k_l", 			default="0.024",	comment="thermal conductivity for light phase unit=[W/m/K]")
+	AddSetting("Beta_h",			default="0.000002",	comment="thermal expansion coefficient for heavy phase unit=[]")
+	AddSetting("Beta_l",			default="0.004",	comment="thermal expansion coefficient for light phase unit=[]")
 	AddSetting("dT",				comment="Application of vertical temp gradient to speed up initialisation unit=[K]")
 	AddSetting("dTx", default="0",	comment="Application of horizontal temp gradient to speed up initialisation unit=[K]")	
 	AddSetting("stabiliser", default="1",	comment="If not solving flow field, can adjust temperature timestep")	
@@ -200,6 +202,7 @@ AddSetting(name="CenterY", default="0", comment='Circle Center y-coord')
 AddSetting(name="BubbleType", default="1", comment='Drop/bubble')
 
 #	Inputs: For phasefield evolution
+AddSetting(name="IntWidth", default=4,    comment='Anti-diffusivity coeff')#Added for F_surftens
 AddSetting(name="Density_h", comment='High density fluid')
 AddSetting(name="Density_l", comment='Low  density fluid')
 AddSetting(name="PhaseField_h", default=1, comment='PhaseField in high density fluid')
@@ -208,12 +211,14 @@ AddSetting(name="PhaseField_init", 	   comment='Initial/Inflow PhaseField distri
 AddSetting(name="W", default=4,    comment='Anti-diffusivity coeff (phase interfacial thickness) ')
 AddSetting(name="omega_phi", comment='one over relaxation time (phase field)')
 AddSetting(name="M", omega_phi='1.0/(3*M+0.5)', default=0.02, comment='Mobility')
-AddSetting(name="sigma", 		   comment='surface tension')
+AddSetting(name="sigma", 		default=0.076 ,  comment='surface tension')
 AddSetting(name="radAngle",default='1.570796', comment='Contact angle in radians, can use units -> 90d where d=2pi/360', zonal=T)
 
 # 	Inputs: Fluid Properties
 AddSetting(name="tau_l", comment='relaxation time (low density fluid)')
 AddSetting(name="tau_h", comment='relaxation time (high density fluid)')
+AddSetting(name="dynamic_viscosity_l", default=0.1,comment='dynamic viscosity light')
+AddSetting(name="dynamic_viscosity_h", default=0.1,comment='dynamic viscosity heavy')
 AddSetting(name="Viscosity_l", tau_l='(3*Viscosity_l)', default=0.16666666, comment='kinematic viscosity')
 AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)', default=0.16666666, comment='kinematic viscosity')
 

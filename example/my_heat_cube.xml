@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<CLBConfig version="2.0" output="output/">
+      <Geometry nx="128" ny="128" >
+      <BGK><Box /></BGK>
+        <Wall mask="ALL" name="border" >
+                <Box nx="1"/>
+                <Box dx="-1"/>
+                <Box ny="1"/>
+                <Box dy="-1"/>
+        </Wall>
+        <None name="heated_region">
+             <Sphere dx="80" nx="10" dy="25" ny="10" /> 
+        </None>        
+
+        <HeaterDirichletTemperature  name="dirichlet_hot"> 
+          <Box nx="1" dx="-2"/>
+        </HeaterDirichletTemperature>
+
+        <HeaterDirichletTemperature  name="dirichlet_cold"> 
+          <Box dx="1" nx="1" />
+        </HeaterDirichletTemperature>
+
+        
+  </Geometry>
+    <Model>
+    <Param name="k" value="0.1666666" />
+    <Param name="cp" value="1" />
+
+    <Param name="InitTemperature" value="0"/>
+    <Param name="InitTemperature" value="100" zone="heated_region"/>
+    <Param name="InitTemperature" value="1" zone="dirichlet_hot"/>
+    <Param name="InitTemperature" value="-1" zone="dirichlet_cold"/>
+
+    <Param name="GravitationY" value="-1.0E-05" />
+    <Param name="BoussinesqCoeff" value="10"/>
+
+    </Model>
+
+<Solve Iterations="10" output="output/"> <VTK Iterations="1"/> </Solve>
+<Failcheck Iterations="500" nx="128" ny="128" />
+<Log Iterations="100"/>
+<Solve Iterations="10000" output="output/"> <VTK Iterations="500"/> </Solve>
+</CLBConfig>
+

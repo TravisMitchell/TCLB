@@ -61,16 +61,13 @@ if (Options$Outflow){
 if (Options$thermo){
 	f = PV(Density$name[Density$group == "f"])
 }
+
 ?>
 //	EXPORTABLE QUANTITIES:
 #ifdef OPTIONS_thermo
 CudaDeviceFunction real_t gettemperature(){
-	return <?R 
-	if (Options$thermo){
-		C(sum(f)) 
-	} else {
-		0
-	}?>;
+	real_t t = <?R C(sum(f)) ?>;
+	return t;
 }
 
 CudaDeviceFunction real_t getsurfaceTension(){
@@ -134,6 +131,9 @@ CudaDeviceFunction vector_t getNormal(){
 }
 
 // 	HELPER FUNCTIONS:
+CudaDeviceFunction real_t dotProduct( vector_t a, vector_t b) {
+		return a.x*b.x + a.y*b.y;
+}
 CudaDeviceFunction vector_t calcGradPhi(){
 	vector_t gradPhi;
 	// eq 34 from "Improved locality of the phase-field lattice Boltzmann 
@@ -237,6 +237,31 @@ CudaDeviceFunction real_t calcGamma(int i, real_t u, real_t v, real_t u2mag){
 	gamma = wf[i] * (1 + 3.0*(tmp) + 4.5*(tmp*tmp) - 1.5*(u2mag)) ;
 	return gamma;
 }
+CudaDeviceFunction real_t calcGamma_T(int i, real_t u, real_t v, real_t u2mag){
+	// eq 10 from "Improved locality of the phase-field lattice Boltzmann 
+	// model for immiscible fluids at high density ratios"
+	
+	// thermal equilibrium functions
+	//eq 43 in AN IMPROVED THERMAL LATTICE BOLTZMANN MODEL FOR FLOWS WITHOUT VISCOUS 
+	//HEAT  DISSIPATION AND COMPRESSION WORK
+	real_t gammat, tmp, c2, tmp2;
+	tmp = (d2q9_ex[i]*u+d2q9_ey[i]*v);
+	c2 = (d2q9_ex[i]*d2q9_ex[i]+d2q9_ey[i]*d2q9_ey[i]); //c^2
+
+	tmp2 = wf[i] * (1 + 3.0*(tmp)/c2 + 4.5*(tmp*tmp)/(c2*c2) - 1.5*(u2mag)/c2);
+	
+	real_t p = getNormalizedPressure();
+	real_t rho_0 = getRho();
+	
+	if (i=0){
+		gammat = rho_0-4*5/12*p/c2+rho_0*tmp2;
+	} else if (i<5) {
+		gammat =1/3*p/c2+rho_0*tmp2 ;
+	} else {
+		gammat =1/12*p/c2+rho_0*tmp2 ;
+	}
+	return gammat;
+}
 
 CudaDeviceFunction real_t calcF_phi(int i, real_t numerator, real_t nx, real_t ny){
 	// eq 7 from "Improved locality of the phase-field lattice Boltzmann 
@@ -265,6 +290,25 @@ CudaDeviceFunction vector_t calcF_phi_xy(vector_t gradPhi, real_t myPhaseF, real
 	f_phi.y=F_phi_coeff*ny;
 	return f_phi;
 }
+CudaDeviceFunction real_t calcTau_T(real_t myPhaseF, real_t rho)
+{	
+	//relaxation time for thermal model
+	// eq 9 from Regularized thermal lattice Boltzmann method for natural 
+	//convection with large temperature differences
+	
+	real_t tau_v = calcTau(myPhaseF,rho);
+	real_t normPhaseF = (myPhaseF - PhaseField_l)/(PhaseField_h - PhaseField_l);
+	real_t dynamic_viscosity = dynamic_viscosity_l+(dynamic_viscosity_h-dynamic_viscosity_l)*normPhaseF;
+	real_t kinematic_viscosity = Viscosity_l+(Viscosity_h-Viscosity_l)*normPhaseF;
+	
+	real_t momentum_diffusivity = dynamic_viscosity/rho;
+	real_t thermal_diffusivity = kinematic_viscosity/rho;
+	
+	real_t Pr = momentum_diffusivity/thermal_diffusivity;
+	return tau_v/Pr;
+}
+
+
 
 CudaDeviceFunction real_t calcTau(real_t myPhaseF, real_t myRho)
 {
@@ -385,16 +429,15 @@ CudaDeviceFunction void temp_init_f(){
 	U = VelocityX;
 	V = VelocityY;
 	real_t mag = U*U + V*V;
-	// Marius to check the f_eq formula for the thermal LBM
-	f[0] = calcGamma(0, U, V, mag);
-	f[1] = calcGamma(1, U, V, mag);
-	f[2] = calcGamma(2, U, V, mag);
-	f[3] = calcGamma(3, U, V, mag);
-	f[4] = calcGamma(4, U, V, mag);
-	f[5] = calcGamma(5, U, V, mag);
-	f[6] = calcGamma(6, U, V, mag);
-	f[7] = calcGamma(7, U, V, mag);
-	f[8] = calcGamma(8, U, V, mag);
+	f[0] = calcGamma_T(0, U, V, mag);
+	f[1] = calcGamma_T(1, U, V, mag);
+	f[2] = calcGamma_T(2, U, V, mag);
+	f[3] = calcGamma_T(3, U, V, mag);
+	f[4] = calcGamma_T(4, U, V, mag);
+	f[5] = calcGamma_T(5, U, V, mag);
+	f[6] = calcGamma_T(6, U, V, mag);
+	f[7] = calcGamma_T(7, U, V, mag);
+	f[8] = calcGamma_T(8, U, V, mag);
 }
 
 CudaDeviceFunction void temp_iter_f(){
@@ -403,15 +446,41 @@ CudaDeviceFunction void temp_iter_f(){
 	U = U(0,0);
 	V = V(0,0);
 	real_t mag = U*U + V*V;
-	f[0] = calcGamma(0, U, V, mag);
-	f[1] = calcGamma(1, U, V, mag);
-	f[2] = calcGamma(2, U, V, mag);
-	f[3] = calcGamma(3, U, V, mag);
-	f[4] = calcGamma(4, U, V, mag);
-	f[5] = calcGamma(5, U, V, mag);
-	f[6] = calcGamma(6, U, V, mag);
-	f[7] = calcGamma(7, U, V, mag);
-	f[8] = calcGamma(8, U, V, mag);
+	real_t feq[9];
+	real_t R[9];
+	real_t S[9];
+	//equilibrium functions
+	feq[0] = calcGamma_T(0, U, V, mag);
+	feq[1] = calcGamma_T(1, U, V, mag);
+	feq[2] = calcGamma_T(2, U, V, mag);
+	feq[3] = calcGamma_T(3, U, V, mag);
+	feq[4] = calcGamma_T(4, U, V, mag);
+	feq[5] = calcGamma_T(5, U, V, mag);
+	feq[6] = calcGamma_T(6, U, V, mag);
+	feq[7] = calcGamma_T(7, U, V, mag);
+	feq[8] = calcGamma_T(8, U, V, mag);
+
+	real_t myPhaseF = PhaseF(0,0);
+	real_t rho = getRho();
+	real_t tau = calcTau_T(myPhaseF,rho); //thermal relaxation time
+	vector_t gradPhi = calcGradPhi();
+	real_t p = getNormalizedPressure();
+	vector_t F_thermo = calcTotalThermoForceMRT(rho,myPhaseF);
+	real_t c;
+	for (int i=0; i<9; i++){
+		R[i] = f[i]-feq[i];
+	}
+	relaxMRT(R,tau); //replaced tau with 1/omega_k for temperature relaxation
+	
+	real_t F_thermo_mag = sqrt(F_thermo.x*F_thermo.x+F_thermo.y*F_thermo.y);
+	
+	real_t u_mag = sqrt(U*U+V*V);
+	//Collision
+	for (int i=0; i<9;i++){
+		c = sqrt(d2q9_ex[i]*d2q9_ex[i]+d2q9_ey[i]*d2q9_ey[i]);
+		S[i] = (1-1./(2*tau))*f[i]*F_thermo_mag*(c-u_mag)/(rho)*9.; // collision with force term
+		f[i] = f[i]-R[i]+S[i]; //updating term
+}
 }
 
 CudaDeviceFunction void Init_temp(){
@@ -526,8 +595,7 @@ CudaDeviceFunction void Init_distributions(){
 }
 
 //	ITERATION:
-CudaDeviceFunction void BC_Switcher ()
-{
+CudaDeviceFunction void BC_Switcher() {
 	switch (NodeType & NODE_BOUNDARY) {
 		case NODE_Solid:
 		case NODE_Wall:
@@ -1123,6 +1191,28 @@ CudaDeviceFunction void relaxMRT(real_t R[9], real_t tau)
 	R[8] = ( S[2] + ( S[1] + S[0]*2. )*2. + ( -S[6] + S[4] - S[8]*3. + ( -S[5] + S[3] )*2. )*3. )/36.;
 }
 
+CudaDeviceFunction vector_t calcTotalThermoForceMRT(real_t myPhaseF, real_t rho)
+{	
+	real_t normPhaseF = (myPhaseF - PhaseField_l)/(PhaseField_h - PhaseField_l);
+	real_t Beta = Beta_l + (Beta_h-Beta_l)*normPhaseF; //thermal expansion coefficient
+	vector_t gradT;
+	gradT.x = (Temp(1,0) - Temp(-1,0))/3.0 + (Temp(1,1) - Temp(-1,-1) + Temp(1,-1) - Temp(-1,1))/12.0;
+	gradT.y = (Temp(0,1) - Temp(0,-1))/3.0 + (Temp(1,1) - Temp(-1,-1) + Temp(-1,1) - Temp(1,-1))/12.0;
+	
+	vector_t F_conv; //convection force
+	F_conv.x = rho*GravitationX*Beta*gradT.x;
+	F_conv.x = rho*GravitationY*Beta*gradT.x;
+	
+	
+	vector_t F_thermo;
+	F_thermo.x = F_conv.x;
+	F_thermo.y = F_conv.y;
+	
+	return F_thermo;
+}
+
+
+
 CudaDeviceFunction vector_t calcTotalHydrodynamicForceMRT(vector_t gradPhi, real_t myPhaseF, real_t rho, real_t tau, real_t mu, real_t p)
 {
 	// arguments:
@@ -1155,8 +1245,30 @@ CudaDeviceFunction vector_t calcTotalHydrodynamicForceMRT(vector_t gradPhi, real
 	#ifdef OPTIONS_thermo
 	// MARIUS to have ago updating to capture coupling force of
 	// thermocapilary flow (use d3q27_pf_velocity for inspiration)
-		F_surf_tension[0] = mu*gradPhi.x;
-		F_surf_tension[1] = mu*gradPhi.y;
+
+		real_t SurfaceTension = getsurfaceTension();
+		real_t Cond = getthermalconductivity();
+		real_t tmpSig, delta_s, dotTMP, magnPhi, magnPhi2;
+		vector_t gPhi = gradPhi;
+		magnPhi = sqrt(gPhi.x*gPhi.x + gPhi.y*gPhi.y + 1e-32);
+		magnPhi2 = magnPhi*magnPhi;
+		vector_t gradT;
+		
+		gradT.x = (Temp(1,0) - Temp(-1,0))/3.0 + (Temp(1,1) - Temp(-1,-1) + Temp(1,-1) - Temp(-1,1))/12.0;
+		gradT.y = (Temp(0,1) - Temp(0,-1))/3.0 + (Temp(1,1) - Temp(-1,-1) + Temp(-1,1) - Temp(1,-1))/12.0;
+		dotTMP = dotProduct(gradT,gPhi);
+		if (surfPower < 2) {
+			delta_s = 1.5*IntWidth*sigma_T;
+			F_surf_tension[0] = mu * gPhi.x + delta_s*( magnPhi2*gradT.x - dotTMP*gPhi.x );
+			F_surf_tension[1] = mu * gPhi.y + delta_s*( magnPhi2*gradT.y - dotTMP*gPhi.y );
+		} else {
+			vector_t gradSig;
+			gradSig.x = (SurfaceTension(1,0) - SurfaceTension(-1,0))/3.0 + (SurfaceTension(1,1) - SurfaceTension(-1,-1) + SurfaceTension(1,-1) - SurfaceTension(-1,1))/12.0;
+			gradSig.y = (SurfaceTension(0,1) - SurfaceTension(0,-1))/3.0 + (SurfaceTension(1,1) - SurfaceTension(-1,-1) + SurfaceTension(-1,1) - SurfaceTension(1,-1))/12.0;
+			delta_s = 1.5*IntWidth;
+			F_surf_tension[0] = mu * gPhi.x + delta_s*gradSig.x*( magnPhi2*gradT.x - dotTMP*gPhi.x );
+			F_surf_tension[1] = mu * gPhi.y + delta_s*gradSig.y*( magnPhi2*gradT.y - dotTMP*gPhi.y );			
+		}
 	#else
 		F_surf_tension[0] = mu*gradPhi.x;
 		F_surf_tension[1] = mu*gradPhi.y;
@@ -1175,7 +1287,7 @@ CudaDeviceFunction vector_t calcTotalHydrodynamicForceMRT(vector_t gradPhi, real
 		
 		relaxMRT(R, tau);
 
-		// Stress/strain Tensor
+		// Stress strain Tensor
 		stress[0] = 0.0;stress[1] = 0.0;stress[2] = 0.0;
 		for (int i=0; i< 9; i++){
 			stress[0] += R[i]*d2q9_ex[i]*d2q9_ex[i];
@@ -1190,7 +1302,7 @@ CudaDeviceFunction vector_t calcTotalHydrodynamicForceMRT(vector_t gradPhi, real
 		// Total Hydrodynamic Force
 		F_total_hydro.x = F_surf_tension[0] + F_pressure[0] + F_body[0] + F_mu[0];
 		F_total_hydro.y = F_surf_tension[1] + F_pressure[1] + F_body[1] + F_mu[1];
-		F_total_hydro.z = 0;
+
 
 		// update velocity and re-iterate
 		U = g[1]-g[3]+g[5]-g[6]-g[7]+g[8] + 0.5*F_total_hydro.x/rho;

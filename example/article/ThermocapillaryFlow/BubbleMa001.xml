@@ -56,7 +56,7 @@
 	<VTK what="PhaseField,U,T" />
 	<Failcheck nx="10"	Iterations="5"/>
 	<Solve 		Iterations="100000">
-		<VTK 	Iterations="50000" what="PhaseField,U,T" />
+		<VTK 	Iterations="5000" what="PhaseField,U,T" />
 		<Log	Iterations="100"/>
 	</Solve>
 </CLBConfig>

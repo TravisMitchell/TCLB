@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<CLBConfig version="2.0" output="output/">
+      <Geometry nx="128" ny="128" >
+      <MRT><Box /></MRT>
+        <Wall mask="ALL" name="border" >
+                <Box nx="1"/>
+                <Box dx="-1"/>
+                <Box ny="1"/>
+                <Box dy="-1"/>
+        </Wall>
+        <None name="heated_region">
+             <Box dy="-1" /> 
+        </None>        
+
+        
+  </Geometry>
+    <Model>
+
+    <Param name="T_init" value="1"/>
+    <Param name="T_init" value="50" zone="heated_region"/>
+    
+    <Param name="PhaseField_h" value="1"/>
+    <Param name="PhaseField_l" value="0" />
+    <Param name="PhaseField_init" value="1"/>
+    <Param name="Density_h" value="1.000000"/>
+    <Param name="Density_l" value="0.00120711"/>
+    <Param name="omega_phi" value="1"/>
+    <Param name="dT" value="1"/>
+    <Param name="T_ref" value="1"/>
+
+    <Param name="GravitationY" value="-1.0E-05" />
+
+    </Model>
+<VTK Iterations="1"/>
+<Solve Iterations="10" output="output/"> <VTK Iterations="1"/> </Solve>
+<Failcheck Iterations="500" nx="128" ny="128" />
+<Log Iterations="100"/>
+<Solve Iterations="10000" output="output/"> <VTK Iterations="500"/> </Solve>
+</CLBConfig>
+
