@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<CLBConfig version="2.0" output="output/">
+<Geometry nx="640" ny="160">
+<MRT><Box /></MRT>
+<None name="lowDensityInit">
+    <Box dy="-96" dx="32" nx="32"/>
+</None>
+<NVelocity name="lowInlet">
+    <Box dy="-1" dx="32" nx="32"/>
+</NVelocity>
+<WVelocity name="highInlet">
+    <Box nx="1" dy="1" ny="32"/>
+</WVelocity>
+<Convective_E name="outlet">
+    <Box dx="-1" dy="1" ny="32"/>
+</Convective_E>
+<Wall mask="ALL">
+    <Box   ny="2" />
+    <Box   dy="33" nx="32"/>
+    <Box   dy="33" dx="64"/>
+    <Wedge dx="32" nx="12" dy="33" ny="24" direction="LowerLeft"/>
+    <Wedge dx="52" nx="12" dy="33" ny="24" direction="LowerRight"/>
+</Wall>
+</Geometry>
+<Model>
+    <Param name="Density_h" value="1.0000"    />
+    <Param name="Density_l" value="1.0000"    />
+
+    <Param name="Viscosity_h" value="0.004000000"    />
+    <Param name="Viscosity_l" value="0.002000000"    />
+
+    <Param name="PhaseField_h" value="1"      />
+    <Param name="PhaseField_l" value="0" />
+
+    <Param name="PhaseField_init" value="1"/>
+    <Param name="PhaseField_init" value="1" zone="highInlet"/>
+    <Param name="PhaseField_init" value="0" zone="lowDensityInit"/>
+    <Param name="PhaseField_init" value="0" zone="lowInlet" />
+
+    <Param name="VelocityX" value="0"/>
+    <Param name="VelocityY" value="0"/>
+    <Param name="VelocityX"  value="0.00080000" zone="highInlet"/>
+    <Param name="VelocityY" value="-0.00080000" zone="lowInlet"/>
+
+    <Param name="M" value="0.1"   />
+    <Param name="W" value="4"    />
+    <Param name="sigma" value="0.0012"/>
+
+    <Param name="radAngle" value="5d"/>
+</Model>
+<VTK/>
+<!--<RunR Iterations="10"/>-->
+<Solve     Iterations="100000">
+    <Failcheck  Iterations="7000" ny="160" />
+    <VTK Iterations="100000"/>
+</Solve>
+<RunR>
+	    nameQties = c(paste0("g",0:8,""),paste0("h",0:8,"")) 
+       	numsQties = length(nameQties)
+       	densities = array(rep(0,31*3000*numsQties), dim=c(31,3000,numsQties))
+       	i = 0
+</RunR>
+<RunR Iterations="25">
+    i = i + 1
+	for (indx in 1:numsQties){
+		qq = nameQties[indx]
+    	densities[,i,indx] = Solver$Quantities[[qq]][220,3:33,1]
+	}
+</RunR>
+<Solve     Iterations="75000">
+    <Failcheck  Iterations="5000" ny="160" />
+    <VTK Iterations="7500"/>
+</Solve>
+<RunR>
+	save(densities, file="output/Densities.RDATA")
+</RunR>
+<VTK/>
+</CLBConfig>

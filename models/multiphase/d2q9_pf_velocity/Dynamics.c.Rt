@@ -139,7 +139,10 @@ CudaDeviceFunction vector_t calcGradPhi(){
 		if ((NodeType & NODE_BOUNDARY) == NODE_Wall){
 			gradPhi.x = (PhaseF(1,0) - PhaseF(-1,0))/3.0 + (PhaseF(1,1) - PhaseF(-1,-1) + PhaseF(1,-1) - PhaseF(-1,1))/12.0;
 			gradPhi.y = (PhaseF(0,1) - PhaseF(0,-1))/3.0 + (PhaseF(1,1) - PhaseF(-1,-1) + PhaseF(-1,1) - PhaseF(1,-1))/12.0;
-		} else if (NodeType & NODE_BOUNDARY){
+		} else if ((NodeType & NODE_BOUNDARY) == NODE_EOutflow_ML){
+            gradPhi.x = (PhaseF(0,0) - PhaseF(-1,0));
+            gradPhi.y = (PhaseF(0,1) - PhaseF(0,-1))/2.0;
+        } else if (NodeType & NODE_BOUNDARY){
 			gradPhi.x = 0.0;
 			gradPhi.y = 0.0;
 		} else { 
@@ -1189,97 +1192,154 @@ CudaDeviceFunction float2 Color() {
 
 
 //	BOUNDARY CONDITIONS:
+CudaDeviceFunction void EVelocity(real_t ux, real_t uy, real_t phase)
+{
+    U = ux;
+    V = uy;
+<?R
+        n = c(1,0)
+        g = PV(DensityAll$name[DensityAll$group=="g"])
+        U = as.matrix(DensityAll[DensityAll$group=="g",c("dx","dy")])
+        u = PV(c("U","V"))
+        EQ = MRT_eq(U, PV(1), u)
+        geq = EQ$feq
+        bounce = Bounce(U)
+        sel = as.vector( (U %*% n) < 0)
+
+        sel2 = as.vector( ( U %*% n) == 0)  
+        exM = (g[sel2] - geq[sel2]) %*% U[sel2,]
+        Unknowns = 1.0/max(colSums(U[sel2,]^2)) # should be 6 for q27, 4 for q15
+        Nmat = t(U[sel,]) %*% U[sel,]
+
+        C(g[sel], g[bounce][sel] + (geq[sel] - geq[bounce][sel]) - 0.5* (exM %*% solve(Nmat) %*% t(U))[sel])
+    ?>
+    <?R
+        h = PV(DensityAll$name[DensityAll$group=="h"])
+        U_PF = U
+        pf = PV("phase")
+        EQ_h = MRT_eq(U_PF,PV(1),u)
+        n = c(-1,0)
+        heq = pf * EQ_h$feq
+        bounce = Bounce(U_PF)
+        sel = as.vector( (U_PF %*% n) < 0)
+
+        sel2 = as.vector( ( U_PF %*% n) == 0)   
+        exM = (h[sel2] - heq[sel2]) %*% rep(1,sum(sel2)) 
+        Unknowns = 1.0/sum(sel)
+
+        C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
+    ?>
+}
 CudaDeviceFunction void Outflow_East_ML()
 {
 // Python generated code
-    real_t m,neuron0_inter,neuron1_inter,neuron2_inter,neuron3_inter,neuron4_inter,neuron5_inter,neuron6_inter,neuron7_inter,neuron8_inter,neuron9_inter,neuron10_inter,neuron11_inter,neuron12_inter,neuron13_inter,neuron14_inter,neuron15_inter,neuron16_inter,neuron17_inter,neuron18_inter,neuron19_inter,neuron20_inter,neuron21_inter,neuron22_inter,neuron23_inter;
-real_t t,neuron0_hidden1,neuron1_hidden1,neuron2_hidden1,neuron3_hidden1,neuron4_hidden1,neuron5_hidden1,neuron6_hidden1,neuron7_hidden1,neuron8_hidden1,neuron9_hidden1,neuron10_hidden1,neuron11_hidden1,neuron12_hidden1,neuron13_hidden1,neuron14_hidden1,neuron15_hidden1,neuron16_hidden1,neuron17_hidden1,neuron18_hidden1,neuron19_hidden1,neuron20_hidden1,neuron21_hidden1,neuron22_hidden1,neuron23_hidden1;
+real_t m,neuron0_inter,neuron1_inter,neuron2_inter,neuron3_inter,neuron4_inter,neuron5_inter,neuron6_inter,neuron7_inter,neuron8_inter,neuron9_inter,neuron10_inter,neuron11_inter,neuron12_inter,neuron13_inter,neuron14_inter,neuron15_inter,neuron16_inter,neuron17_inter,neuron18_inter,neuron19_inter,neuron20_inter,neuron21_inter,neuron22_inter,neuron23_inter,neuron24_inter,neuron25_inter;
+real_t t,neuron0_hidden1,neuron1_hidden1,neuron2_hidden1,neuron3_hidden1,neuron4_hidden1,neuron5_hidden1,neuron6_hidden1,neuron7_hidden1,neuron8_hidden1,neuron9_hidden1,neuron10_hidden1,neuron11_hidden1,neuron12_hidden1,neuron13_hidden1,neuron14_hidden1,neuron15_hidden1,neuron16_hidden1,neuron17_hidden1,neuron18_hidden1,neuron19_hidden1,neuron20_hidden1,neuron21_hidden1,neuron22_hidden1,neuron23_hidden1,neuron24_hidden1,neuron25_hidden1;
 real_t g0_tmp, g1_tmp, g2_tmp, g3_tmp, g4_tmp, g5_tmp, g6_tmp, g7_tmp, g8_tmp, h0_tmp, h1_tmp, h2_tmp, h3_tmp, h4_tmp, h5_tmp, h6_tmp, h7_tmp, h8_tmp;
+real_t C = PhaseF(-1,0);
+real_t phase, ux, uy;
 
-    g0_tmp = g[0]*8155.91426041 + -15.22584061;
-    g1_tmp = g[1]*1135.06521550 + -0.55205172;
-    g2_tmp = g[2]*1999.07094907 + -0.48979649;
-    g4_tmp = g[4]*1999.18125559 + -0.48348294;
-    g5_tmp = g[5]*4399.88986145 + -0.49014102;
-    g8_tmp = g[8]*4274.56529220 + -0.47616677;
-    h0_tmp = h[0]*2.24998892 + -0.00000045;
-    h1_tmp = h[1]*8.93447710 + -0.00000045;
-    h2_tmp = h[2]*8.99480997 + -0.00000045;
-    h4_tmp = h[4]*8.99485037 + -0.00000045;
-    h5_tmp = h[5]*35.73785468 + -0.00000045;
-    h8_tmp = h[8]*35.73750543 + -0.00000045;
-    
-neuron0_inter=-0.558469*g0_tmp - 0.370158*g1_tmp - 0.0136927*g2_tmp - 0.591664*g4_tmp - 0.251223*g5_tmp - 0.546138*g8_tmp - 0.247615*h0_tmp - 0.571804*h1_tmp + 0.0141903*h2_tmp - 0.519335*h4_tmp - 0.0677301*h5_tmp - 0.182808*h8_tmp - 0.295575;
- neuron1_inter=-0.389838*g0_tmp - 0.0525287*g1_tmp - 0.531055*g2_tmp - 0.00667*g4_tmp - 0.0163121*g5_tmp + 0.126847*g8_tmp - 0.229843*h0_tmp - 0.107759*h1_tmp - 0.179255*h2_tmp - 0.23223*h4_tmp + 0.0345551*h5_tmp - 0.541495*h8_tmp - 0.176934;
- neuron2_inter=-0.362906*g0_tmp - 0.776252*g1_tmp - 0.0185545*g2_tmp - 0.183201*g4_tmp - 0.574499*g5_tmp - 0.138123*g8_tmp - 0.574091*h0_tmp - 0.0238489*h1_tmp + 0.00744216*h2_tmp - 0.24151*h4_tmp + 0.0356622*h5_tmp - 0.273539*h8_tmp - 0.200331;
- neuron3_inter=0.379317*g0_tmp - 0.456984*g1_tmp + 0.599949*g2_tmp - 0.362409*g4_tmp - 0.621711*g5_tmp - 0.373916*g8_tmp - 0.301683*h0_tmp - 0.0710819*h1_tmp - 0.480796*h2_tmp - 0.571111*h4_tmp + 0.218812*h5_tmp - 0.33192*h8_tmp - 0.0737796;
- neuron4_inter=-0.504865*g0_tmp + 0.191937*g1_tmp + 0.227719*g2_tmp + 0.00473015*g4_tmp - 0.257812*g5_tmp - 0.153059*g8_tmp - 0.427679*h0_tmp - 0.529037*h1_tmp - 0.323842*h2_tmp - 0.368616*h4_tmp - 0.0556198*h5_tmp - 0.443865*h8_tmp - 0.185705;
- neuron5_inter=0.400268*g0_tmp - 0.603681*g1_tmp - 0.556981*g2_tmp + 0.356883*g4_tmp - 0.0421571*g5_tmp - 0.340029*g8_tmp - 0.101785*h0_tmp - 0.150256*h1_tmp - 0.086585*h2_tmp + 0.0341691*h4_tmp - 0.611698*h5_tmp - 0.508558*h8_tmp - 0.144824;
- neuron6_inter=-0.543583*g0_tmp + 0.0637556*g1_tmp - 0.0932505*g2_tmp - 0.263717*g4_tmp + 0.0853664*g5_tmp + 0.463696*g8_tmp + 0.0598933*h0_tmp - 0.345904*h1_tmp - 0.440606*h2_tmp - 0.000763423*h4_tmp + 0.00749556*h5_tmp - 0.514078*h8_tmp - 0.165261;
- neuron7_inter=-0.445544*g0_tmp - 0.208086*g1_tmp + 0.0519758*g2_tmp - 0.324573*g4_tmp + 0.091539*g5_tmp - 0.312107*g8_tmp - 0.207749*h0_tmp - 0.117792*h1_tmp + 0.2303*h2_tmp - 0.128952*h4_tmp - 0.486461*h5_tmp + 0.00908835*h8_tmp - 0.224344;
- neuron8_inter=-0.10597*g0_tmp - 0.959647*g1_tmp - 0.621384*g2_tmp + 0.386737*g4_tmp - 0.959903*g5_tmp - 0.57013*g8_tmp + 0.527527*h0_tmp + 0.104382*h1_tmp - 0.108958*h2_tmp + 0.199467*h4_tmp + 0.28255*h5_tmp + 0.0327192*h8_tmp - 0.00759211;
- neuron9_inter=0.409682*g0_tmp - 0.909345*g1_tmp + 0.208478*g2_tmp - 0.0732964*g4_tmp - 0.84988*g5_tmp - 0.862102*g8_tmp + 0.215334*h0_tmp + 0.448907*h1_tmp - 0.13047*h2_tmp - 0.0596934*h4_tmp + 0.175619*h5_tmp - 0.165671*h8_tmp + 0.116264;
- neuron10_inter=-0.190425*g0_tmp - 0.722042*g1_tmp - 0.0906912*g2_tmp - 0.441353*g4_tmp - 0.329786*g5_tmp - 0.316275*g8_tmp - 0.494886*h0_tmp - 0.385449*h1_tmp - 0.450021*h2_tmp + 0.224227*h4_tmp - 0.262992*h5_tmp + 0.244347*h8_tmp - 0.251503;
- neuron11_inter=-0.775211*g0_tmp - 0.519024*g1_tmp - 0.386677*g2_tmp - 0.0999591*g4_tmp + 0.0275936*g5_tmp + 0.0209441*g8_tmp + 0.637504*h0_tmp + 0.765511*h1_tmp + 0.452186*h2_tmp + 0.829322*h4_tmp + 0.671358*h5_tmp + 0.212422*h8_tmp - 0.407827;
- neuron12_inter=-0.521913*g0_tmp - 0.618772*g1_tmp - 0.208743*g2_tmp - 0.179466*g4_tmp + 0.0629004*g5_tmp - 0.212548*g8_tmp + 0.376586*h0_tmp + 0.506198*h1_tmp + 0.212716*h2_tmp - 0.103811*h4_tmp + 0.155553*h5_tmp - 0.101487*h8_tmp - 0.0785918;
- neuron13_inter=-0.0221608*g0_tmp - 0.617855*g1_tmp - 0.480864*g2_tmp - 0.213742*g4_tmp - 0.673272*g5_tmp - 0.63161*g8_tmp + 0.198442*h0_tmp - 0.198454*h1_tmp + 0.226771*h2_tmp + 0.155827*h4_tmp - 0.284362*h5_tmp + 0.193318*h8_tmp - 0.0893161;
- neuron14_inter=-0.380641*g0_tmp - 0.189248*g1_tmp - 0.0167745*g2_tmp - 0.663472*g4_tmp - 0.257075*g5_tmp + 0.0110103*g8_tmp - 0.345266*h0_tmp - 0.20661*h1_tmp + 0.140701*h2_tmp - 0.385787*h4_tmp - 0.28361*h5_tmp - 0.147624*h8_tmp - 0.188275;
- neuron15_inter=0.154958*g0_tmp - 0.569834*g1_tmp + 0.0465854*g2_tmp - 0.342648*g4_tmp + 0.118686*g5_tmp - 0.437677*g8_tmp - 0.53897*h0_tmp - 0.0911821*h1_tmp + 0.0622091*h2_tmp - 0.24076*h4_tmp - 0.461373*h5_tmp - 0.578752*h8_tmp - 0.182962;
- neuron16_inter=-0.499314*g0_tmp - 0.467706*g1_tmp + 0.0133222*g2_tmp - 0.0701465*g4_tmp - 0.802644*g5_tmp - 0.808041*g8_tmp - 0.134414*h0_tmp + 0.0302282*h1_tmp + 0.0144518*h2_tmp - 0.27394*h4_tmp - 0.474659*h5_tmp + 0.0347863*h8_tmp - 0.228473;
- neuron17_inter=0.0169728*g0_tmp - 0.621097*g1_tmp + 0.00194117*g2_tmp - 0.257091*g4_tmp - 0.927908*g5_tmp - 0.837002*g8_tmp + 0.336251*h0_tmp + 0.0679087*h1_tmp - 0.0526752*h2_tmp - 0.168423*h4_tmp - 0.17741*h5_tmp + 0.368881*h8_tmp + 0.0914475;
- neuron18_inter=-0.248873*g0_tmp - 0.637041*g1_tmp - 0.490848*g2_tmp - 0.323088*g4_tmp - 0.133337*g5_tmp - 0.523472*g8_tmp + 0.111989*h0_tmp - 0.109198*h1_tmp - 0.104681*h2_tmp - 0.0399579*h4_tmp - 0.0932353*h5_tmp - 0.415077*h8_tmp - 0.173384;
- neuron19_inter=0.456859*g0_tmp - 1.03793*g1_tmp + 0.290213*g2_tmp - 0.499243*g4_tmp - 0.508736*g5_tmp - 0.848162*g8_tmp - 0.153504*h0_tmp + 0.345618*h1_tmp + 0.170962*h2_tmp + 0.213576*h4_tmp - 0.2973*h5_tmp + 0.23334*h8_tmp + 0.0723713;
- neuron20_inter=0.257139*g0_tmp - 1.03317*g1_tmp - 0.1621*g2_tmp + 0.346931*g4_tmp - 0.715213*g5_tmp - 0.765472*g8_tmp + 0.268912*h0_tmp - 0.172618*h1_tmp + 0.0619241*h2_tmp - 0.201493*h4_tmp + 0.222473*h5_tmp - 0.0325065*h8_tmp + 0.105917;
- neuron21_inter=-0.42928*g0_tmp - 0.698556*g1_tmp - 0.108241*g2_tmp + 0.478064*g4_tmp - 0.0913814*g5_tmp - 0.241137*g8_tmp - 0.273161*h0_tmp - 0.174462*h1_tmp - 0.0105006*h2_tmp - 0.160002*h4_tmp - 0.246318*h5_tmp + 0.310185*h8_tmp - 0.0380572;
- neuron22_inter=0.137738*g0_tmp - 0.498648*g1_tmp - 0.180704*g2_tmp - 0.242693*g4_tmp - 0.419172*g5_tmp - 0.753392*g8_tmp - 0.142929*h0_tmp - 0.269676*h1_tmp - 0.201825*h2_tmp + 0.00128587*h4_tmp - 0.657619*h5_tmp - 0.541428*h8_tmp - 0.23698;
- neuron23_inter=-0.389198*g0_tmp - 0.25285*g1_tmp - 0.02519*g2_tmp - 0.744413*g4_tmp - 0.57107*g5_tmp + 0.0139662*g8_tmp + 0.349836*h0_tmp + 0.0513143*h1_tmp + 0.253671*h2_tmp + 0.332775*h4_tmp + 0.307054*h5_tmp + 0.105411*h8_tmp - 0.339193;
+g0_tmp = g[0]*489.76322810 + -0.91003840;
+g1_tmp = g[1]*451.00142613 + -0.21934961;
+g2_tmp = g[2]*993.12451405 + -0.24332748;
+g4_tmp = g[4]*1017.08663299 + -0.24597271;
+g5_tmp = g[5]*1772.52270224 + -0.19745633;
+g8_tmp = g[8]*1698.34432451 + -0.18918769;
+h0_tmp = h[0]*2.24749849 + -0.00000045;
+h1_tmp = h[1]*8.86570420 + -0.00000044;
+h2_tmp = h[2]*8.98568716 + -0.00000045;
+h4_tmp = h[4]*8.98597859 + -0.00000045;
+h5_tmp = h[5]*35.46368853 + -0.00000044;
+h8_tmp = h[8]*35.46130595 + -0.00000044;
+C = C*0.99892641 + -0.00000045;
+neuron0_inter=0.168418*C - 0.344814*g0_tmp - 0.410702*g1_tmp + 0.167428*g2_tmp - 0.00874475*g4_tmp - 0.0953145*g5_tmp + 0.0715577*g8_tmp + 0.479235*h0_tmp + 0.323361*h1_tmp + 0.483366*h2_tmp + 0.552797*h4_tmp + 0.602236*h5_tmp + 0.0801678*h8_tmp + 0.160802;
+ neuron1_inter=0.0244597*C + 0.0577436*g0_tmp + 0.229845*g1_tmp + 0.215861*g2_tmp + 0.0237137*g4_tmp - 0.0157368*g5_tmp + 0.267942*g8_tmp + 0.460913*h0_tmp + 0.455765*h1_tmp + 0.106809*h2_tmp + 0.585902*h4_tmp - 0.0200136*h5_tmp + 0.215403*h8_tmp + 0.277446;
+ neuron2_inter=0.568199*C + 0.00277414*g0_tmp + 0.472165*g1_tmp + 0.423021*g2_tmp + 0.280752*g4_tmp + 0.406786*g5_tmp + 0.369666*g8_tmp + 0.187228*h0_tmp + 0.397474*h1_tmp + 0.440933*h2_tmp + 0.11739*h4_tmp - 0.0353169*h5_tmp + 0.287214*h8_tmp + 0.305814;
+ neuron3_inter=0.663687*C + 0.19171*g0_tmp - 0.313488*g1_tmp + 0.193286*g2_tmp + 0.510683*g4_tmp + 0.0767767*g5_tmp - 0.167794*g8_tmp + 0.0444628*h0_tmp + 0.225506*h1_tmp + 0.329913*h2_tmp + 0.00187413*h4_tmp + 0.629202*h5_tmp + 0.640279*h8_tmp + 0.288846;
+ neuron4_inter=-0.0199494*C - 0.257276*g0_tmp - 0.280627*g1_tmp - 0.589203*g2_tmp - 0.163557*g4_tmp - 0.040333*g5_tmp - 0.0631628*g8_tmp - 0.486506*h0_tmp - 0.250933*h1_tmp - 0.346654*h2_tmp - 0.122433*h4_tmp - 0.412473*h5_tmp - 0.137719*h8_tmp - 0.130629;
+ neuron5_inter=0.0784197*C + 0.498984*g0_tmp - 0.321596*g1_tmp - 1.70005*g2_tmp + 2.04776*g4_tmp - 1.08909*g5_tmp + 0.25082*g8_tmp + 0.101018*h0_tmp + 0.284428*h1_tmp - 0.15389*h2_tmp - 0.0791898*h4_tmp - 0.347782*h5_tmp + 0.169623*h8_tmp + 0.1483;
+ neuron6_inter=-0.121247*C + 0.066622*g0_tmp - 0.696323*g1_tmp + 0.469436*g2_tmp + 0.201561*g4_tmp - 0.79874*g5_tmp - 0.808933*g8_tmp + 0.41131*h0_tmp - 0.0146543*h1_tmp + 0.260432*h2_tmp + 0.181805*h4_tmp + 0.214565*h5_tmp - 0.204819*h8_tmp + 0.0157942;
+ neuron7_inter=0.0221193*C - 0.0428407*g0_tmp + 0.00734876*g1_tmp - 0.0345035*g2_tmp + 0.11325*g4_tmp + 0.470613*g5_tmp - 0.0090816*g8_tmp + 0.160574*h0_tmp + 0.0413716*h1_tmp + 0.510889*h2_tmp + 0.589043*h4_tmp + 0.242884*h5_tmp + 0.677598*h8_tmp + 0.276366;
+ neuron8_inter=0.103172*C + 0.238835*g0_tmp - 1.08331*g1_tmp - 0.0235579*g2_tmp - 0.0892287*g4_tmp - 1.10622*g5_tmp - 0.966101*g8_tmp + 0.332977*h0_tmp + 0.0301981*h1_tmp - 0.284991*h2_tmp + 0.383184*h4_tmp - 0.143911*h5_tmp + 0.211533*h8_tmp + 0.0230805;
+ neuron9_inter=0.513297*C + 0.176755*g0_tmp + 0.291146*g1_tmp - 0.411767*g2_tmp + 0.00648224*g4_tmp + 0.106912*g5_tmp + 0.579268*g8_tmp - 0.101006*h0_tmp + 0.172944*h1_tmp + 0.281179*h2_tmp + 0.663082*h4_tmp - 0.0450795*h5_tmp + 0.357138*h8_tmp + 0.164239;
+ neuron10_inter=-0.160045*C + 0.218124*g0_tmp - 0.903107*g1_tmp + 0.343934*g2_tmp - 0.232957*g4_tmp - 0.173755*g5_tmp - 0.970292*g8_tmp - 0.238783*h0_tmp - 0.0627036*h1_tmp - 0.354869*h2_tmp - 0.245576*h4_tmp - 0.651452*h5_tmp - 0.654758*h8_tmp - 0.39044;
+ neuron11_inter=-0.571258*C - 0.355011*g0_tmp - 0.887546*g1_tmp - 0.0945235*g2_tmp - 0.178592*g4_tmp - 0.545385*g5_tmp - 0.419226*g8_tmp - 0.255474*h0_tmp - 0.295313*h1_tmp - 0.718755*h2_tmp - 0.716204*h4_tmp - 0.167915*h5_tmp - 0.395905*h8_tmp - 0.175267;
+ neuron12_inter=0.0796445*C - 0.218319*g0_tmp + 0.0746893*g1_tmp + 0.470665*g2_tmp - 0.430433*g4_tmp + 0.247235*g5_tmp - 0.0610046*g8_tmp - 0.00733265*h0_tmp + 0.623707*h1_tmp + 0.260271*h2_tmp + 0.537183*h4_tmp + 0.176747*h5_tmp + 0.594891*h8_tmp + 0.130436;
+ neuron13_inter=0.415193*C + 0.22535*g0_tmp - 0.943405*g1_tmp + 0.585694*g2_tmp - 1.08601*g4_tmp + 0.175962*g5_tmp - 0.511109*g8_tmp - 0.0541312*h0_tmp - 0.276045*h1_tmp + 0.112702*h2_tmp - 0.451863*h4_tmp - 0.215443*h5_tmp + 0.17908*h8_tmp - 0.133472;
+ neuron14_inter=-0.107373*C - 0.595659*g0_tmp - 0.123208*g1_tmp - 0.229895*g2_tmp - 0.83636*g4_tmp + 0.265929*g5_tmp - 0.427428*g8_tmp + 0.758432*h0_tmp + 0.229643*h1_tmp + 0.649645*h2_tmp + 0.510136*h4_tmp + 0.643105*h5_tmp + 0.683369*h8_tmp - 0.50083;
+ neuron15_inter=-0.657165*C + 0.811461*g0_tmp - 0.0209292*g1_tmp + 0.116233*g2_tmp + 0.52252*g4_tmp - 0.366731*g5_tmp - 0.0364099*g8_tmp - 0.304037*h0_tmp - 0.153961*h1_tmp - 0.375539*h2_tmp - 0.557562*h4_tmp - 0.551748*h5_tmp - 0.0107577*h8_tmp - 0.00879124;
+ neuron16_inter=0.32373*C + 0.134212*g0_tmp - 1.07078*g1_tmp + 0.0557133*g2_tmp + 0.845636*g4_tmp - 1.12806*g5_tmp - 0.91784*g8_tmp - 0.161624*h0_tmp - 0.0281037*h1_tmp + 0.156905*h2_tmp - 0.0220845*h4_tmp - 0.0286336*h5_tmp + 0.220972*h8_tmp + 0.938903;
+ neuron17_inter=-0.53027*C + 0.00955174*g0_tmp - 0.563878*g1_tmp + 0.548901*g2_tmp - 0.806912*g4_tmp - 0.00845191*g5_tmp - 0.572997*g8_tmp - 0.182402*h0_tmp + 0.15335*h1_tmp - 0.314541*h2_tmp - 0.0717287*h4_tmp - 0.159115*h5_tmp - 0.554228*h8_tmp - 0.281687;
+ neuron18_inter=-0.207898*C + 0.797916*g0_tmp - 2.04719*g1_tmp + 1.19678*g2_tmp + 1.06492*g4_tmp - 1.27626*g5_tmp - 1.95839*g8_tmp - 0.38159*h0_tmp - 0.461441*h1_tmp + 0.176267*h2_tmp - 0.334078*h4_tmp + 0.0912082*h5_tmp - 0.261146*h8_tmp + 1.01236;
+ neuron19_inter=-0.128154*C + 0.509777*g0_tmp + 0.0855947*g1_tmp + 0.735815*g2_tmp - 0.0623466*g4_tmp + 0.712028*g5_tmp + 0.337129*g8_tmp + 0.104461*h0_tmp - 0.282305*h1_tmp + 0.188168*h2_tmp - 0.135488*h4_tmp - 0.259414*h5_tmp + 0.132901*h8_tmp + 0.191056;
+ neuron20_inter=-0.117734*C - 0.116155*g0_tmp - 0.409959*g1_tmp - 0.084894*g2_tmp - 0.787046*g4_tmp - 0.524127*g5_tmp - 0.535472*g8_tmp - 0.364489*h0_tmp - 0.4281*h1_tmp - 0.595516*h2_tmp - 0.330539*h4_tmp - 0.131407*h5_tmp - 0.394834*h8_tmp - 0.305505;
+ neuron21_inter=0.460141*C - 0.997481*g0_tmp + 0.235976*g1_tmp + 0.24625*g2_tmp + 0.536111*g4_tmp + 0.119311*g5_tmp + 0.192027*g8_tmp - 0.477676*h0_tmp - 0.282707*h1_tmp - 0.712124*h2_tmp - 1.01671*h4_tmp + 0.220212*h5_tmp + 0.0666238*h8_tmp + 1.6231;
+ neuron22_inter=0.504325*C + 0.324645*g0_tmp + 0.523542*g1_tmp + 0.292554*g2_tmp + 0.402982*g4_tmp + 0.564453*g5_tmp + 0.694711*g8_tmp - 0.0635742*h0_tmp + 0.194106*h1_tmp + 0.0323325*h2_tmp - 0.125937*h4_tmp + 0.0191739*h5_tmp + 0.395881*h8_tmp + 0.527968;
+ neuron23_inter=0.188486*C + 0.110358*g0_tmp - 0.353322*g1_tmp + 0.559264*g2_tmp + 0.000615449*g4_tmp - 0.151802*g5_tmp - 0.101855*g8_tmp + 0.611713*h0_tmp + 0.57313*h1_tmp + 0.332578*h2_tmp - 0.00513878*h4_tmp + 0.623589*h5_tmp + 0.058403*h8_tmp + 0.0958466;
+ neuron24_inter=-0.101515*C + 0.7479*g0_tmp - 0.49714*g1_tmp + 3.1435*g2_tmp - 2.13496*g4_tmp + 0.794806*g5_tmp - 2.01386*g8_tmp + 0.41484*h0_tmp + 0.29852*h1_tmp - 0.102732*h2_tmp + 0.154689*h4_tmp + 0.0576013*h5_tmp - 0.0769883*h8_tmp - 0.300263;
+ neuron25_inter=0.0198519*C - 0.0062857*g0_tmp - 0.193127*g1_tmp + 0.611258*g2_tmp - 0.37475*g4_tmp - 0.436403*g5_tmp - 0.700516*g8_tmp - 0.371501*h0_tmp + 0.218624*h1_tmp - 0.472186*h2_tmp - 0.540593*h4_tmp + 0.017956*h5_tmp + 0.145158*h8_tmp - 0.198887;
+neuron0_hidden1 = 1.0/(1.0+exp(-neuron0_inter));
+neuron1_hidden1 = 1.0/(1.0+exp(-neuron1_inter));
+neuron2_hidden1 = 1.0/(1.0+exp(-neuron2_inter));
+neuron3_hidden1 = 1.0/(1.0+exp(-neuron3_inter));
+neuron4_hidden1 = 1.0/(1.0+exp(-neuron4_inter));
+neuron5_hidden1 = 1.0/(1.0+exp(-neuron5_inter));
+neuron6_hidden1 = 1.0/(1.0+exp(-neuron6_inter));
+neuron7_hidden1 = 1.0/(1.0+exp(-neuron7_inter));
+neuron8_hidden1 = 1.0/(1.0+exp(-neuron8_inter));
+neuron9_hidden1 = 1.0/(1.0+exp(-neuron9_inter));
+neuron10_hidden1 = 1.0/(1.0+exp(-neuron10_inter));
+neuron11_hidden1 = 1.0/(1.0+exp(-neuron11_inter));
+neuron12_hidden1 = 1.0/(1.0+exp(-neuron12_inter));
+neuron13_hidden1 = 1.0/(1.0+exp(-neuron13_inter));
+neuron14_hidden1 = 1.0/(1.0+exp(-neuron14_inter));
+neuron15_hidden1 = 1.0/(1.0+exp(-neuron15_inter));
+neuron16_hidden1 = 1.0/(1.0+exp(-neuron16_inter));
+neuron17_hidden1 = 1.0/(1.0+exp(-neuron17_inter));
+neuron18_hidden1 = 1.0/(1.0+exp(-neuron18_inter));
+neuron19_hidden1 = 1.0/(1.0+exp(-neuron19_inter));
+neuron20_hidden1 = 1.0/(1.0+exp(-neuron20_inter));
+neuron21_hidden1 = 1.0/(1.0+exp(-neuron21_inter));
+neuron22_hidden1 = 1.0/(1.0+exp(-neuron22_inter));
+neuron23_hidden1 = 1.0/(1.0+exp(-neuron23_inter));
+neuron24_hidden1 = 1.0/(1.0+exp(-neuron24_inter));
+neuron25_hidden1 = 1.0/(1.0+exp(-neuron25_inter));
+neuron0_inter=-0.514765*neuron0_hidden1 - 0.563674*neuron10_hidden1 - 0.176909*neuron11_hidden1 - 0.352669*neuron12_hidden1 - 0.155618*neuron13_hidden1 - 0.66534*neuron14_hidden1 + 0.0470409*neuron15_hidden1 - 0.0397669*neuron16_hidden1 - 0.305878*neuron17_hidden1 - 0.651131*neuron18_hidden1 - 0.647258*neuron19_hidden1 - 0.565154*neuron1_hidden1 - 0.0999369*neuron20_hidden1 - 0.286166*neuron21_hidden1 - 0.334661*neuron22_hidden1 - 0.57133*neuron23_hidden1 - 0.340279*neuron24_hidden1 + 0.0444767*neuron25_hidden1 - 0.460307*neuron2_hidden1 - 0.590705*neuron3_hidden1 - 0.054278*neuron4_hidden1 - 0.441159*neuron5_hidden1 - 0.515313*neuron6_hidden1 - 0.378795*neuron7_hidden1 - 0.382973*neuron8_hidden1 + 0.0261936*neuron9_hidden1 - 0.289981;
+ neuron1_inter=-0.0239911*neuron0_hidden1 + 0.272408*neuron10_hidden1 - 0.206267*neuron11_hidden1 + 0.101134*neuron12_hidden1 + 0.362508*neuron13_hidden1 + 0.383321*neuron14_hidden1 - 0.311666*neuron15_hidden1 - 0.0338378*neuron16_hidden1 + 0.539207*neuron17_hidden1 + 0.284657*neuron18_hidden1 - 0.018041*neuron19_hidden1 + 0.0465635*neuron1_hidden1 + 0.0971398*neuron20_hidden1 - 0.498753*neuron21_hidden1 - 0.349549*neuron22_hidden1 + 0.176395*neuron23_hidden1 + 1.14732*neuron24_hidden1 + 0.536985*neuron25_hidden1 - 0.0709252*neuron2_hidden1 - 0.145915*neuron3_hidden1 - 0.227715*neuron4_hidden1 - 0.646388*neuron5_hidden1 + 0.410809*neuron6_hidden1 - 0.153773*neuron7_hidden1 + 0.286891*neuron8_hidden1 - 0.360449*neuron9_hidden1 + 0.0461453;
+ neuron2_inter=-0.57162*neuron0_hidden1 - 0.0183607*neuron10_hidden1 - 0.174198*neuron11_hidden1 - 0.573054*neuron12_hidden1 - 0.42205*neuron13_hidden1 - 0.0355217*neuron14_hidden1 - 0.287043*neuron15_hidden1 - 0.00439728*neuron16_hidden1 + 0.0234355*neuron17_hidden1 - 0.231891*neuron18_hidden1 - 0.437922*neuron19_hidden1 - 0.469043*neuron1_hidden1 + 0.0633575*neuron20_hidden1 - 0.391616*neuron21_hidden1 - 0.260266*neuron22_hidden1 - 0.22577*neuron23_hidden1 - 0.0895039*neuron24_hidden1 - 0.240413*neuron25_hidden1 - 0.688826*neuron2_hidden1 - 0.416172*neuron3_hidden1 - 0.269564*neuron4_hidden1 - 0.193202*neuron5_hidden1 - 0.130241*neuron6_hidden1 - 0.68087*neuron7_hidden1 - 0.570495*neuron8_hidden1 - 0.483747*neuron9_hidden1 - 0.291981;
+ neuron3_inter=0.279649*neuron0_hidden1 - 0.168607*neuron10_hidden1 - 0.824491*neuron11_hidden1 + 0.0557888*neuron12_hidden1 - 0.718152*neuron13_hidden1 + 0.0790346*neuron14_hidden1 - 0.0672204*neuron15_hidden1 - 0.866437*neuron16_hidden1 - 0.150482*neuron17_hidden1 - 0.930461*neuron18_hidden1 + 0.188939*neuron19_hidden1 + 0.390103*neuron1_hidden1 - 0.130378*neuron20_hidden1 - 0.260786*neuron21_hidden1 + 0.0180841*neuron22_hidden1 - 0.322158*neuron23_hidden1 - 0.0626724*neuron24_hidden1 - 0.866296*neuron25_hidden1 + 0.266962*neuron2_hidden1 - 0.33643*neuron3_hidden1 + 0.0595959*neuron4_hidden1 + 0.0388067*neuron5_hidden1 - 0.64386*neuron6_hidden1 - 0.177677*neuron7_hidden1 - 0.548453*neuron8_hidden1 + 0.556156*neuron9_hidden1 - 0.0424731;
+ neuron4_inter=-0.559355*neuron0_hidden1 - 0.348938*neuron10_hidden1 - 0.424671*neuron11_hidden1 - 0.419655*neuron12_hidden1 - 0.329205*neuron13_hidden1 - 0.577909*neuron14_hidden1 - 0.157346*neuron15_hidden1 - 0.419458*neuron16_hidden1 - 0.124133*neuron17_hidden1 - 0.39257*neuron18_hidden1 - 0.462502*neuron19_hidden1 - 0.481666*neuron1_hidden1 - 0.0975755*neuron20_hidden1 - 0.563956*neuron21_hidden1 - 0.392154*neuron22_hidden1 - 0.235675*neuron23_hidden1 - 0.53477*neuron24_hidden1 - 0.326252*neuron25_hidden1 - 0.0206725*neuron2_hidden1 - 0.148946*neuron3_hidden1 - 0.00565642*neuron4_hidden1 - 0.195301*neuron5_hidden1 + 0.0528918*neuron6_hidden1 + 0.0864109*neuron7_hidden1 - 0.571895*neuron8_hidden1 - 0.574544*neuron9_hidden1 - 0.244915;
+ neuron5_inter=0.541907*neuron0_hidden1 - 0.49555*neuron10_hidden1 - 0.738139*neuron11_hidden1 + 0.367577*neuron12_hidden1 - 0.17206*neuron13_hidden1 + 0.283708*neuron14_hidden1 - 0.647607*neuron15_hidden1 + 0.213904*neuron16_hidden1 - 0.558959*neuron17_hidden1 + 0.183942*neuron18_hidden1 - 0.540802*neuron19_hidden1 - 0.102312*neuron1_hidden1 - 0.856755*neuron20_hidden1 - 0.868795*neuron21_hidden1 - 0.409383*neuron22_hidden1 + 0.291328*neuron23_hidden1 + 0.565587*neuron24_hidden1 - 0.337857*neuron25_hidden1 - 0.30521*neuron2_hidden1 - 0.021802*neuron3_hidden1 - 0.584028*neuron4_hidden1 - 0.423783*neuron5_hidden1 + 0.317577*neuron6_hidden1 - 0.15808*neuron7_hidden1 + 0.616662*neuron8_hidden1 - 0.0991145*neuron9_hidden1 - 0.190262;
+ neuron6_inter=-0.305767*neuron0_hidden1 + 0.347255*neuron10_hidden1 + 0.0026829*neuron11_hidden1 + 0.463622*neuron12_hidden1 + 0.594851*neuron13_hidden1 - 0.217206*neuron14_hidden1 + 0.187523*neuron15_hidden1 - 0.82501*neuron16_hidden1 + 0.177093*neuron17_hidden1 - 0.602452*neuron18_hidden1 + 0.699749*neuron19_hidden1 + 0.0330545*neuron1_hidden1 + 0.618145*neuron20_hidden1 + 0.916683*neuron21_hidden1 + 0.0168118*neuron22_hidden1 - 0.0370107*neuron23_hidden1 + 0.128105*neuron24_hidden1 - 0.128345*neuron25_hidden1 + 0.250853*neuron2_hidden1 - 0.0756988*neuron3_hidden1 - 0.0781883*neuron4_hidden1 - 1.93245*neuron5_hidden1 - 0.820207*neuron6_hidden1 - 0.0481588*neuron7_hidden1 - 0.68472*neuron8_hidden1 + 0.187223*neuron9_hidden1 + 0.11599;
+ neuron7_inter=-0.43881*neuron0_hidden1 - 0.554386*neuron10_hidden1 - 0.323363*neuron11_hidden1 - 0.173576*neuron12_hidden1 - 0.429885*neuron13_hidden1 - 0.337551*neuron14_hidden1 + 0.245215*neuron15_hidden1 - 0.198379*neuron16_hidden1 - 0.209613*neuron17_hidden1 - 0.382914*neuron18_hidden1 + 0.33232*neuron19_hidden1 + 0.0887294*neuron1_hidden1 - 0.440813*neuron20_hidden1 - 0.374899*neuron21_hidden1 + 0.135139*neuron22_hidden1 + 0.0970849*neuron23_hidden1 - 0.0855749*neuron24_hidden1 - 0.0831465*neuron25_hidden1 - 0.321745*neuron2_hidden1 - 0.44095*neuron3_hidden1 - 0.0625693*neuron4_hidden1 - 0.512067*neuron5_hidden1 - 0.39095*neuron6_hidden1 - 0.486319*neuron7_hidden1 - 0.449566*neuron8_hidden1 + 0.0118098*neuron9_hidden1 - 0.193921;
+ neuron8_inter=-0.437704*neuron0_hidden1 - 0.101487*neuron10_hidden1 - 0.431294*neuron11_hidden1 - 0.0132279*neuron12_hidden1 - 0.0174879*neuron13_hidden1 - 0.432025*neuron14_hidden1 - 0.400772*neuron15_hidden1 - 0.661871*neuron16_hidden1 - 0.196733*neuron17_hidden1 - 0.29194*neuron18_hidden1 - 0.505444*neuron19_hidden1 - 0.360505*neuron1_hidden1 - 0.27216*neuron20_hidden1 + 0.00757164*neuron21_hidden1 - 0.458928*neuron22_hidden1 - 0.303821*neuron23_hidden1 - 0.67342*neuron24_hidden1 - 0.130295*neuron25_hidden1 - 0.347888*neuron2_hidden1 - 0.630808*neuron3_hidden1 - 0.522347*neuron4_hidden1 - 0.408906*neuron5_hidden1 - 0.277368*neuron6_hidden1 - 0.245284*neuron7_hidden1 - 0.325121*neuron8_hidden1 - 0.347075*neuron9_hidden1 - 0.288933;
+ neuron9_inter=0.388972*neuron0_hidden1 - 0.654935*neuron10_hidden1 - 0.596881*neuron11_hidden1 + 0.352878*neuron12_hidden1 - 0.7922*neuron13_hidden1 + 0.595744*neuron14_hidden1 - 0.895875*neuron15_hidden1 - 0.620023*neuron16_hidden1 - 0.621728*neuron17_hidden1 - 0.388033*neuron18_hidden1 - 0.0757849*neuron19_hidden1 - 0.118886*neuron1_hidden1 - 0.777427*neuron20_hidden1 - 0.95967*neuron21_hidden1 + 0.0221709*neuron22_hidden1 + 0.323428*neuron23_hidden1 - 0.00511364*neuron24_hidden1 - 0.855289*neuron25_hidden1 + 0.0554234*neuron2_hidden1 - 0.0280737*neuron3_hidden1 - 0.602046*neuron4_hidden1 - 0.526189*neuron5_hidden1 - 0.61348*neuron6_hidden1 + 0.486842*neuron7_hidden1 - 0.164391*neuron8_hidden1 + 0.674829*neuron9_hidden1 + 0.0496665;
+ neuron10_inter=-0.28098*neuron0_hidden1 - 0.303951*neuron10_hidden1 - 0.480757*neuron11_hidden1 - 0.74147*neuron12_hidden1 - 0.171797*neuron13_hidden1 - 0.616975*neuron14_hidden1 - 0.336218*neuron15_hidden1 - 0.71172*neuron16_hidden1 - 0.214867*neuron17_hidden1 - 0.0535084*neuron18_hidden1 - 0.093565*neuron19_hidden1 - 0.320285*neuron1_hidden1 - 0.476659*neuron20_hidden1 - 0.714832*neuron21_hidden1 - 0.0579673*neuron22_hidden1 - 0.631434*neuron23_hidden1 - 0.0630143*neuron24_hidden1 - 0.342166*neuron25_hidden1 - 0.670887*neuron2_hidden1 - 0.155238*neuron3_hidden1 + 0.0215737*neuron4_hidden1 - 0.0207662*neuron5_hidden1 - 0.708779*neuron6_hidden1 - 0.660504*neuron7_hidden1 - 0.226592*neuron8_hidden1 - 0.0337244*neuron9_hidden1 - 0.351174;
+ neuron11_inter=-0.545678*neuron0_hidden1 - 0.0491613*neuron10_hidden1 + 0.0741384*neuron11_hidden1 - 0.39189*neuron12_hidden1 - 0.174149*neuron13_hidden1 - 0.0432277*neuron14_hidden1 - 0.359634*neuron15_hidden1 - 0.562784*neuron16_hidden1 - 0.144145*neuron17_hidden1 - 0.175286*neuron18_hidden1 - 0.330576*neuron19_hidden1 - 0.297504*neuron1_hidden1 - 0.112732*neuron20_hidden1 + 0.0114137*neuron21_hidden1 - 0.567576*neuron22_hidden1 - 0.44665*neuron23_hidden1 - 0.146501*neuron24_hidden1 - 0.0608283*neuron25_hidden1 - 0.636931*neuron2_hidden1 - 0.290809*neuron3_hidden1 - 0.434854*neuron4_hidden1 - 0.0758991*neuron5_hidden1 + 0.0798879*neuron6_hidden1 - 0.666652*neuron7_hidden1 - 0.156024*neuron8_hidden1 - 0.69198*neuron9_hidden1 - 0.321427;
+neuron0_hidden1 = 1.0/(1.0+exp(-neuron0_inter));
+neuron1_hidden1 = 1.0/(1.0+exp(-neuron1_inter));
+neuron2_hidden1 = 1.0/(1.0+exp(-neuron2_inter));
+neuron3_hidden1 = 1.0/(1.0+exp(-neuron3_inter));
+neuron4_hidden1 = 1.0/(1.0+exp(-neuron4_inter));
+neuron5_hidden1 = 1.0/(1.0+exp(-neuron5_inter));
+neuron6_hidden1 = 1.0/(1.0+exp(-neuron6_inter));
+neuron7_hidden1 = 1.0/(1.0+exp(-neuron7_inter));
+neuron8_hidden1 = 1.0/(1.0+exp(-neuron8_inter));
+neuron9_hidden1 = 1.0/(1.0+exp(-neuron9_inter));
+neuron10_hidden1 = 1.0/(1.0+exp(-neuron10_inter));
+neuron11_hidden1 = 1.0/(1.0+exp(-neuron11_inter));
+neuron0_inter=-0.0862154*neuron0_hidden1 + 0.24862*neuron10_hidden1 - 0.0218085*neuron11_hidden1 + 0.286992*neuron1_hidden1 - 0.290759*neuron2_hidden1 + 0.437822*neuron3_hidden1 - 0.170477*neuron4_hidden1 + 0.763485*neuron5_hidden1 - 0.657715*neuron6_hidden1 - 0.353078*neuron7_hidden1 + 0.00172513*neuron8_hidden1 + 1.03169*neuron9_hidden1 + 0.0345373;
+ neuron1_inter=0.0185267*neuron0_hidden1 - 0.0385663*neuron10_hidden1 - 0.156288*neuron11_hidden1 - 0.6925*neuron1_hidden1 + 0.0784887*neuron2_hidden1 + 0.508425*neuron3_hidden1 + 0.471731*neuron4_hidden1 - 0.160153*neuron5_hidden1 + 0.913389*neuron6_hidden1 + 0.455549*neuron7_hidden1 + 0.230239*neuron8_hidden1 + 0.528524*neuron9_hidden1 + 0.122053;
+ neuron2_inter=-0.139689*neuron0_hidden1 + 0.213154*neuron10_hidden1 - 0.191629*neuron11_hidden1 + 0.53807*neuron1_hidden1 + 0.0651101*neuron2_hidden1 - 0.0820016*neuron3_hidden1 + 0.00927164*neuron4_hidden1 + 0.0635615*neuron5_hidden1 + 0.310184*neuron6_hidden1 + 0.342152*neuron7_hidden1 - 0.333201*neuron8_hidden1 + 0.00447658*neuron9_hidden1 + 0.0538922;
+phase = 1.0/(1.0+exp(-neuron0_inter));
+ux = 1.0/(1.0+exp(-neuron1_inter));
+uy = 1.0/(1.0+exp(-neuron2_inter));
+phase = (phase - -0.00000045)/0.99894709;
+ux    = (ux - 0.00397558)/191.14698600;
+uy    = (uy - 0.47949121)/544.19432410;
 
-    neuron0_hidden1 = 1.0/(1.0+exp(-neuron0_inter));
-    neuron1_hidden1 = 1.0/(1.0+exp(-neuron1_inter));
-    neuron2_hidden1 = 1.0/(1.0+exp(-neuron2_inter));
-    neuron3_hidden1 = 1.0/(1.0+exp(-neuron3_inter));
-    neuron4_hidden1 = 1.0/(1.0+exp(-neuron4_inter));
-    neuron5_hidden1 = 1.0/(1.0+exp(-neuron5_inter));
-    neuron6_hidden1 = 1.0/(1.0+exp(-neuron6_inter));
-    neuron7_hidden1 = 1.0/(1.0+exp(-neuron7_inter));
-    neuron8_hidden1 = 1.0/(1.0+exp(-neuron8_inter));
-    neuron9_hidden1 = 1.0/(1.0+exp(-neuron9_inter));
-    neuron10_hidden1 = 1.0/(1.0+exp(-neuron10_inter));
-    neuron11_hidden1 = 1.0/(1.0+exp(-neuron11_inter));
-    neuron12_hidden1 = 1.0/(1.0+exp(-neuron12_inter));
-    neuron13_hidden1 = 1.0/(1.0+exp(-neuron13_inter));
-    neuron14_hidden1 = 1.0/(1.0+exp(-neuron14_inter));
-    neuron15_hidden1 = 1.0/(1.0+exp(-neuron15_inter));
-    neuron16_hidden1 = 1.0/(1.0+exp(-neuron16_inter));
-    neuron17_hidden1 = 1.0/(1.0+exp(-neuron17_inter));
-    neuron18_hidden1 = 1.0/(1.0+exp(-neuron18_inter));
-    neuron19_hidden1 = 1.0/(1.0+exp(-neuron19_inter));
-    neuron20_hidden1 = 1.0/(1.0+exp(-neuron20_inter));
-    neuron21_hidden1 = 1.0/(1.0+exp(-neuron21_inter));
-    neuron22_hidden1 = 1.0/(1.0+exp(-neuron22_inter));
-    neuron23_hidden1 = 1.0/(1.0+exp(-neuron23_inter));
-
-    neuron0_inter=0.0170784*neuron0_hidden1 + 0.0426609*neuron10_hidden1 - 0.143049*neuron11_hidden1 - 0.211539*neuron12_hidden1 + 0.0653274*neuron13_hidden1 + 0.110003*neuron14_hidden1 - 0.0632282*neuron15_hidden1 + 0.160916*neuron16_hidden1 + 0.285205*neuron17_hidden1 + 0.588582*neuron18_hidden1 + 0.431082*neuron19_hidden1 - 0.263293*neuron1_hidden1 - 0.134337*neuron20_hidden1 + 0.441447*neuron21_hidden1 + 0.262641*neuron22_hidden1 - 0.0106204*neuron23_hidden1 - 0.0593545*neuron2_hidden1 - 0.0845962*neuron3_hidden1 - 0.0413138*neuron4_hidden1 + 0.155114*neuron5_hidden1 - 0.251072*neuron6_hidden1 - 0.0749131*neuron7_hidden1 + 0.539798*neuron8_hidden1 + 0.368102*neuron9_hidden1 + 0.00911094;
-     neuron1_inter=0.100914*neuron0_hidden1 - 0.0860094*neuron10_hidden1 - 0.112978*neuron11_hidden1 + 0.159536*neuron12_hidden1 + 0.142818*neuron13_hidden1 + 0.0316036*neuron14_hidden1 - 0.0765342*neuron15_hidden1 + 0.274551*neuron16_hidden1 + 0.364824*neuron17_hidden1 - 0.170035*neuron18_hidden1 + 0.420689*neuron19_hidden1 - 0.0831155*neuron1_hidden1 + 0.298748*neuron20_hidden1 - 0.31296*neuron21_hidden1 - 0.0278613*neuron22_hidden1 + 0.0624781*neuron23_hidden1 + 0.331232*neuron2_hidden1 + 0.43912*neuron3_hidden1 + 0.0985557*neuron4_hidden1 - 0.0796102*neuron5_hidden1 - 0.182544*neuron6_hidden1 - 0.0293476*neuron7_hidden1 - 0.0902381*neuron8_hidden1 + 0.519004*neuron9_hidden1 - 0.0441064;
-     neuron2_inter=-0.0586248*neuron0_hidden1 + 0.340856*neuron10_hidden1 - 0.161811*neuron11_hidden1 + 0.148234*neuron12_hidden1 + 0.279011*neuron13_hidden1 - 0.268783*neuron14_hidden1 + 0.225924*neuron15_hidden1 + 0.0106637*neuron16_hidden1 + 0.277466*neuron17_hidden1 + 0.0333455*neuron18_hidden1 + 0.103516*neuron19_hidden1 - 0.00709753*neuron1_hidden1 + 0.530035*neuron20_hidden1 + 0.254414*neuron21_hidden1 + 0.268394*neuron22_hidden1 - 0.0269866*neuron23_hidden1 + 0.0694459*neuron2_hidden1 + 0.0137608*neuron3_hidden1 - 0.299406*neuron4_hidden1 + 0.199253*neuron5_hidden1 - 0.104833*neuron6_hidden1 - 0.181761*neuron7_hidden1 + 0.417036*neuron8_hidden1 + 0.0379863*neuron9_hidden1 - 0.0602629;
-     neuron3_inter=0.0910983*neuron0_hidden1 + 0.207264*neuron10_hidden1 + 0.638546*neuron11_hidden1 + 0.387501*neuron12_hidden1 + 0.226288*neuron13_hidden1 - 0.388447*neuron14_hidden1 + 0.0898716*neuron15_hidden1 - 0.335492*neuron16_hidden1 - 0.482028*neuron17_hidden1 + 0.518146*neuron18_hidden1 + 0.510554*neuron19_hidden1 + 0.112736*neuron1_hidden1 + 0.38797*neuron20_hidden1 - 0.235115*neuron21_hidden1 - 0.333334*neuron22_hidden1 + 0.326257*neuron23_hidden1 + 0.441729*neuron2_hidden1 - 0.427041*neuron3_hidden1 - 0.0430781*neuron4_hidden1 - 0.300418*neuron5_hidden1 - 0.371532*neuron6_hidden1 - 0.231396*neuron7_hidden1 - 0.0582781*neuron8_hidden1 - 0.565419*neuron9_hidden1 + 0.218535;
-     neuron4_inter=-0.421106*neuron0_hidden1 - 0.106146*neuron10_hidden1 + 0.664778*neuron11_hidden1 + 0.525492*neuron12_hidden1 - 0.374158*neuron13_hidden1 + 0.319989*neuron14_hidden1 - 0.473473*neuron15_hidden1 - 0.431825*neuron16_hidden1 + 0.00502417*neuron17_hidden1 - 0.259808*neuron18_hidden1 + 0.3835*neuron19_hidden1 + 0.0574086*neuron1_hidden1 + 0.0297906*neuron20_hidden1 - 0.115865*neuron21_hidden1 - 0.276664*neuron22_hidden1 - 0.058239*neuron23_hidden1 - 0.141375*neuron2_hidden1 - 0.0122682*neuron3_hidden1 + 0.0428924*neuron4_hidden1 - 0.454355*neuron5_hidden1 + 0.0671571*neuron6_hidden1 + 0.235252*neuron7_hidden1 + 0.110629*neuron8_hidden1 + 0.269122*neuron9_hidden1 + 0.0600912;
-     neuron5_inter=0.428771*neuron0_hidden1 - 0.102223*neuron10_hidden1 + 0.480619*neuron11_hidden1 + 0.455964*neuron12_hidden1 + 0.486918*neuron13_hidden1 - 0.25447*neuron14_hidden1 - 0.349615*neuron15_hidden1 + 0.380624*neuron16_hidden1 + 0.177248*neuron17_hidden1 - 0.280559*neuron18_hidden1 - 0.297363*neuron19_hidden1 - 0.174304*neuron1_hidden1 - 0.0244733*neuron20_hidden1 + 0.262706*neuron21_hidden1 - 0.250848*neuron22_hidden1 + 0.527998*neuron23_hidden1 - 0.0712919*neuron2_hidden1 + 0.0100486*neuron3_hidden1 - 0.312088*neuron4_hidden1 - 0.293035*neuron5_hidden1 + 0.0515363*neuron6_hidden1 + 0.170928*neuron7_hidden1 - 0.217389*neuron8_hidden1 - 0.150388*neuron9_hidden1 + 0.0871805;
-
-    g3_tmp = 1.0/(1.0+exp(-neuron0_inter));
-    g6_tmp = 1.0/(1.0+exp(-neuron1_inter));
-    g7_tmp = 1.0/(1.0+exp(-neuron2_inter));
-    h3_tmp = 1.0/(1.0+exp(-neuron3_inter));
-    h6_tmp = 1.0/(1.0+exp(-neuron4_inter));
-    h7_tmp = 1.0/(1.0+exp(-neuron5_inter));
-
-    g[3] = (g3_tmp - 0.42796381)/1140.05765472;
-    g[6] = (g6_tmp - 0.43428537)/4468.44590860;
-    g[7] = (g7_tmp - 0.42448784)/4537.23055925;
-    h[3] = (h3_tmp - 0.42796381)/1140.05765472;
-    h[6] = (h6_tmp - 0.43428537)/4468.44590860;
-    h[7] = (h7_tmp - 0.42448784)/4537.23055925;
 // END OF PYTHON GENERATED CODE
+EVelocity(ux, uy, phase);
 }
 
 #ifdef OPTIONS_Outflow
@@ -1325,160 +1385,80 @@ neuron0_inter=-0.558469*g0_tmp - 0.370158*g1_tmp - 0.0136927*g2_tmp - 0.591664*g
 
 CudaDeviceFunction void WVelocity()
 {
-	/********* velocity-type Zou He boundary condition with force - hydrodynamics ****************/
-	PhaseF = PhaseField_init; 
-	vector_t gradPhi = calcGradPhi(); // Phase field gradient
-	real_t rho = calcRho(PhaseF);
-	real_t tau = calcTau(PhaseF, rho);
-	real_t p = getNormalizedPressure() ; // normalized pressure
-	vector_t Fhydro;
-	#ifdef OPTIONS_BGK
-		if (NodeType & NODE_BGK) { // Not Implemented
-		}
-	#elif OPTIONS_CM
-		if (NodeType & NODE_CM) { Fhydro = calcTotalHydrodynamicForceCM(gradPhi, PhaseF, rho, tau,  calcMu(PhaseF), p);}
-	#else
-		if (NodeType & NODE_MRT) { Fhydro = calcTotalHydrodynamicForceMRT(gradPhi, PhaseF, rho, tau,  calcMu(PhaseF), p);}
-	#endif
+    U = VelocityX;
+    V = 0;
+<?R
+        n = c(-1,0)
+        g = PV(DensityAll$name[DensityAll$group=="g"])
+        U = as.matrix(DensityAll[DensityAll$group=="g",c("dx","dy")])
+        u = PV(c("U","V"))
+        EQ = MRT_eq(U, PV(1), u)
+        geq = EQ$feq
+        bounce = Bounce(U)
+        sel = as.vector( (U %*% n) < 0)
 
-	// enforce Poiseuille velocity profile
-	// real_t R = (pipe_diameter / 2) - 2; // subtract top/bottom wall thickness
-	// real_t uInProfileX = VelocityX *(2 * Y* R - Y*Y) / (R*R); // calculate profile
-	
-	// Appendix C16-C23 from
-	// "Phase-field-based lattice Boltzmann model for incompressible binary fluid systems
-	// with density and viscosity contrasts" by Y. Q. Zu and S. He, 2013
-	real_t F_i[9], g_prim[9];
-	for (int i=0; i< 9; i++){
-			// eq 15 from "Improved locality of the phase-field lattice Boltzmann 
-			//	model for immiscible fluids at high density ratios"
-			F_i[i] = 3.0*wf[i] * (Fhydro.x*d2q9_ex[i] + Fhydro.y*d2q9_ey[i])/rho; // eq 15
-			g_prim[i] = g[i] + 0.5 * F_i[i]; // eq C6 		
-	}
-	
-	real_t Gamma[9], heq[9], geq[9];
-	real_t mag = VelocityX*VelocityX + VelocityY*VelocityY; // velocity magnitude
-	
-	for (int i=0; i< 9; i++){
-		Gamma[i] = calcGamma(i, VelocityX, VelocityY, mag);	 
-		geq[i] = wf[i]*p + Gamma[i] - wf[i]; // eq 17
-		heq[i] = PhaseF * Gamma[i];  // eq 10
-	}
+        sel2 = as.vector( ( U %*% n) == 0)  
+        exM = (g[sel2] - geq[sel2]) %*% U[sel2,]
+        Unknowns = 1.0/max(colSums(U[sel2,]^2)) # should be 6 for q27, 4 for q15
+        Nmat = t(U[sel,]) %*% U[sel,]
 
-	// Excess of momentum (positive value upwards)
-	real_t N = 2; // number of unknown distributions: e[i] * n_tau !=0
-	real_t M = d2q9_ey[2]*(g_prim[2] - geq[2]) + d2q9_ey[4]*(g_prim[4] - geq[4]); // eq C18
+        C(g[sel], g[bounce][sel] + (geq[sel] - geq[bounce][sel]) - 0.5* (exM %*% solve(Nmat) %*% t(U))[sel])
+    ?>
+    <?R
+        h = PV(DensityAll$name[DensityAll$group=="h"])
+        U_PF = U
+        pf = PV("PhaseField_init")
+        EQ_h = MRT_eq(U_PF,PV(1),u)
+        n = c(-1,0)
+        heq = pf * EQ_h$feq
+        bounce = Bounce(U_PF)
+        sel = as.vector( (U_PF %*% n) < 0)
 
-	g[1] = -0.5*F_i[1] + g_prim[3] + geq[1] - geq[3] ; // eq C17
-	g[5] = -0.5*F_i[5] + g_prim[7] + geq[5] - geq[7] - d2q9_ey[5] * M / N; // eq C19
-	g[8] = -0.5*F_i[8] + g_prim[6] + geq[8] - geq[6] - d2q9_ey[8] * M / N; // eq C19
+        sel2 = as.vector( ( U_PF %*% n) == 0)   
+        exM = (h[sel2] - heq[sel2]) %*% rep(1,sum(sel2)) 
+        Unknowns = 1.0/sum(sel)
 
-	/*********  Zou He boundary condition with force - phaseField ****************/
-	
-	// excess density - eq C22 from 
-	// "Phase-field-based lattice Boltzmann model for incompressible binary fluid systems
-	// with density and viscosity contrasts" by Y. Q. Zu and S. He, 2013
-	real_t v = h[4] - heq[4] + h[2] - heq[2];
-
-	h[1] = heq[1] - (h[3]-heq[3]); 		   // eq C23a 
-	h[8] = heq[8] - (h[6]-heq[6]) - v/N;   // eq C23b
-	h[5] = heq[5] - (h[7]-heq[7]) - v/N;   // eq C23b
-
-	// IF SOMEONE WANTS TO INVESTIGATE BOUNDARY CONDITIONS:
-		// eq 6.58 p253 from The Lattice Boltzmann Method: Principles and Practice - rotated 90deg
-		// T. Krüger, H. Kusumaatmaja, A. Kuzmin, O. Shardt, G. Silva, E.M. Viggen
-		// NOTE THAT THIS IS A VELOCITY BASED LBM SO FORMULAS ARE MODIFIED
-
-			// g[1] = g[3] + 2./3.*VelocityX - Fhydro.x/6.;
-			// g[5] = g[7] + (1./2.)*(g[4] - g[2]) + VelocityY/2. + VelocityX/6. - Fhydro.y/4. - Fhydro.x/6.;
-			// g[8] = g[6] + (1./2.)*(g[2] - g[4]) - VelocityY/2. + VelocityX/6. + Fhydro.y/4. - Fhydro.x/6.;
-			
-			// TODO: cant see difference, it seems that Fhydro = 0
-		// TODO: eq C23 work only for inlet; for moving wall use 'standard' bounce back, as one below
-
-			// h[1] = h[3]; 		  
-			// h[8] = h[6];
-			// h[5] = h[7];
+        C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
+    ?>
 }
 
 CudaDeviceFunction void NVelocity()
-{	
-	/********* velocity-type Zou He boundary condition with force - hydrodynamics ****************/
+{
+    U = 0;
+    V = VelocityY;
+<?R
+        n = c(0,1)
+        g = PV(DensityAll$name[DensityAll$group=="g"])
+        U = as.matrix(DensityAll[DensityAll$group=="g",c("dx","dy")])
+        u = PV(c("U","V"))
+        EQ = MRT_eq(U, PV(1), u)
+        geq = EQ$feq
+        bounce = Bounce(U)
+        sel = as.vector( (U %*% n) < 0)
 
-	PhaseF = PhaseField_init; 
+        sel2 = as.vector( ( U %*% n) == 0)  
+        exM = (g[sel2] - geq[sel2]) %*% U[sel2,]
+        Unknowns = 1.0/max(colSums(U[sel2,]^2)) # should be 6 for q27, 4 for q15
+        Nmat = t(U[sel,]) %*% U[sel,]
 
-	vector_t gradPhi = calcGradPhi(); // Phase field gradient
-	real_t rho = calcRho(PhaseF);
-	real_t tau = calcTau(PhaseF, rho);
-	real_t p = getNormalizedPressure() ; // normalized pressure
-	vector_t Fhydro;
-	#ifdef OPTIONS_BGK
-		if (NodeType & NODE_BGK) { // Not Implemented
-		}
-	#elif OPTIONS_CM
-		if (NodeType & NODE_CM) { Fhydro = calcTotalHydrodynamicForceCM(gradPhi, PhaseF, rho, tau,  calcMu(PhaseF), p);}
-	#else
-		if (NodeType & NODE_MRT) { Fhydro = calcTotalHydrodynamicForceMRT(gradPhi, PhaseF, rho, tau,  calcMu(PhaseF), p);}
-	#endif
+        C(g[sel], g[bounce][sel] + (geq[sel] - geq[bounce][sel]) - 0.5* (exM %*% solve(Nmat) %*% t(U))[sel])
+    ?>
+    <?R
+        h = PV(DensityAll$name[DensityAll$group=="h"])
+        U_PF = U
+        pf = PV("PhaseField_init")
+        EQ_h = MRT_eq(U_PF,PV(1),u)
+        n = c(0,1)
+        heq = pf * EQ_h$feq
+        bounce = Bounce(U_PF)
+        sel = as.vector( (U_PF %*% n) < 0)
 
-	// Appendix C16-C23 from
-	// "Phase-field-based lattice Boltzmann model for incompressible binary fluid systems
-	// with density and viscosity contrasts" by Y. Q. Zu and S. He, 2013
-	real_t F_i[9], g_prim[9];
-	for (int i=0; i< 9; i++){
-			// eq 15 from "Improved locality of the phase-field lattice Boltzmann 
-			//	model for immiscible fluids at high density ratios"
-			F_i[i] = 3.0*wf[i] * (Fhydro.x*d2q9_ex[i] + Fhydro.y*d2q9_ey[i])/rho; // eq 15
-			g_prim[i] = g[i] + 0.5 * F_i[i]; // eq C6 		
-	}
-	
-	real_t Gamma[9], heq[9], geq[9];
-	real_t mag = VelocityX*VelocityX + VelocityY*VelocityY; // velocity magnitude
-	
-	for (int i=0; i< 9; i++){
-		Gamma[i] = calcGamma(i, VelocityX, VelocityY, mag);	 
-		geq[i] = wf[i]*p + Gamma[i] - wf[i]; // eq 17
-		heq[i] = PhaseF * Gamma[i];  // eq 10
-	}
+        sel2 = as.vector( ( U_PF %*% n) == 0)   
+        exM = (h[sel2] - heq[sel2]) %*% rep(1,sum(sel2)) 
+        Unknowns = 1.0/sum(sel)
 
-	// Excess of momentum (positive value upwards)
-	real_t N = 2; // number of unknown distributions: e[i] * n_tau !=0
-	real_t M = d2q9_ey[3]*(g_prim[3] - geq[3]) + d2q9_ey[1]*(g_prim[1] - geq[1]); // eq C18
-
-	g[4] = -0.5*F_i[3] + g_prim[2] + geq[4] - geq[2] ; // eq C17
-	g[7] = -0.5*F_i[7] + g_prim[5] + geq[7] - geq[5] - d2q9_ey[7] * M / N; // eq C19
-	g[8] = -0.5*F_i[8] + g_prim[6] + geq[8] - geq[6] - d2q9_ey[8] * M / N; // eq C19
-
-	/*********  Zou He boundary condition with force - phaseField ****************/
-	
-	// excess density - eq C22 from 
-	// "Phase-field-based lattice Boltzmann model for incompressible binary fluid systems
-	// with density and viscosity contrasts" by Y. Q. Zu and S. He, 2013
-	real_t v = h[3] - heq[3] + h[1] - heq[1];
-
-	// h[4] = heq[4] - (h[2]-heq[2]); 			// eq C23a
-	// h[7] = heq[7] - (h[5]-heq[5]) - v*0.5;   // eq C23b
-	// h[8] = heq[8] - (h[6]-heq[6]) - v*0.5;   // eq C23b
-
-	// TODO: eq C23 work only for inlet; for moving wall use 'standard' bounce back, as one below
-	h[4] = h[2];
-	h[7] = h[5];
-	h[8] = h[6];
-
-	real_t dJ = <?R C(g[5+1]*d2q9[5+1,1] + g[6+1]*d2q9[6+1,1])?> * rho + 0.5*Fhydro.x; // incoming momentum - before collision
-	AddToNMovingWallForce( -dJ ); 
-	AddToNMovingWallPower( -VelocityX * dJ );
-	//IF SOMEONE WANTS TO INVESTIGATE BOUNDARY CONDITIONS
-		// <?R C(g[5+1]*d2q9[5+1,1] + g[6+1]*d2q9[6+1,1])?>;	--compiles to--> 	-g[6] + g[5];
-			// eq 6.58 p253 from The Lattice Boltzmann Method: Principles and Practice
-		// T. Krüger, H. Kusumaatmaja, A. Kuzmin, O. Shardt, G. Silva, E.M. Viggen
-		// NOTE THAT THIS IS A VELOCITY BASED LBM SO FORMULAS ARE MODIFIED
-		// Fhydro.x=0; // TODO: cant see much difference
-		// Fhydro.y=0;
-
-		// g[4] = g[2] -2./3.*VelocityY + Fhydro.y/6.;
-		// g[7] = g[5] + (1./2.)*(g[1] - g[3]) - VelocityX/2.0 - VelocityY/6.0 + Fhydro.x/4.0 + Fhydro.y/6.0;
-		// g[8] = g[6] + (1./2.)*(g[3] - g[1]) + VelocityX/2.0 - VelocityY/6.0 - Fhydro.x/4.0 + Fhydro.y/6.0;
+        C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
+    ?>
 }
 
 CudaDeviceFunction void MovingWall_S_Dirichlet(){
