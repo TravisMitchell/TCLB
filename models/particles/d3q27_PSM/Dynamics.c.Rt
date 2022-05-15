@@ -71,8 +71,12 @@ Code updates:
 //real_t const d3q27_cy[27] = {0, 0, 0, 1,-1, 0, 0, 1, 1,-1,-1, 0, 0, 0, 0, 1,-1, 1,-1, 1, 1,-1,-1, 1, 1,-1,-1};
 //real_t const d3q27_cz[27] = {0, 0, 0, 0, 0, 1,-1, 0, 0, 0, 0, 1, 1,-1,-1, 1, 1,-1,-1, 1, 1, 1, 1,-1,-1,-1,-1};
 
-CudaDeviceFunction real_t getRho(){
+CudaDeviceFunction real_t getDensity(){
 	return <?R C(sum(f)) ?> ;
+}
+
+CudaDeviceFunction real_t getPressureValue(){
+	return 3.0*(<?R C(sum(f)) ?>) ;
 }
 
 CudaDeviceFunction vector_t getU(){
@@ -515,59 +519,74 @@ CudaDeviceFunction void Collision_PSM() {
       a = PV("Accel", c("X", "Y", "Z"))
 	R = PV("R[",1:27-1,"]")
 
-#	M = WMRT_mat(U)
-	M = MRT_polyMatrix(U)$mat
+	if (Options$WMRT){
+		# Create weighted MRT matrix using Lukasz' technique
+		# then create second order moments such that one is the sum of first order moments
+		# this corresponds to pressure waves and we will damp these out with a relaxation rate of 1
+		M = WMRT_mat(U)
+		N = diag(nrow=27)
+		N[5:7,5:7] = matrix(c(1,1,1,1,-1,0,1,1,-2),3,3)
+		M = M %*% N
+	} else {
+		M = MRT_polyMatrix(U)$mat
+	}
 
 	RL = R
 	R[1] = d
 	R[2:4] = (u-a*0.5)*d
-	EQ   = MRT_eq(U, d, u*d, ortogonal=FALSE, mat=M);
-	EQ_P = MRT_eq(U, d, uP*d, ortogonal=FALSE, mat=M)
-
+	if (Options$WMRT){
+		# Use full equilibrium (1000 is overkill, but you get the idea)
+		EQ   = MRT_eq(U, d, u*d, order=1000, mat=M);
+		EQ_P = MRT_eq(U, d, uP*d, order=1000, mat=M)
+	} else {
+		EQ   = MRT_eq(U, d, u*d, ortogonal=FALSE, mat=M);
+		EQ_P = MRT_eq(U, d, uP*d, ortogonal=FALSE, mat=M)
+	}
 	
-      F = ((a %*% t(U)) + (1/c_squ)*(a %*% t(U))*(u %*% t(U)) - (u %*% a)) * diag(tn)*(1/c_squ)*d
-      feq = EQ$Req %*% solve(EQ$mat)
-      feqP = EQ_P$Req %*% solve(EQ_P$mat)
+    F = ((a %*% t(U)) + (1/c_squ)*(a %*% t(U))*(u %*% t(U)) - (u %*% a)) * diag(tn)*(1/c_squ)*d
+    feq = EQ$Req %*% solve(EQ$mat)
+    feqP = EQ_P$Req %*% solve(EQ_P$mat)
 
 	B = solve(EQ$mat, EQ$mat[bounce+1,]) # Bounce-back matrix
 
-      sol = PV("sol")
+    sol = PV("sol")
 
 	omegaF = PV(c("omegaF"))
 	omegaF1 = PV(c("omegaF1"))
-	omegaP1 = PV(c("omegaP1"))
-
+	
+	# omegaF is created like this so that the collision line below
+	# looks like that which is written in papers, but computationally allows
+	# us to mulitply by a variable saved as 1-omegaF 
 	omegaF = 1.0 - omegaF1;
 ?>
 	real_t omegaF1 = 1.0-omegaF;
 <?R
-	if (Options$TRT) {
+	if (Options$TRT || Options$WMRT) {
 ?>
+		//real_t omegaP = 1.0/(Lambda/(1.0/omegaF-0.5)+0.5);
 		real_t omegaP1 = 1.0-omegaP;
 <?R
-		omegaF = 1.0 - omegaF1;
-		omegaP = 1.0 - omegaP1;
+		omegaP1 = PV(c("omegaP1"))
+		omegaP = 1.0 - omegaP1; # define second relaxation time
 		omega = V(omegaF,omegaP)[EQ$order %% 2 + 1]
+		if (Options$WMRT){
+			omega[5] = 1 # set omega here to 1, so as to damp out pressure forces
+		}
 	} else {
 		omega = omegaF
 	}
 	
-		if (Options$NEBB) {
-                        RomegaS =  R %*% B - R + EQ_P$Req - EQ$Req %*% B #Non-eq bounceback operator
-		      sol = PV("sol")
-		} else if (Options$SUP){
-                        RomegaS =  EQ_P$Req - R + (1.0 - omegaF)*(R - EQ$Req) #Superposition operator
-		      sol = PV("sol")
-                } else {
-			RomegaS = 0
-			sol = 0
-		}
+	if (Options$NEBB) {
+		RomegaS =  R %*% B - R + EQ_P$Req - EQ$Req %*% B #Non-eq bounceback operator
+		sol = PV("sol")
+	} else if (Options$SUP){
+		RomegaS =  EQ_P$Req - R + (1.0 - omegaF)*(R - EQ$Req) #Superposition operator
+		sol = PV("sol")
+	} else {
+		RomegaS = 0
+		sol = 0
+	}
 
-	
-#	  W = MRT_polyMatrix(U)$mat
-#	flip = 27:1
-#	C( RL, f %*% W)
-#	C( RL[flip], (RL %*% solve(W) %*% EQ$mat)[flip])
 	C( RL, f %*% EQ$mat)
 	C( d, RL[1])
 	C( u, RL[2:4]*d^{-1} + a*0.5)
@@ -579,10 +598,7 @@ CudaDeviceFunction void Collision_PSM() {
     AddToTotalFluidVolume(1); 
 <?R
 	C( RL, R + (1.0-sol)*(omega*(EQ$Req - R) + (1.0 - omega*0.5)*(F %*% EQ$mat)) + sol*RomegaS)
-#	C( RL[flip], (RL %*% solve(EQ$mat) %*% W)[flip])
-#	C( f, RL %*% solve(W))
 	C( f, RL %*% solve(EQ$mat))
-	
 ?>
 }
 
