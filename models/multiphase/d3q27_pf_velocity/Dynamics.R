@@ -58,6 +58,9 @@ if (Options$altContactAngle){
     AddStage('calcPhaseGrad_init', "calcPhaseGrad_init", load=DensityAll$group %in% c("g","h","Vel","nw", "PF"), save=Fields$group=="gradPhi")
 } else {
     AddField("PhaseF",stencil3d=1, group="PF")
+    if (Options$mapping){
+        AddField("psi_mapped",stencil3d=1, group="PF")
+    }
 }
 if (Options$OutFlow){
 	for (d in rows(DensityAll)) {
@@ -113,6 +116,9 @@ AddStage("BaseIter" , "Run", save=Fields$group %in% save_iteration, load=Density
 	AddQuantity(name="P",	  unit="Pa")
 	AddQuantity(name="Pstar", unit="1")
 	AddQuantity(name="Normal", unit=1, vector=T)
+if (Options$mapping){	
+    AddQuantity(name="PsiMapped",unit="1")
+}
 if (Options$altContactAngle){
     AddQuantity(name="TangentWallVector1", unit=1, vector=T)
     AddQuantity(name="TangentWallVector2", unit=1, vector=T)

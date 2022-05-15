@@ -238,6 +238,7 @@ CudaDeviceFunction void calcPhaseGrad_init(){
 		gradPhiVal_z = 0.;
 	}
 }
+#endif
 
 #ifdef OPTIONS_ML
 <?R
@@ -253,12 +254,16 @@ for (myDensity in 0:14){
 }
 ?>
 #endif
-
+#ifdef OPTIONS_mapping
+CudaDeviceFunction real_t getPsiMapped(){
+	return psi_mapped(0,0,0);
+}
+#endif
 CudaDeviceFunction real_t getRho(){
 	if ( IamWall || IamSolid) {
 		return 0.0;
 	} else {
-		return Density_l + (Density_h-Density_l) * (PhaseF(0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
+		return Density_l + (Density_h-Density_l) * (PhaseF(0,0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
 	}
 }
 CudaDeviceFunction real_t getPhaseField(){
@@ -322,6 +327,12 @@ CudaDeviceFunction vector_t calcGradPhi(){
 CudaDeviceFunction void calcPhaseF(){
 	updateBoundary();
 	PhaseF = <?R C(sum(h))?>;
+#ifdef OPTIONS_mapping
+	real_t pf = PhaseF;
+	if (pf < 0) pf =0;
+	if (pf > 1) pf =1;
+	psi_mapped = IntWidth * log( (pf+1e-16)/(1-pf+1e-16) ); 
+#endif
 }
 
 CudaDeviceFunction void calcWallPhase(){
@@ -417,6 +428,12 @@ CudaDeviceFunction void calcWallPhase(){
 			PhaseF = (1 + a - sqrt( (1+a)*(1+a) - 4*a*pf_f))/(a+1e-12) - pf_f;
 #endif
 		}
+#ifdef OPTIONS_mapping
+	real_t pf = PhaseF;
+	if (pf < 0) pf =0;
+	if (pf > 1) pf =1;
+	psi_mapped = IntWidth * log( (pf+1e-16)/(1-pf+1e-16) ); 
+#endif
 	} 
 }
 
@@ -473,10 +490,17 @@ CudaDeviceFunction real_t calcGamma(int i, real_t u, real_t v, real_t w, real_t 
 
 CudaDeviceFunction real_t calcF_phi(int i, real_t tmp1, real_t nx, real_t ny, real_t nz){
 	real_t f_phi;
+#ifdef OPTIONS_mapping
+	real_t pf = PhaseF;
+	if (pf < 0) pf =0;
+	if (pf > 1) pf =1;
+	psi_mapped = IntWidth * log( (pf+1e-16)/(1-pf+1e-16) ); 
+#else
 #ifdef OPTIONS_q27
 	f_phi = wg[i] * tmp1 * (d3q27_ex[i]*nx + d3q27_ey[i]*ny + d3q27_ez[i]*nz);
 #else
 	f_phi = wh[i] * tmp1 * (d3q27_ex[i]*nx + d3q27_ey[i]*ny + d3q27_ez[i]*nz);
+#endif
 #endif
 	return f_phi;
 }
@@ -486,6 +510,12 @@ CudaDeviceFunction void Init() {
 	PhaseF = PhaseField;
 	specialCases_Init();
 	if ( IamWall || IamSolid ) PhaseF = -999;
+#ifdef OPTIONS_mapping
+	real_t pf = PhaseF;
+	if (pf < 0) pf =0;
+	if (pf > 1) pf =1;
+	psi_mapped = IntWidth * log( (pf+1e-16)/(1-pf+1e-16) ); 
+#endif
 }
 
 CudaDeviceFunction void specialCases_Init(){
@@ -674,7 +704,23 @@ CudaDeviceFunction void Init_distributions(){
 	real_t Gamma[27];
 	// ##### heq
 	real_t F_phi[hPops]; 
+	#ifdef OPTIONS_mapping
+	real_t tmp1,magnPsi;
+	vector_t gradPsi;
+	<?R IsotropicGrad('gradPsi', 'psi_mapped') ?>
+	magnPsi = sqrt(gradPsi.x*gradPsi.x + gradPsi.y*gradPsi.y + gradPsi.z*gradPsi.z);
+	
+	if (magnPsi < minGradient){
+		nx=0.0; ny=0.0; nz=0.0;
+	} else {
+		nx = gradPsi.x/magnPsi;
+		ny = gradPsi.y/magnPsi;
+		nz = gradPsi.z/magnPsi;
+	}
+	tmp1 = (1 - tanh(2.0*psi_mapped/IntWidth)*tanh(2.0*psi_mapped/IntWidth)) / IntWidth;
+	#else
 	real_t tmp1 = (1.0 - 4.0*(PhaseF - C0)*(PhaseF - C0))/IntWidth;
+	#endif
 	for (i=0; i< 27; i++){
 		Gamma[i] = calcGamma(i, U, V, W, mag);
 		if (i < hPops) F_phi[i] = calcF_phi(i, tmp1, nx, ny, nz);
@@ -883,7 +929,23 @@ CudaDeviceFunction void CollisionMRT(){
 	<?R 	C( u, m0[2:4] + 0.5 * F_total * rho.inv) ?>
 	}
 	// PHASE FIELD POPULATION UPDATE:
+	#ifdef OPTIONS_mapping
+	real_t magnPsi;
+	vector_t gradPsi;
+	<?R IsotropicGrad('gradPsi', 'psi_mapped') ?>
+	magnPsi = sqrt(gradPsi.x*gradPsi.x + gradPsi.y*gradPsi.y + gradPsi.z*gradPsi.z);
+	
+	if (magnPsi < minGradient){
+		n.x=0.0; n.y=0.0; n.z=0.0;
+	} else {
+		n.x = gradPsi.x/magnPsi;
+		n.y = gradPsi.y/magnPsi;
+		n.z = gradPsi.z/magnPsi;
+	}
+	tmp1 = (1 - tanh(2.0*psi_mapped/IntWidth)*tanh(2.0*psi_mapped/IntWidth)) / IntWidth;
+	#else
 	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/IntWidth;
+	#endif
 	<?R
 		n = PV("n",c(".x",".y",".z"))
 		EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),u)
@@ -1019,27 +1081,6 @@ CudaDeviceFunction void EVelocity(){
 
 		C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
 	?>
-}
-
-CudaDeviceFunction void Velocity_Y_neg(){
-	U = VelocityX;
-	V = VelocityY;
-	W = VelocityZ;
-	<?R
-		n = c(0,-1,0)
-			geq = EQ$feq
-			bounce = Bounce(U)
-			sel = as.vector( (U %*% n) < 0)
-
-		sel2 = as.vector( ( U %*% n) == 0)	
-		exM = (g[sel2] - geq[sel2]) %*% U[sel2,]
-		Unknowns = 1.0/9.0
-
-		C(g[sel], g[bounce][sel] + (geq[sel] - geq[bounce][sel]) - Unknowns * (exM %*% t(U))[sel])
-	?>
-	{
-		<?R ZouHeRewrite(EQ_h, h, c(0,-1,0),"pressure", rhs=PV("PhaseField")) ?>
-	}
 }
 
 CudaDeviceFunction void Velocity_Y_neg(){
