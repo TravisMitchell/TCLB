@@ -17,6 +17,15 @@ int conControl::Param (pugi::xml_node n) {
         if (attr) par = attr.value();
         attr = n.attribute("zone");
         if (attr) zone = attr.value();
+        if (zone != "") {
+        if (solver->geometry->SettingZones.count(zone) > 0) { 
+                                        zone_number = solver->geometry->SettingZones[zone];
+                                } else {
+                                        WARNING("Unknown zone %s (found while setting parameter %s)\n", zone.c_str(), par.c_str());
+                                        zone_number = -2;
+                                        zone = "";
+                                }
+        }
         attr = n.attribute("value");
         if (attr) {
 		value = attr.value();
