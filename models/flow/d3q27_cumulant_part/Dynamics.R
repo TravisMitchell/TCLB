@@ -20,6 +20,7 @@ AddDensity( name="sol", group="Force", parameter=TRUE)
 
 AddQuantity(name="P",unit="Pa")
 AddQuantity(name="U",unit="m/s",vector=T)
+AddQuantity(name="Rho")
 
 AddQuantity(name="Solid",unit="1")
 AddQuantity(name="F",unit="N/m3",vector=T)
