@@ -60,9 +60,9 @@ AddSetting(name="VelocityZ", default="0.0", zonal=TRUE, comment='wall/inlet/outl
 
 AddSetting(name="Pressure", default="0Pa", comment='Inlet pressure', zonal=TRUE, unit="1Pa")
 
-AddSetting(name="AccelX", default=0.0, comment='body acceleration X', unit="m/s2")
-AddSetting(name="AccelY", default=0.0, comment='body acceleration Y', unit="m/s2")
-AddSetting(name="AccelZ", default=0.0, comment='body acceleration Z', unit="m/s2")
+AddSetting(name="AccelX", default=0.0, zonal=TRUE, comment='body acceleration X', unit="m/s2")
+AddSetting(name="AccelY", default=0.0, zonal=TRUE, comment='body acceleration Y', unit="m/s2")
+AddSetting(name="AccelZ", default=0.0, zonal=TRUE, comment='body acceleration Z', unit="m/s2")
 
 AddGlobal(name="TotalFluidMomentumX", unit="kgm/s")
 AddGlobal(name="TotalFluidMomentumY", unit="kgm/s")

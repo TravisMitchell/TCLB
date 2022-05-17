@@ -31,9 +31,9 @@ AddSetting(name="Velocity", default="0m/s", comment='Inlet velocity', zonal=TRUE
 AddSetting(name="Pressure", default="0Pa", comment='Inlet pressure', zonal=TRUE)
 AddSetting(name="Turbulence", comment='Turbulence intensity', zonal=TRUE)
 AddSetting(name="GalileanCorrection",default=1.,comment='Galilean correction term')
-AddSetting(name="ForceX", default=0, comment='Force force X')
-AddSetting(name="ForceY", default=0, comment='Force force Y')
-AddSetting(name="ForceZ", default=0, comment='Force force Z')
+AddSetting(name="ForceX", default=0, zonal=T, comment='Force force X')
+AddSetting(name="ForceY", default=0, zonal=T, comment='Force force Y')
+AddSetting(name="ForceZ", default=0, zonal=T, comment='Force force Z')
 AddSetting(name="Smag", default=0, comment='Smagorinsky coefficient for SGS modeling')
 AddSetting(name="Omega", default=1, comment='relaxation rate for 3rd order cumulants')
 
