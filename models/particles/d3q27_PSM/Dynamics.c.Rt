@@ -543,13 +543,13 @@ CudaDeviceFunction void Collision_PSM() {
 		EQ_P = MRT_eq(U, d, uP*d, ortogonal=FALSE, mat=M)
 	}
 	
-    F = ((a %*% t(U)) + (1/c_squ)*(a %*% t(U))*(u %*% t(U)) - (u %*% a)) * diag(tn)*(1/c_squ)*d
-    feq = EQ$Req %*% solve(EQ$mat)
-    feqP = EQ_P$Req %*% solve(EQ_P$mat)
+        F = ((a %*% t(U)) + (1/c_squ)*(a %*% t(U))*(u %*% t(U)) - (u %*% a)) * diag(tn)*(1/c_squ)*d
+        feq = EQ$Req %*% solve(EQ$mat)
+        feqP = EQ_P$Req %*% solve(EQ_P$mat)
 
 	B = solve(EQ$mat, EQ$mat[bounce+1,]) # Bounce-back matrix
 
-    sol = PV("sol")
+        sol = PV("sol")
 
 	omegaF = PV(c("omegaF"))
 	omegaF1 = PV(c("omegaF1"))
@@ -600,6 +600,21 @@ CudaDeviceFunction void Collision_PSM() {
 	C( RL, R + (1.0-sol)*(omega*(EQ$Req - R) + (1.0 - omega*0.5)*(F %*% EQ$mat)) + sol*RomegaS)
 	C( f, RL %*% solve(EQ$mat))
 ?>
+
+// check if limiter enabled and apply
+    if (vlimiter != 0){
+        real_t vl = (u[0]*u[0] + u[1]*u[1] + u[2]*u[2]);
+        if (vl > vlimiter*vlimiter){
+            real_t d = vlimiter / sqrt(vl);
+            AddToLimitedCells(1);
+            u[0] = u[0] * d;
+            u[1] = u[1] * d;
+            u[2] = u[2] * d;
+            <?R
+            C(f, EQ$Req %*% solve(EQ$mat) )
+            ?>
+        }
+    }
 }
 
 CudaDeviceFunction float2 Color() {

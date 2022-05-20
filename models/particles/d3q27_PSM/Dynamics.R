@@ -57,6 +57,7 @@ AddSetting(name="nu", omegaF='1.0/(3*nu+0.5)', default=0.1, comment='kinetic vis
 AddSetting(name="VelocityX", default="0.0", zonal=TRUE, comment='wall/inlet/outlet velocity x-direction')
 AddSetting(name="VelocityY", default="0.0", zonal=TRUE, comment='wall/inlet/outlet velocity y-direction')
 AddSetting(name="VelocityZ", default="0.0", zonal=TRUE, comment='wall/inlet/outlet velocity z-direction')
+AddSetting(name="vlimiter", default=0, comment='limiter on velocity, in effect if not zero')
 
 AddSetting(name="Pressure", default="0Pa", comment='Inlet pressure', zonal=TRUE, unit="1Pa")
 
@@ -64,6 +65,7 @@ AddSetting(name="AccelX", default=0.0, zonal=TRUE, comment='body acceleration X'
 AddSetting(name="AccelY", default=0.0, zonal=TRUE, comment='body acceleration Y', unit="m/s2")
 AddSetting(name="AccelZ", default=0.0, zonal=TRUE, comment='body acceleration Z', unit="m/s2")
 
+AddGlobal(name="LimitedCells", unit="1")
 AddGlobal(name="TotalFluidMomentumX", unit="kgm/s")
 AddGlobal(name="TotalFluidMomentumY", unit="kgm/s")
 AddGlobal(name="TotalFluidMomentumZ", unit="kgm/s")
