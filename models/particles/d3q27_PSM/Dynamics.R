@@ -49,7 +49,7 @@ AddSetting(name="omegaF", comment='one over F relaxation time')
 AddSetting(name="nu", omegaF='1.0/(3*nu+0.5)', default=0.1, comment='kinetic viscosity in LBM unit')
 
 if (Options$TRT) {
-	AddSetting(name="omegaP", comment='relaxation parameter for odd components in TRT')
+	AddSetting(name="magicParam", comment='magic parameter for relating odd components in TRT')
 }
 
 AddSetting(name="VelocityX", default="0.0", zonal=TRUE, comment='wall/inlet/outlet velocity x-direction')

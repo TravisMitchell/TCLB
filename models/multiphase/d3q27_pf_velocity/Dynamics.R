@@ -45,6 +45,13 @@ if (Options$OutFlow){
     load_phase     = c(load_phase,    "gold","hold")
 }
 
+if (Options$time){
+    AddDensity(name="PhaseF_prev",dx=0,dy=0,dz=0,group="PF")
+    AddDensity(name="U_prev", dx=0, dy=0, dz=0, group="Vel")
+    AddDensity(name="V_prev", dx=0, dy=0, dz=0, group="Vel")
+    AddDensity(name="W_prev", dx=0, dy=0, dz=0, group="Vel")
+}
+
 if (Options$altContactAngle){
 
     AddField("gradPhiVal_x", stencil3d=2, group="gradPhi")
@@ -117,14 +124,17 @@ if (Options$altContactAngle){
 ###################################
 ########INPUTS - PHASEFIELD########
 ###################################
+	AddSetting(name="mapped",default=0)
 	AddSetting(name="Density_h", comment='High density')
 	AddSetting(name="Density_l", comment='Low  density')
 	AddSetting(name="PhaseField_h", default=1, comment='PhaseField in Liquid')
 	AddSetting(name="PhaseField_l", default=0, comment='PhaseField gas')
 	AddSetting(name="PhaseField", 	   comment='Initial PhaseField distribution', zonal=T)
 	AddSetting(name="IntWidth", default=4,    comment='Anti-diffusivity coeff')
-	AddSetting(name="omega_phi", comment='one over relaxation time (phase field)')
-	AddSetting(name="M", omega_phi='1.0/(3*M+0.5)', default=0.02, comment='Mobility')
+	#AddSetting(name="omega_phi", comment='one over relaxation time (phase field)')
+	#AddSetting(name="M", omega_phi='1.0/(3*M+0.5)', default=0.02, comment='Mobility')
+	AddSetting(name="M", default=0.02, comment='Mobility')
+	AddSetting(name="M_variable", default=0, comment='Use variable Mobility in domain Mv*phi*(1-phi) +M')
 	AddSetting(name="sigma", comment='surface tension')
   AddSetting(name="Washburn_start", default="0", comment='Start of washburn gas phase')
   AddSetting(name="Washburn_end", default="0", comment='End of washburn gas phase')

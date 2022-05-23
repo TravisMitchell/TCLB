@@ -543,6 +543,7 @@ CudaDeviceFunction void Collision_PSM() {
 <?R
 	if (Options$TRT) {
 ?>
+		real_t omegaP  = (2.0*(2.0-omegaF)) / (4.0*magicParam*omegaF - omegaF + 2);
 		real_t omegaP1 = 1.0-omegaP;
 <?R
 		omegaF = 1.0 - omegaF1;

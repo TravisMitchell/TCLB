@@ -368,6 +368,9 @@ CudaDeviceFunction void calcWallPhase(){
 #endif
 		}
 	} 
+#ifdef OPTIONS_time
+        PhaseF_prev = PhaseF;
+#endif
 }
 
 CudaDeviceFunction real_t calcMu(real_t C){
@@ -452,7 +455,12 @@ CudaDeviceFunction void Init() {
 	} else {
 		U = VelocityX;	V = VelocityY;	W = VelocityZ;
 	}
-
+	#ifdef OPTIONS_time
+    		PhaseF_prev = PhaseField;
+		U_prev = U;
+		V_prev = V;
+		W_prev = W;
+	#endif
 }
 
 CudaDeviceFunction void InitFromFieldsStage(){
@@ -637,9 +645,45 @@ CudaDeviceFunction void Init_distributions(){
 	// ##### heq
 	real_t F_phi[hPops]; 
 	real_t tmp1 = (1.0 - 4.0*(PhaseF - C0)*(PhaseF - C0))/IntWidth;
+
+	if (mapped != 0){
+		real_t psi[hPops];
+		vector_t gradPsi = {0.0,0.0,0.0}; 
+		vector_t norm = {0.0,0.0,0.0};
+		real_t magnPsi;
+	        for (i=0; i< hPops; i++){
+			psi[i] = PhaseF_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]);
+			psi[i] = IntWidth*log( (psi[i]+1e-12)/(1-psi[i]+1e-12) );
+		}
+		for (i=0; i< hPops; i++){
+#ifdef OPTIONS_q27
+			gradPsi.x = gradPsi.x + d3q27_ex[i]*wg[i]*psi[i];
+			gradPsi.y = gradPsi.y + d3q27_ey[i]*wg[i]*psi[i];
+			gradPsi.z = gradPsi.z + d3q27_ez[i]*wg[i]*psi[i];
+#else
+			gradPsi.x = gradPsi.x + d3q27_ex[i]*wh[i]*psi[i];
+			gradPsi.y = gradPsi.y + d3q27_ey[i]*wh[i]*psi[i];
+			gradPsi.z = gradPsi.z + d3q27_ez[i]*wh[i]*psi[i];
+#endif
+		}
+		gradPsi.x = gradPsi.x*3.0;
+		gradPsi.y = gradPsi.y*3.0;
+		gradPsi.z = gradPsi.z*3.0;
+		magnPsi = sqrt( gradPsi.x*gradPsi.x + gradPsi.y*gradPsi.y + gradPsi.z*gradPsi.z );
+		nx = gradPsi.x/(magnPsi+1e-12);
+		ny = gradPsi.y/(magnPsi+1e-12);
+		nz = gradPsi.z/(magnPsi+1e-12);
+		tmp1 = (1 - tanh(0.5*psi[0]/IntWidth)*tanh(0.5*psi[0]/IntWidth))/IntWidth;
+	}
 	for (i=0; i< 27; i++){
-		Gamma[i] = calcGamma(i, U, V, W, mag);
-		if (i < hPops) F_phi[i] = calcF_phi(i, tmp1, nx, ny, nz);
+	Gamma[i] = calcGamma(i, U, V, W, mag);
+	if (i < hPops){
+	    if (mapped != 0){
+		F_phi[i] = calcF_phi(i, tmp1, nx, ny, nz);
+	    } else {
+		F_phi[i] = calcF_phi(i, tmp1, nx, ny, nz);
+	    }
+	}
 	}
 
 	<?R
@@ -669,6 +713,12 @@ CudaDeviceFunction void Init_distributions(){
 							C(g_old, g)
 							C(h_old, h)     }       ?>
 			}
+	#endif
+	#ifdef OPTIONS_time
+    		PhaseF_prev = PhaseField;
+		U_prev = U;
+		V_prev = V;
+		W_prev = W;
 	#endif
 }
 
@@ -768,7 +818,7 @@ CudaDeviceFunction void CollisionMRT(){
 	int i, j;
 	real_t C  = PhaseF;
     real_t mu = calcMu( C );
-	real_t tau, DynVisc, rho, p;			// Macroscopic Properties
+	real_t tau, DynVisc, rho, p, omega_phi;			// Macroscopic Properties
 	vector_t n, gradPhi;					// Phase field gradients
 	real_t magnPhi;							// Normals
 	real_t F_pressure[3], F_body[3], F_mu[3], F_surf[3], F_total[3]; // Forces
@@ -776,6 +826,14 @@ CudaDeviceFunction void CollisionMRT(){
 	real_t F_phi[hPops], heq[hPops];				// Phase field collision terms
 	real_t F_i[27];							// Momentum distribution forcing term
 	real_t m[27]; 							//MRT Details
+
+#ifdef OPTIONS_time
+	vector_t uold;
+	uold.x = U_prev(0,0,0);
+	uold.y = V_prev(0,0,0);
+	uold.z = W_prev(0,0,0);
+	PhaseF_prev = PhaseF_prev(0,0,0);
+#endif
 
 	// Find Macroscopic Details
 	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l)/(PhaseField_h - PhaseField_l);
@@ -846,6 +904,60 @@ CudaDeviceFunction void CollisionMRT(){
 	}
 	// PHASE FIELD POPULATION UPDATE:
 	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/IntWidth;
+/*
+// DEBUGGING START
+real_t nx = n.x;
+real_t ny = n.y;
+real_t nz = n.z;
+if (X == 16.5 && Y ==16.5 && Z==16.5) {
+	for (i=0; i<hPops; i++){
+		printf("old force %d=%.8e, nx=%.8e, ny=%.8e, nz=%.8e,tmp1=%.8e\n",i,calcF_phi(i,tmp1,nx,ny,nz),nx,ny,nz,tmp1);
+	}
+}
+//DEBUGGING END
+*/
+	if (mapped != 0){
+		real_t psi[hPops];
+		vector_t gradPsi = {0.0,0.0,0.0}; 
+		real_t magnPsi;
+	        for (i=0; i< hPops; i++){
+			psi[i] = PhaseF_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]);
+			if (psi[i] < 0) psi[i] = 0;
+			if (psi[i] > 1) psi[i] = 1;
+			psi[i] = IntWidth*log( (psi[i]+1e-12)/(1-psi[i]+1e-12) );
+		}
+		for (i=0; i< hPops; i++){
+#ifdef OPTIONS_q27
+			gradPsi.x = gradPsi.x + d3q27_ex[i]*wg[i]*psi[i];
+			gradPsi.y = gradPsi.y + d3q27_ey[i]*wg[i]*psi[i];
+			gradPsi.z = gradPsi.z + d3q27_ez[i]*wg[i]*psi[i];
+#else
+			gradPsi.x = gradPsi.x + d3q27_ex[i]*wh[i]*psi[i];
+			gradPsi.y = gradPsi.y + d3q27_ey[i]*wh[i]*psi[i];
+			gradPsi.z = gradPsi.z + d3q27_ez[i]*wh[i]*psi[i];
+#endif
+		}
+		gradPsi.x = gradPsi.x*3.0;
+		gradPsi.y = gradPsi.y*3.0;
+		gradPsi.z = gradPsi.z*3.0;
+		magnPsi = sqrt( gradPsi.x*gradPsi.x + gradPsi.y*gradPsi.y + gradPsi.z*gradPsi.z );
+		n.x = gradPsi.x/(magnPsi+1e-12);
+		n.y = gradPsi.y/(magnPsi+1e-12);
+		n.z = gradPsi.z/(magnPsi+1e-12);
+		tmp1 = (1 - tanh(0.5*psi[0]/IntWidth)*tanh(0.5*psi[0]/IntWidth))/IntWidth;
+	}
+/*
+// DEBUGGING START
+nx = n.x;
+ny = n.y;
+nz = n.z;
+if (X == 16.5 && Y ==16.5 && Z==16.5) {
+	for (i=0; i<hPops; i++){
+		printf("new force %d=%.8e, nx=%.8e, ny=%.8e, nz=%.8e,tmp1=%.8e\n",i,calcF_phi(i,tmp1,nx,ny,nz),nx,ny,nz,tmp1);
+	}
+}
+//DEBUGGING END
+*/
 	<?R
 		n = PV("n",c(".x",".y",".z"))
 		EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),u)
@@ -857,7 +969,48 @@ CudaDeviceFunction void CollisionMRT(){
 		} else {
 			wh = c(rep(16/72,1),rep(8/72,6),rep(1/72,8))
         	}
-		C(Fphi, wh * PV("tmp1") * (U[1:PF_velocities,] %*% n))
+	?>
+		if ( M_variable > 1e-6) { // M_variable = 0 --> constant
+			real_t M_tmp;
+			M_tmp = M_variable * PhaseF * (1 - PhaseF) + M;
+			omega_phi = 1.0 / (3*M_tmp + 0.5);
+		} else {
+			omega_phi = 1.0 / (3*M + 0.5);
+		}
+//if (X == 16.5 && Y ==16.5 && Z==16.5) printf("phase old=%.4f, ux old = %.4e, phase = %.4f, ux = %.4e\n",PhaseF_prev, uold.x, C, U);
+//real_t R_dt_force[15];
+	<?R
+		if (Options$time){
+			R_force = PV("R_dt_force[",0:14,"]")
+			uold = PV("uold",c(".x",".y",".z"))
+			pfold = PV("PhaseF_prev")
+			dtphiU = u*PV("C") - uold*pfold
+			#C(R_force,  3.0*wh*U[1:PF_velocities,] %*% dtphiU)
+			C(Fphi, wh * PV("tmp1") * (U[1:PF_velocities,] %*% n)
+				+ 3.0*wh*U[1:PF_velocities,] %*% dtphiU)
+		} else {
+			C(Fphi, wh * PV("tmp1") * (U[1:PF_velocities,] %*% n))
+		}
+?>
+/*
+if (X == 16.5 && Y ==16.5 && Z==16.5) {
+	printf("force %d=%.4e\n",0,R_dt_force[0]);
+	printf("force %d=%.4e\n",1,R_dt_force[1]);
+	printf("force %d=%.4e\n",2,R_dt_force[2]);
+	printf("force %d=%.4e\n",3,R_dt_force[3]);
+	printf("force %d=%.4e\n",4,R_dt_force[4]);
+	printf("force %d=%.4e\n",5,R_dt_force[5]);
+	printf("force %d=%.4e\n",6,R_dt_force[6]);
+	printf("force %d=%.4e\n",7,R_dt_force[7]);
+	printf("force %d=%.4e\n",8,R_dt_force[8]);
+	printf("force %d=%.4e\n",9,R_dt_force[9]);
+	printf("force %d=%.4e\n",10,R_dt_force[10]);
+	printf("force %d=%.4e\n",11,R_dt_force[11]);
+	printf("force %d=%.4e\n",12,R_dt_force[12]);
+	printf("force %d=%.4e\n",13,R_dt_force[13]);
+	printf("force %d=%.4e\n",14,R_dt_force[14]);
+}*/
+<?R
     		C(h, h - omega * (h - heq + 0.5*Fphi) + Fphi)
 
 		mF = PV(rep(0,27))
@@ -868,6 +1021,12 @@ CudaDeviceFunction void CollisionMRT(){
 	?>
 
     updateTrackers( C );
+#ifdef OPTIONS_time
+	PhaseF_prev = C;
+	U_prev = U;
+	V_prev = V;
+	W_prev = W;
+#endif
 }
 #endif
 
@@ -1171,7 +1330,7 @@ CudaDeviceFunction void CollisionBGK(){
 	int i, j;
 	real_t C  = PhaseF; 
     real_t mu = calcMu( C );
-	real_t tau, DynVisc, rho, p;			// Macroscopic Properties
+	real_t tau, DynVisc, rho, p, omega_phi;			// Macroscopic Properties
 	vector_t gradPhi;				// Phase field gradients
 	real_t nx, ny, nz, magnPhi;			// Normals
 	real_t Gamma[27], geq[27], mag;			// equilibrium, pressure equilibrium, velocity magnitude
@@ -1240,6 +1399,14 @@ CudaDeviceFunction void CollisionBGK(){
 	for (i=0; i< hPops; i++){
 		F_phi[i] = calcF_phi(i, tmp1, nx, ny, nz); 		// Forcing Terms
 		heq[i] = C * Gamma[i];      	// heq
+	}
+
+	if ( M_variable > 1e-6) { // M_variable = 0 --> constant
+		real_t M_tmp;
+		M_tmp = M_variable * PhaseF * (1 - PhaseF) + M;
+		omega_phi = 1.0 / (3*M_tmp + 0.5);
+	} else {
+		omega_phi = 1.0 / (3*M + 0.5);
 	}
 
 	<?R	C(h, h - omega * ( h - w_h*heq + 0.5*Fphi) + Fphi) ?>
