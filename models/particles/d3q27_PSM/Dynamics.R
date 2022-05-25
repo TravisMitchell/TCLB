@@ -51,8 +51,9 @@ if (Options$TRT || Options$WMRT) {
     AddSetting( name="omegaP", default="1", comment="second relaxation time")
 }
 
-AddSetting(name="omegaF", comment='one over F relaxation time')
-AddSetting(name="nu", omegaF='1.0/(3*nu+0.5)', default=0.1, comment='kinetic viscosity in LBM unit')
+#AddSetting(name="omegaF", comment='one over F relaxation time')
+#AddSetting(name="nu", omegaF='1.0/(3*nu+0.5)', default=0.1, comment='kinetic viscosity in LBM unit')
+AddSetting(name="nu", zonal=TRUE, default=0.1, comment='kinetic viscosity in LBM unit')
 
 AddSetting(name="VelocityX", default="0.0", zonal=TRUE, comment='wall/inlet/outlet velocity x-direction')
 AddSetting(name="VelocityY", default="0.0", zonal=TRUE, comment='wall/inlet/outlet velocity y-direction')

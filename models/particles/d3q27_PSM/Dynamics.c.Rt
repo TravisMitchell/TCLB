@@ -344,14 +344,31 @@ CudaDeviceFunction void PressureExitE()
 {
     real_t u[3], d, eq_local[27], eq_neigh[27], usq;
     const int adjX = -1; 
-    
+   
+     //d = f26(adjX,0,0) + f25(adjX,0,0) + f24(adjX,0,0) + f23(adjX,0,0) + f22(adjX,0,0) + f21(adjX,0,0) + f20(adjX,0,0) + f19(adjX,0,0) + f18(adjX,0,0) + f17(adjX,0,0) + f16(adjX,0,0) + f15(adjX,0,0) + f14(adjX,0,0) + f13(adjX,0,0) + f12(adjX,0,0) + f11(adjX,0,0) + f10(adjX,0,0) + f9(adjX,0,0) + f8(adjX,0,0) + f7(adjX,0,0) + f6(adjX,0,0) + f5(adjX,0,0) + f4(adjX,0,0) + f3(adjX,0,0) + f2(adjX,0,0) + f1(adjX,0,0) + f0(adjX,0,0);
+	real_t Jx, Jy, Jz, rho;
+	rho = 1 + Pressure*3.;
+	Jx  =  f[18] + f[17] + f[16] + f[15] + f[6] + f[5] + f[4] + f[3] - rho + f[0] + ( f[23] + f[21] + f[25] + f[19] + f[13] + f[11] + f[9] + f[7] + f[1] )*2. ;
+	if (Jx <0) Jx=0.0;
+	Jy  =  ( f[18] - f[17] + f[16] - f[15] + f[4] - f[3] )*3. ;
+	Jz  =  ( f[18] + f[17] - f[16] - f[15] + f[6] - f[5] )*3. ;
+	f[2] = f[1] - Jx*4./9.;
+	f[8] = f[9] + ( Jy - Jx )/9.;
+	f[10] = f[7] + ( -Jy - Jx )/9.;
+	f[12] = f[13] + ( Jz - Jx )/9.;
+	f[14] = f[11] + ( -Jz - Jx )/9.;
+	f[20] = f[25] + ( Jz + Jy - Jx )/36.;
+	f[22] = f[23] + ( Jz - Jy - Jx )/36.;
+	f[24] = f[21] + ( -Jz + Jy - Jx )/36.;
+	f[26] = f[19] + ( -Jz - Jy - Jx )/36.;
+
     <?R 
     fpop = PV(paste("f",1:27-1,"(adjX,0,0)",sep=""))
     d=PV("d") 
-    C(d, sum(fpop)) 
+   # C(d, sum(fpop)) 
     
 
-    ZouHe(EQ,1,-1,"pressure")
+    #ZouHe(EQ,1,-1,"pressure")
 
     ?>
 }
@@ -447,6 +464,7 @@ CudaDeviceFunction void CalcEquilibrium(real_t f_tab[27], real_t d, real_t u[3])
 
 CudaDeviceFunction void CalcF() {
 	    real_t u[3], d;
+	    real_t omegaF = 1.0/(3*nu+0.5); 
 <?R
 	d = PV("d")
 	u = PV("u[",1:3-1,"]")
@@ -512,6 +530,7 @@ CudaDeviceFunction void CalcF() {
 
 CudaDeviceFunction void Collision_PSM() {
 	real_t u[3], d, R[27];
+	real_t omegaF = 1.0/(3*nu+0.5);
 <?R
 	d = PV("d")
       u = PV("u[",1:3-1,"]")
