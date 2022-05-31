@@ -624,11 +624,11 @@ CudaDeviceFunction void Collision_PSM() {
     if (vlimiter != 0){
         real_t vl = (u[0]*u[0] + u[1]*u[1] + u[2]*u[2]);
         if (vl > vlimiter*vlimiter){
-            real_t d = vlimiter / sqrt(vl);
+            real_t reducer = vlimiter / sqrt(vl);
             AddToLimitedCells(1);
-            u[0] = u[0] * d;
-            u[1] = u[1] * d;
-            u[2] = u[2] * d;
+            u[0] = u[0] * reducer;
+            u[1] = u[1] * reducer;
+            u[2] = u[2] * reducer;
             <?R
             C(f, EQ$Req %*% solve(EQ$mat) )
             ?>
