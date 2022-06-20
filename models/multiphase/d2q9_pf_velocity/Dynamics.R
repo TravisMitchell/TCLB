@@ -190,6 +190,8 @@ AddGlobal(name="FDrag", comment='Force exerted on body in X-direction', unit="N"
 AddGlobal(name="FLift", comment='Force exerted on body in Y-direction', unit="N")
 AddGlobal(name="FTotal", comment='Force exerted on body in X+Y -direction', unit="N")
 
+AddGlobal(name="ZeroMoment", comment='summation of zero moment to check for conservation')
+
 if (Options$Outflow) {
 	AddNodeType(name="Convective_E", group="BOUNDARY")
 	AddNodeType(name="Convective_N", group="BOUNDARY")

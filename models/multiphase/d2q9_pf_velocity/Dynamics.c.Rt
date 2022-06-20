@@ -421,6 +421,7 @@ CudaDeviceFunction void BC_Switcher ()
 
 CudaDeviceFunction void calcHydroIter() {
 	real_t tmpPhase = 0.0;
+	AddToZeroMoment(<?R C(sum(g))?>);
 	if ((NodeType & NODE_ADDITIONALS) == NODE_Smoothing){
 		Init_distributions();
 	}
