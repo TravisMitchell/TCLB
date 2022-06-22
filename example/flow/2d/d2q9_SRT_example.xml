@@ -20,11 +20,9 @@
 		</Wall>
 	</Geometry>
 	<Model>
-		<Param name="Velocity_x" value="0.01"/>
-		<Param name="Velocity_x" value="0.01" zone="Inlet"/>
-		<Param name="nu" value="0.1"/>
-    </Model>
-    <VTK/>
+		<Param name="Velocity" value="0.01"/>
+		<Param name="nu" value="0.02"/>
+	</Model>
 	<VTK Iterations="1000"/>
 	<Solve Iterations="10000"/>
 </CLBConfig>
