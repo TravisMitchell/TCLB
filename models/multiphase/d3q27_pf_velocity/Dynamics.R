@@ -241,13 +241,19 @@ if (Options$tprec) {
 ##########################
 ########NODE TYPES########
 ##########################
-	AddNodeType("Smoothing",group="ADDITIONALS")
-	AddNodeType(name="EPressure", group="BOUNDARY")
-	AddNodeType(name="WPressure", group="BOUNDARY")
-	AddNodeType(name="NVelocity", group="BOUNDARY")
-	AddNodeType(name="Velocity_Y_neg", group="BOUNDARY")
-	AddNodeType(name="EVelocity", group="BOUNDARY")
-	AddNodeType(name="WVelocity", group="BOUNDARY")
+	dotR_my_velocity_boundaries = paste0(c("N","E","S","W","F","B"),"Velocity")
+    dotR_my_pressure_boundaries = paste0(c("N","E","S","W","F","B"),"Pressure")
+    for (ii in 1:6){
+        AddNodeType(name=dotR_my_velocity_boundaries[ii], group="BOUNDARY")
+        AddNodeType(name=dotR_my_pressure_boundaries[ii], group="BOUNDARY")
+    }
+    AddNodeType("Smoothing",group="ADDITIONALS")
+	#AddNodeType(name="EPressure", group="BOUNDARY")
+	#AddNodeType(name="WPressure", group="BOUNDARY")
+	#AddNodeType(name="NVelocity", group="BOUNDARY")
+	#AddNodeType(name="Velocity_Y_neg", group="BOUNDARY")
+	#AddNodeType(name="EVelocity", group="BOUNDARY")
+	#AddNodeType(name="WVelocity", group="BOUNDARY")
 	AddNodeType(name="MovingWall_N", group="BOUNDARY")
 	AddNodeType(name="MovingWall_S", group="BOUNDARY")
 	AddNodeType(name="Solid", group="BOUNDARY")

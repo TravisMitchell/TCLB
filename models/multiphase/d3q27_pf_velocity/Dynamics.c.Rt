@@ -1566,6 +1566,116 @@ CudaDeviceFunction void ENeumann(){
 }
 #endif
 
+
+<?R
+    my_velocity_boundaries = PV(paste0(c("N","E","S","W","F","B"),"Velocity"))
+    my_pressure_boundaries = PV(paste0(c("N","E","S","W","F","B"),"Pressure"))
+    my_normal_directions = rbind(c(0,1,0),
+                                 c(1,0,0),
+                                 c(0,-1,0),
+                                 c(-1,0,0),
+                                 c(0,0,1),
+                                 c(0,0,-1))
+
+    cube_faces = 6
+    b_uavg = PV("Uavg")
+    b_height = PV("HEIGHT")
+    b_pipecentre_y = PV("pipeCentre_Y")
+    b_pipecentre_z = PV("pipeCentre_Z")
+    b_piperadius = PV("pipeRadius")
+    b_coords = c(PV("X"),PV("Y"),PV("Z"))
+    b_velocities = c(PV("U"),PV("V"),PV("W"))
+
+    coords_shift   = b_coords[c(2:length(b_coords),1)]
+    coords_shift_2 = coords_shift[c(2:length(coords_shift),1)]
+    
+    b_channel_flow = 6*b_uavg*coords_shift*(b_height - coords_shift)*b_height^-2
+
+    b_pipe_flow_tmp = (coords_shift-b_pipecentre_y)^2+(coords_shift_2-b_pipecentre_z)^2
+
+    for (ii in 1:cube_faces){
+?>
+CudaDeviceFunction void <?R C(my_velocity_boundaries[ii])?>(){
+    U = VelocityX;
+    V = VelocityY;
+    W = VelocityZ;
+    if ( developedFlow > 0.1 ){
+        <?R
+            C(b_velocities,my_normal_directions[ii,]*b_channel_flow)
+        ?>
+    }
+    if ( developedPipeFlow_X > 0.1 ){
+        U = <?R C(my_normal_directions[ii,1])?> * (2.0*Uavg*(1-pow(sqrt(<?R C(b_pipe_flow_tmp[1])?>)/pipeRadius,2) )) ;
+        V = <?R C(my_normal_directions[ii,2])?> * (2.0*Uavg*(1-pow(sqrt(<?R C(b_pipe_flow_tmp[2])?>)/pipeRadius,2) )) ;
+        W = <?R C(my_normal_directions[ii,3])?> * (2.0*Uavg*(1-pow(sqrt(<?R C(b_pipe_flow_tmp[3])?>)/pipeRadius,2) )) ;
+    }
+	<?R
+		n = my_normal_directions[ii,]
+		geq = EQ$feq
+		bounce = Bounce(U)
+		sel = as.vector( (U %*% n) < 0)
+
+		sel2 = as.vector( ( U %*% n) == 0)	
+		exM = (g[sel2] - geq[sel2]) %*% U[sel2,]
+        Unknowns = 1.0/max(colSums(U[sel2,]^2)) # should be 6 for q27, 4 for q15
+        Nmat = t(U[sel,]) %*% U[sel,]
+
+		C(g[sel], g[bounce][sel] + (geq[sel] - geq[bounce][sel]) - 0.5* (exM %*% solve(Nmat) %*% t(U))[sel])
+	?>
+	<?R
+		U_PF = U[1:PF_velocities,]
+        	pf = PV("PhaseField")
+		n = my_normal_directions[ii,]
+		heq = pf * EQ_h$feq
+		bounce = Bounce(U_PF)
+		sel = as.vector( (U_PF %*% n) < 0)
+
+		sel2 = as.vector( ( U_PF %*% n) == 0)	
+		exM = (h[sel2] - heq[sel2]) %*% rep(1,sum(sel2)) 
+		Unknowns = 1.0/sum(sel)
+
+		C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
+	?>
+}
+
+CudaDeviceFunction void <?R C(my_pressure_boundaries[ii])?>(){
+    real_t d = getRho();
+	real_t pstar = Pressure / (d*cs2);
+	<?R
+        EQ = MRT_eq(U,PV(1),u,mat=t(M))
+       	pstar = PV("pstar")
+		n = my_normal_directions[ii,]
+		geq = pstar*w_g + (EQ$feq - w_g)
+		bounce = Bounce(U)
+		sel = as.vector( (U %*% n) < 0)
+
+		sel2 = as.vector( ( U %*% n) == 0)	
+		exM = (g[sel2] - geq[sel2]) %*% rep(1,sum(sel2)) 
+		Unknowns = 1.0/sum(sel)
+
+		C(g[sel], geq[sel] + geq[bounce][sel] - g[bounce][sel] - 0.5 * Unknowns * (exM))
+	?>
+	<?R
+		U_PF = U[1:PF_velocities,]
+       	pf = PV("PhaseField")
+		n = my_normal_directions[ii,]
+		heq = pf * EQ_h$feq
+		bounce = Bounce(U_PF)
+		sel = as.vector( (U_PF %*% n) < 0)
+
+		sel2 = as.vector( ( U_PF %*% n) == 0)	
+		exM = (h[sel2] - heq[sel2]) %*% rep(1,sum(sel2)) 
+		Unknowns = 1.0/sum(sel)
+
+		C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
+	?>
+}
+
+<?R
+}
+?>
+
+/*
 CudaDeviceFunction void WVelocity(){
 	U = VelocityX;
 	V = VelocityY;
@@ -1646,58 +1756,8 @@ CudaDeviceFunction void EVelocity(){
 		C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
 	?>
 }
-
-CudaDeviceFunction void Velocity_Y_neg(){
-	U = VelocityX;
-	V = VelocityY;
-	W = VelocityZ;
-	<?R
-		n = c(0,-1,0)
-			geq = EQ$feq
-			bounce = Bounce(U)
-			sel = as.vector( (U %*% n) < 0)
-
-		sel2 = as.vector( ( U %*% n) == 0)	
-		exM = (g[sel2] - geq[sel2]) %*% U[sel2,]
-		Unknowns = 1.0/9.0
-
-		C(g[sel], g[bounce][sel] + (geq[sel] - geq[bounce][sel]) - Unknowns * (exM %*% t(U))[sel])
-	?>
-	{
-		<?R ZouHeRewrite(EQ_h, h, c(0,-1,0),"pressure", rhs=PV("PhaseField")) ?>
-	}
-}
-
-CudaDeviceFunction void NVelocity(){
-	U = VelocityX;
-	V = VelocityY;
-	W = VelocityZ;
-	<?R
-		n = c(0,0,-1)
-			geq = EQ$feq
-			bounce = Bounce(U)
-			sel = as.vector( (U %*% n) < 0)
-
-		sel2 = as.vector( ( U %*% n) == 0)	
-		exM = (g[sel2] - geq[sel2]) %*% U[sel2,]
-		Unknowns = 1.0/9.0
-
-		C(g[sel], g[bounce][sel] + (geq[sel] - geq[bounce][sel]) - Unknowns * (exM %*% t(U))[sel])
-	?>
-	{
-		<?R ZouHeRewrite(EQ_h, h, c(0,0,-1),"pressure", rhs=PV("PhaseField")) ?>
-	}
-}
-
-CudaDeviceFunction void WPressure(){
-	{
-		<?R ZouHeRewrite(EQ, g, c(-1,0,0),"pressure")  ?>
-	}
-	{
-		<?R ZouHeRewrite(EQ_h, h, c(-1,0,0),"pressure", rhs=PV("PhaseField")) ?>
-	}
-}
-
+*/
+/*
 CudaDeviceFunction void EPressure(){
     real_t d = getRho();
 	real_t pstar = Pressure / (d*cs2);
@@ -1730,7 +1790,7 @@ CudaDeviceFunction void EPressure(){
 		C(h[sel], heq[sel] + heq[bounce][sel] - h[bounce][sel] - 0.5 * Unknowns * (exM))
 	?>
 }
-
+*/
 CudaDeviceFunction void MovingNWall(){
 	g4  = g3;
 	g24 = g25;
@@ -1928,25 +1988,19 @@ CudaDeviceFunction void updateBoundary(){
 		case NODE_Wall:
 			BounceBack();
 			break;
-		case NODE_EVelocity:
-			EVelocity();
+        <?R
+        for (ii in 1:6){
+        ?>
+        case NODE_<?R C(my_velocity_boundaries[ii])?>:
+			<?R C(my_velocity_boundaries[ii])?>();
 			break;
-		case NODE_WVelocity:
-			WVelocity();
+		case NODE_<?R C(my_pressure_boundaries[ii])?>:
+			<?R C(my_pressure_boundaries[ii])?>();
 			break;
-		case NODE_NVelocity:
-			NVelocity();
-			break;
-		case NODE_Velocity_Y_neg:
-			Velocity_Y_neg();
-			break;
-		case NODE_EPressure:
-			EPressure();
-			break;
-		case NODE_WPressure:
-			WPressure();
-			break;
-		case NODE_MovingWall_N:
+		<?R
+        }
+        ?>
+        case NODE_MovingWall_N:
 			MovingNWall();
 			break;
 		case NODE_MovingWall_S:
