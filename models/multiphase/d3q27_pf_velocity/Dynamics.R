@@ -140,10 +140,12 @@ if (Options$altContactAngle){
 		AddSetting(name="CenterZ", default=0.0, comment='Diffuse sphere center_z')
 		AddSetting(name="BubbleType",default=1.0, comment='droplet(1.0) or bubble(-1.0)?!')
 	# Annular Taylor bubble
+        AddSetting(name="Donut_xyz", default=0.0, comment='direction of bubble x-0. y-1. z-2')
 		AddSetting(name="DonutTime", default=0.0, comment='Radius of a Torus - initialised to travel along x-axis')
 		AddSetting(name="Donut_h",   default=0.0, comment='Half donut thickness, i.e. the radius of the cross-section')
 		AddSetting(name="Donut_D",   default=0.0, comment='Dilation factor along the x-axis')
 		AddSetting(name="Donut_x0",  default=0.0, comment='Position along x-axis')
+        AddSetting(name="Donut_freesurf", default=0.0, comment='height of free surface in pipe (if it exists)')
 	# Poiseuille flow in 2D channel (flow in x direction)
 		AddSetting("HEIGHT", default=0,	comment="Height of channel for 2D Poiseuille flow")
 		AddSetting("Uavg", default=0,	zonal=T, comment="Average velocity of channel for 2D Poiseuille flow")
