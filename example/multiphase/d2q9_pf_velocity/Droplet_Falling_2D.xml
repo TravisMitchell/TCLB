@@ -25,6 +25,9 @@
 <Model>
 	<Param name="Density_h" value="1.000000" />    
 	<Param name="Density_l" value="0.100000" />    
+	
+	<Param name="alpha" value="1" />    
+	<Param name="Pressure" value="0" />    
 
 	<Param name="Viscosity_h" value="0.265271" />    
 	<Param name="Viscosity_l" value="0.419430" />    
@@ -34,7 +37,7 @@
 	<Param name="PhaseField_init"   value="1" />    
 
 	<Param name="Radius"   value="51.2000" />
-	<Param name="CenterX"  value="256.0000" />
+	<Param name="CenterX"  value="256.5000" />
 	<Param name="CenterY"  value="1280.0000" />
 	<Param name="BubbleType"  value="1" />
 

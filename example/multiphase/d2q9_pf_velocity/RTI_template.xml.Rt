@@ -67,11 +67,13 @@ for (i in c(1,2)){
 		<Param name="PhaseField_init" value="1.0"/>
 		<Param name="Density_l" value="<?%f rhol[i] ?>"/>
 		<Param name="Density_h" value="<?%f rho[i]  ?>"/>
+		<Param name="alpha" value="1"/>
 	</Model>
 	<VTK/>
 	<Solve Iterations="<?%f time[i] * to[i] ?>" output="output/">
 		<VTK Iterations="<?%f  0.5*to[i] ?>"/>
 		<Log Iterations="<?%f 0.01*to[i] ?>" />
+		<Failcheck Iterations="<?%f 0.01*to[i] ?>" />
 	</Solve>
 </CLBConfig>
 <?R
