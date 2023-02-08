@@ -103,6 +103,8 @@ AddQuantity(name="U",	  unit="m/s",vector=T)
 AddQuantity(name="NormalizedPressure",	  unit="Pa")
 AddQuantity(name="Pressure",	  unit="Pa")
 AddQuantity(name="Normal", unit="1", vector=T)
+AddQuantity(name="SumH",  unit="1")
+AddQuantity(name="SumG",  unit="1")
 
 #	Initialisation States
 AddSetting(name="Period", default="0", comment='Number of cells per cos wave')

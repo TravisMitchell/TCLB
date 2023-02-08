@@ -60,11 +60,38 @@ if (Options$Outflow){
 }
 ?>
 //	EXPORTABLE QUANTITIES:
+//////TESTING BEGIN
+CudaDeviceFunction void split_distributions(real_t rho, real_t A){
+	for (int i=0; i<9; i++){
+		f[i] = rho*wf[i]*A;
+		g[i] = g[i] - wf[i]*A;
+	}
+}
+
+CudaDeviceFunction real_t recombine_distributions(real_t rho){
+	real_t A;
+	A = alpha*(<?R C(sum(g)) ?>);
+	for (int i; i<9; i++){
+		g[i] = g[i] + f[i]/rho;
+	}
+	
+	return A + (<?R C(sum(g)) ?>);
+}
+
+CudaDeviceFunction real_t getSumH(){
+	return <?R C(sum(g)) ?>;
+}
+
+CudaDeviceFunction real_t getSumG(){
+	return <?R C(sum(f)) ?>;
+}
+//////TESTING END
 CudaDeviceFunction real_t getRho(){
 	real_t rho;
 	rho = Density_l + (Density_h-Density_l) * (PhaseF(0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
 	return rho;
 }
+
 
 CudaDeviceFunction real_t getPhaseField(){
 	return PhaseF(0,0);
@@ -82,21 +109,18 @@ CudaDeviceFunction real_t getNormalizedPressure(){
 	// Normalised pressure, eq 32a from "Improved locality of the phase-field lattice Boltzmann 
 	//model for immiscible fluids at high density ratios"
 	real_t rho = getRho();
+	real_t sum = 0;
 	for (int i=0;i<9;i++){
-		g[i] = g[i] + f[i]/rho;
+		sum += g[i] + f[i]/rho;
 	}
-	real_t p =  <?R C(sum(g)) ?> ;
-	return p;
+	return sum;
 }
 
 CudaDeviceFunction real_t getPressure(){
 	// Pressure, defined just eq 17 from "Improved locality of the phase-field lattice Boltzmann 
 	//	model for immiscible fluids at high density ratios"
 	real_t rho = getRho();
-	for (int i=0;i<9;i++){
-		g[i] = g[i] + f[i]/rho;
-	}
-	real_t p =  <?R C(sum(g)) ?> ;//Normalised pressure
+	real_t p = getNormalizedPressure();
 	p = p*rho/3.0; 
 	return p;
 }
@@ -382,8 +406,7 @@ CudaDeviceFunction void Init_distributions(){
 		Gamma[i] = calcGamma(i, U, V, mag);
 		F_phi[i] = calcF_phi(i, tmp1, nx, ny);
 		h[i] = myPhaseF * Gamma[i] - 0.5*F_phi[i];   // heq
-		g[i] = pnorm*wf[i] + Gamma[i] - wf[i]; 				     //geq
-		//f[i] = Gamma[i] - wf[i]; 				     //geq
+		g[i] = pnorm*wf[i] + Gamma[i] - wf[i];	     //geq
 	}
 
 	#ifdef OPTIONS_RT
@@ -402,10 +425,7 @@ CudaDeviceFunction void Init_distributions(){
 	//Split for streaming:
 	real_t A = <?R C(sum(g)) ?>;// + alpha*(<?R C(sum(f)) ?>);
 
-	for (int i=0;i<9;i++){
-		g[i] = g[i] - wf[i]*A;
-		f[i] = 1.0*Rho*wf[i]*A; 
-	}
+	split_distributions(Rho, A);
 }
 
 //	ITERATION:
@@ -455,13 +475,6 @@ CudaDeviceFunction void calcHydroIter() {
 		real_t myPhaseF = PhaseF;
 		real_t rho = calcRho(myPhaseF);
 		
-		//recombine post streaming:
-		real_t A = alpha*(<?R C(sum(g)) ?>); 
-		for (int i=0;i<9;i++){
-			g[i] = g[i] + f[i]/rho;
-		}
-		A = A + <?R C(sum(g)) ?>;
-
 		log_data_from_special_nodes();
 		#ifdef OPTIONS_debug	
 			AddToMomentumX(U*rho);
@@ -481,7 +494,13 @@ CudaDeviceFunction void calcHydroIter() {
 		#elif OPTIONS_CM
 			if (NodeType & NODE_CM) { CollisionCM();}
 		#else
-			if (NodeType & NODE_MRT) { CollisionMRT();}
+			if (NodeType & NODE_MRT) { 
+				// Recombine pressure into distribution
+				// for collision
+				real_t A = recombine_distributions(rho); 
+				CollisionMRT();
+				split_distributions(rho, A);	
+			}
 		#endif
                 if (tmpPhase <= 0.5) {
 			AddToBubbleVelocityX( (1 - tmpPhase)*U );
@@ -495,12 +514,6 @@ CudaDeviceFunction void calcHydroIter() {
 			AddToMomentumX_afterCol(U*rho);
 			AddToMomentumY_afterCol(V*rho);
 		#endif
-		
-		//Split for streaming
-		for (int i=0;i<9;i++){
-			g[i] = g[i] - wf[i]*A;
-			f[i] = 1.0*rho*wf[i]*A;
-		}
 	}
 }
 
@@ -1471,34 +1484,11 @@ CudaDeviceFunction void BounceBack()
 		p1.x = p1.x*rho + 0.5*Fhydro.x;
 		p1.y = p1.y*rho + 0.5*Fhydro.y;
 	}
-
-	real_t tmp;
-	tmp = g[1];
-	g[1] = g[3];
-	g[3] = tmp;
-	tmp = g[2];
-	g[2] = g[4];
-	g[4] = tmp;
-	tmp = g[5];
-	g[5] = g[7];
-	g[7] = tmp;
-	tmp = g[6];
-	g[6] = g[8];
-	g[8] = tmp;
-
-	tmp = h[1];
-	h[1] = h[3];
-	h[3] = tmp;
-	tmp = h[2];
-	h[2] = h[4];
-	h[4] = tmp;
-	tmp = h[5];
-	h[5] = h[7];
-	h[7] = tmp;
-	tmp = h[6];
-	h[6] = h[8];
-	h[8] = tmp;
-
+	
+	{<?R FullBounceBack('g')?>}
+	{<?R FullBounceBack('f')?>}
+	{<?R FullBounceBack('h')?>}
+	
 	//Summing the difference in momentum before/after collision
 	if((NodeType & NODE_BODY) == NODE_Body) {
 		p2.x = g[8] +g[1] +g[5] -g[6] -g[3] -g[7];
