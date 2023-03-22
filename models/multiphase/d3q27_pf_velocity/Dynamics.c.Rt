@@ -794,9 +794,16 @@ CudaDeviceFunction void calc_Fp(real_t *fx, real_t *fy, real_t *fz, real_t press
 	*fz = (-1.0/3.0) * pressure * (Density_h-Density_l) * gPhi.z;
 }
 CudaDeviceFunction void calc_Fb(real_t *fx, real_t *fy, real_t *fz, real_t rho){
-    *fx = (Density_h-rho)*BuoyancyX + rho*GravitationX;
-	*fy = (Density_h-rho)*BuoyancyY + rho*GravitationY;
-	*fz = (Density_h-rho)*BuoyancyZ + rho*GravitationZ;
+	if (Time < gravity_ramp_its){
+		real_t multiplier = (gravity_ramp_its - Time) / gravity_ramp_its;
+		*fx = multiplier*((Density_h-rho)*BuoyancyX + rho*GravitationX);
+		*fy = multiplier*((Density_h-rho)*BuoyancyY + rho*GravitationY);
+		*fz = multiplier*((Density_h-rho)*BuoyancyZ + rho*GravitationZ);
+	} else {
+		*fx = (Density_h-rho)*BuoyancyX + rho*GravitationX;
+		*fy = (Density_h-rho)*BuoyancyY + rho*GravitationY;
+		*fz = (Density_h-rho)*BuoyancyZ + rho*GravitationZ;
+	}
 }
 CudaDeviceFunction void calc_Fs(real_t *fx, real_t *fy, real_t *fz, real_t mu, vector_t gPhi){
 	#ifdef OPTIONS_thermo
@@ -918,18 +925,38 @@ CudaDeviceFunction void CollisionMRT(){
 	// PHASE FIELD POPULATION UPDATE:
 	tmp1 = (1.0 - 4.0*(C - 0.5)*(C - 0.5))/IntWidth;
 	<?R
-		n = PV("n",c(".x",".y",".z"))
-		EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),u)
-		C(heq, EQ_h$feq * PV("C"))
-		EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),PV(c(0,0,0)))
 		if (Options$q27){
-			wh = EQ_h$feq
-		    EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),u)
+			cat("real_t mh[27],m0_h[27];")
+			n = PV("n",c(".x",".y",".z"))
+			EQ_h = MRT_eq(U,PV(1),u,mat=t(M))
+			selR = EQ_h$order < 10
+			EQ_h$Req[1] = PV("C")
+			EQ_h$feq = solve(M) %*% EQ_h$Req
+			Omega_h = PV(rep(1,sum(selR)))
+			Omega_h[5:9] = PV("M")^(-1)
+			Omega_h[1:4] = PV(1)
+			mh = PV("mh[",1:27-1,"]")
+			m0_h= PV("m0_h[",1:27-1,"]")
+			C(m0_h[selR], (M %*% h)[selR])
+			mF_h = PV(rep(0,27))
+			mF_h[2:4] = PV("tmp1") * n
+			C(mh, m0_h - (m0_h - EQ_h$Req + mF_h*0.5)[selR] * Omega + mF_h)
+			C(h, invM %*% mh)
+			EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),PV(c(0,0,0)))
 		} else {
-			wh = c(rep(16/72,1),rep(8/72,6),rep(1/72,8))
-        	}
-		C(Fphi, wh * PV("tmp1") * (U[1:PF_velocities,] %*% n))
-    		C(h, h - omega * (h - heq + 0.5*Fphi) + Fphi)
+			n = PV("n",c(".x",".y",".z"))
+			EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),u)
+			C(heq, EQ_h$feq * PV("C"))
+			EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),PV(c(0,0,0)))
+			if (Options$q27){
+				wh = EQ_h$feq
+				EQ_h = MRT_eq(U[1:PF_velocities,],PV(1),u)
+			} else {
+				wh = c(rep(16/72,1),rep(8/72,6),rep(1/72,8))
+			}
+			C(Fphi, wh * PV("tmp1") * (U[1:PF_velocities,] %*% n))
+			C(h, h - omega * (h - heq + 0.5*Fphi) + Fphi)
+		}
 
 		mF = PV(rep(0,27))
 		mF[2:4] = F_total * rho.inv
@@ -1686,13 +1713,6 @@ CudaDeviceFunction void updateTrackers(real_t C){
 					1./54.,  1./54.,  1./54.,  1./54.,
 					1./54.,  1./54.,  1./54.,  1./54.)
 	printf("Orthogonality Check \n")
-	for (i in 1:27) {
-		printf("Moment %d: ", i-1)
-		for (j in i:27) {
-			tmp <- myWeighting %*% ( M[i,] * M[j,] )
-			printf(" %.2f,", tmp)  
-		}
-		printf("\n")
-	}
+	print(round(M %*% diag(myWeighting) %*% t(M), 4))
 ?>
 */

@@ -171,6 +171,7 @@ if (Options$altContactAngle){
 	AddSetting(name="BuoyancyX", default=0.0, comment='applied (rho_h-rho)*BuoyancyX')
 	AddSetting(name="BuoyancyY", default=0.0, comment='applied (rho_h-rho)*BuoyancyY')
 	AddSetting(name="BuoyancyZ", default=0.0, comment='applied (rho_h-rho)*BuoyancyZ')
+	AddSetting(name="gravity_ramp_its", default=0, comment='ramp iterations to increase gravity load')
 ##################################
 ########TRACKING VARIABLES########
 ##################################
