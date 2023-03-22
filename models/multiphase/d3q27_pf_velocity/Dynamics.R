@@ -21,7 +21,7 @@ save_iteration  = c("g","h","Vel","nw")
 load_iteration  = c("g","h","Vel","nw")
 load_phase      = c("g","h","Vel","nw")
 
-if (Options$altContactAngle){
+if (Options$geometric){
     AddDensity(name="n_k", dx=0, dy=0, dz=0, group="nw")
     AddDensity(name="der_tangent_1_wall", dx=0, dy=0, dz=0)
     AddDensity(name="der_tangent_2_wall", dx=0, dy=0, dz=0)
@@ -47,6 +47,9 @@ if (Options$altContactAngle){
     AddStage('calcPhaseGrad_init', "calcPhaseGrad_init", load=DensityAll$group %in% c("g","h","Vel","nw", "PF"), save=Fields$group=="gradPhi")
 } else {
     AddField("PhaseF",stencil3d=1, group="PF")
+	if (Options$mapPhi){
+		AddField("psi_mapped_from_phi",stencil3d=1, group="PF")
+	}
 }
 if (Options$OutFlow){
 	for (d in rows(DensityAll)) {
@@ -75,10 +78,10 @@ if (Options$thermo){
 ########STAGES########
 ######################
 AddStage("WallInit" , "Init_wallNorm", save=Fields$group=="nw")
-AddStage("calcWall" , "calcWallPhase", save=Fields$name=="PhaseF", load=DensityAll$group=="nw")
+AddStage("calcWall" , "calcWallPhase", save=Fields$group=="PF", load=DensityAll$group=="nw")
 AddStage("PhaseInit", "Init", save=Fields$group %in% save_initial_PF)
 AddStage("BaseInit" , "Init_distributions", save=Fields$group %in% save_initial)
-AddStage("calcPhase", "calcPhaseF", save=Fields$name=="PhaseF", load=DensityAll$group %in% load_phase)
+AddStage("calcPhase", "calcPhaseF", save=Fields$group=="PF", load=DensityAll$group %in% load_phase)
 AddStage("BaseIter" , "Run", save=Fields$group %in% save_iteration, load=DensityAll$group %in% load_iteration )
 #######################
 ########ACTIONS########
@@ -88,7 +91,7 @@ AddStage("BaseIter" , "Run", save=Fields$group %in% save_iteration, load=Density
 		AddAction("Iteration", c("BaseIter", "calcPhase", "calcWall","RK_1", "RK_2", "RK_3", "RK_4","NonLocalTemp"))
 		AddAction("IterationConstantTemp", c("BaseIter", "calcPhase", "calcWall","CopyThermal"))
 		AddAction("Init"     , c("PhaseInit","WallInit" , "calcWall","BaseInit"))
-	} else if (Options$altContactAngle) {
+	} else if (Options$geometric) {
         AddAction("Iteration", c("BaseIter", "calcPhase",    "calcPhaseGrad", "calcWall_CA"))
 	    AddAction("Init"     , c("PhaseInit","WallInit_CA" , "calcPhaseGrad_init", "calcWall_CA","BaseInit"))
     } else {
@@ -104,7 +107,7 @@ AddStage("BaseIter" , "Run", save=Fields$group %in% save_iteration, load=Density
 	AddQuantity(name="P",	  unit="Pa")
 	AddQuantity(name="Pstar", unit="1")
 	AddQuantity(name="Normal", unit=1, vector=T)
-if (Options$altContactAngle){
+if (Options$geometric){
     AddQuantity(name="TangentWallVector1", unit=1, vector=T)
     AddQuantity(name="TangentWallVector2", unit=1, vector=T)
     AddQuantity(name="Tangent1Wall", unit="1")
@@ -112,6 +115,9 @@ if (Options$altContactAngle){
     AddQuantity(name="GradPhi", unit=1, vector=T)
     AddQuantity(name="PerpVal", unit="1")
     AddQuantity(name="IsItBoundary", unit="1")
+}
+if (Options$mapPhi){
+	AddQuantity(name="PsiMapped",unit="1")
 }
 ###################################
 ########INPUTS - PHASEFIELD########
@@ -125,8 +131,8 @@ if (Options$altContactAngle){
 	AddSetting(name="omega_phi", comment='one over relaxation time (phase field)')
 	AddSetting(name="M", omega_phi='1.0/(3*M+0.5)', default=0.02, comment='Mobility')
 	AddSetting(name="sigma", comment='surface tension')
-  AddSetting(name="Washburn_start", default="0", comment='Start of washburn gas phase')
-  AddSetting(name="Washburn_end", default="0", comment='End of washburn gas phase')
+  	AddSetting(name="Washburn_start", default="0", comment='Start of washburn gas phase')
+  	AddSetting(name="Washburn_end", default="0", comment='End of washburn gas phase')
 	AddSetting(name="radAngle", default='1.570796', comment='Contact angle in radians, can use units -> 90d where d=2pi/360', zonal=T)
 	AddSetting(name="minGradient", default='1e-8', comment='if the phase gradient is less than this, set phase normals to zero')
 	##SPECIAL INITIALISATIONS
@@ -159,6 +165,7 @@ if (Options$altContactAngle){
 	AddSetting(name="tau_l", comment='relaxation time (low density fluid)')
 	AddSetting(name="tau_h", comment='relaxation time (high density fluid)')
     AddSetting(name="tauUpdate", default="1", comment="Interpolation: 1-linear, 2- inverse, 3- dyn viscosity")
+	AddSetting(name="fixedIterator", default="2", comment="How many times to resolve implicit relation of Fmu and velocity")
 	AddSetting(name="Viscosity_l", tau_l='(3*Viscosity_l)', default=0.16666666, comment='kinematic viscosity')
 	AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)', default=0.16666666, comment='kinematic viscosity')
 	AddSetting(name="VelocityX", default=0.0, comment='inlet/outlet/init velocity', zonal=T)
@@ -171,6 +178,7 @@ if (Options$altContactAngle){
 	AddSetting(name="BuoyancyX", default=0.0, comment='applied (rho_h-rho)*BuoyancyX')
 	AddSetting(name="BuoyancyY", default=0.0, comment='applied (rho_h-rho)*BuoyancyY')
 	AddSetting(name="BuoyancyZ", default=0.0, comment='applied (rho_h-rho)*BuoyancyZ')
+	AddSetting(name="gravity_ramp_its", default=0, comment='iterations to ramp to the applied acceleration')
 ##################################
 ########TRACKING VARIABLES########
 ##################################
