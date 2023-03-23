@@ -21,6 +21,13 @@ save_iteration  = c("g","h","Vel","nw")
 load_iteration  = c("g","h","Vel","nw")
 load_phase      = c("g","h","Vel","nw")
 
+if (Options$split){
+	save_initial    = c(save_initial,"f")
+	save_iteration  = c(save_iteration,"f")
+	load_iteration  = c(load_iteration,"f")
+	load_phase      = c(load_phase,"f")
+}
+
 if (Options$altContactAngle){
     AddDensity(name="n_k", dx=0, dy=0, dz=0, group="nw")
     AddDensity(name="der_tangent_1_wall", dx=0, dy=0, dz=0)
@@ -116,6 +123,7 @@ if (Options$altContactAngle){
 ###################################
 ########INPUTS - PHASEFIELD########
 ###################################
+	if (Options$split){AddSetting(name="alpha",default=1,comment='splitting prm')}
 	AddSetting(name="Density_h", comment='High density')
 	AddSetting(name="Density_l", comment='Low  density')
 	AddSetting(name="PhaseField_h", default=1, comment='PhaseField in Liquid')
@@ -145,7 +153,6 @@ if (Options$altContactAngle){
 		AddSetting(name="Donut_h",   default=0.0, comment='Half donut thickness, i.e. the radius of the cross-section')
 		AddSetting(name="Donut_D",   default=0.0, comment='Dilation factor along the x-axis')
 		AddSetting(name="Donut_x0",  default=0.0, comment='Position along x-axis')
-        AddSetting(name="Donut_freesurf", default=0.0, comment='height of free surface in pipe (if it exists)')
 	# Poiseuille flow in 2D channel (flow in x direction)
 		AddSetting("HEIGHT", default=0,	comment="Height of channel for 2D Poiseuille flow")
 		AddSetting("Uavg", default=0,	zonal=T, comment="Average velocity of channel for 2D Poiseuille flow")

@@ -135,6 +135,107 @@
 #define hPops 15
 #endif
 
+#ifdef OPTIONS_split
+CudaDeviceFunction void split_distributions(real_t rho, real_t A){
+	f0 = rho*wg[0]*A;
+	f1 = rho*wg[1]*A;
+	f2 = rho*wg[2]*A;
+	f3 = rho*wg[3]*A;
+	f4 = rho*wg[4]*A;
+	f5 = rho*wg[5]*A;
+	f6 = rho*wg[6]*A;
+	f7 = rho*wg[7]*A;
+	f8 = rho*wg[8]*A;
+	f9 = rho*wg[9]*A;
+	f10 = rho*wg[10]*A;
+	f11 = rho*wg[11]*A;
+	f12 = rho*wg[12]*A;
+	f13 = rho*wg[13]*A;
+	f14 = rho*wg[14]*A;
+	f15 = rho*wg[15]*A;
+	f16 = rho*wg[16]*A;
+	f17 = rho*wg[17]*A;
+	f18 = rho*wg[18]*A;
+	f19 = rho*wg[19]*A;
+	f20 = rho*wg[20]*A;
+	f21 = rho*wg[21]*A;
+	f22 = rho*wg[22]*A;
+	f23 = rho*wg[23]*A;
+	f24 = rho*wg[24]*A;
+	f25 = rho*wg[25]*A;
+	f26 = rho*wg[26]*A;
+	g0 = g0 - wg[0]*A; 
+	g1 = g1 - wg[1]*A; 
+	g2 = g2 - wg[2]*A; 
+	g3 = g3 - wg[3]*A; 
+	g4 = g4 - wg[4]*A; 
+	g5 = g5 - wg[5]*A; 
+	g6 = g6 - wg[6]*A; 
+	g7 = g7 - wg[7]*A; 
+	g8 = g8 - wg[8]*A; 
+	g9 = g9 - wg[9]*A; 
+	g10 = g10 - wg[10]*A; 
+	g11 = g11 - wg[11]*A; 
+	g12 = g12 - wg[12]*A; 
+	g13 = g13 - wg[13]*A; 
+	g14 = g14 - wg[14]*A; 
+	g15 = g15 - wg[15]*A; 
+	g16 = g16 - wg[16]*A; 
+	g17 = g17 - wg[17]*A; 
+	g18 = g18 - wg[18]*A; 
+	g19 = g19 - wg[19]*A; 
+	g20 = g20 - wg[20]*A; 
+	g21 = g21 - wg[21]*A; 
+	g22 = g22 - wg[22]*A; 
+	g23 = g23 - wg[23]*A; 
+	g24 = g24 - wg[24]*A; 
+	g25 = g25 - wg[25]*A; 
+	g26 = g26 - wg[26]*A; 
+}
+
+CudaDeviceFunction real_t recombine_distributions(real_t rho){
+	real_t A;
+	A = alpha*(<?R C(sum(g)) ?>);
+	g0 = g0 + f0/rho;
+	g1 = g1 + f1/rho;
+	g2 = g2 + f2/rho;
+	g3 = g3 + f3/rho;
+	g4 = g4 + f4/rho;
+	g5 = g5 + f5/rho;
+	g6 = g6 + f6/rho;
+	g7 = g7 + f7/rho;
+	g8 = g8 + f8/rho;
+	g9 = g9 + f9/rho;
+	g10 = g10 + f10/rho;
+	g11 = g11 + f11/rho;
+	g12 = g12 + f12/rho;
+	g13 = g13 + f13/rho;
+	g14 = g14 + f14/rho;
+	g15 = g15 + f15/rho;
+	g16 = g16 + f16/rho;
+	g17 = g17 + f17/rho;
+	g18 = g18 + f18/rho;
+	g19 = g19 + f19/rho;
+	g20 = g20 + f20/rho;
+	g21 = g21 + f21/rho;
+	g22 = g22 + f22/rho;
+	g23 = g23 + f23/rho;
+	g24 = g24 + f24/rho;
+	g25 = g25 + f25/rho;
+	g26 = g26 + f26/rho;
+	return A + (<?R C(sum(g)) ?>);
+}
+
+CudaDeviceFunction real_t getSumH(){
+	return <?R C(sum(g)) ?>;
+}
+
+CudaDeviceFunction real_t getSumG(){
+	return <?R C(sum(f)) ?>;
+}
+#endif
+
+
 #ifdef OPTIONS_altContactAngle
 CudaDeviceFunction real_t getTangent1Wall(){
 	return der_tangent_1_wall;
@@ -252,6 +353,37 @@ CudaDeviceFunction vector_t getU(){
 	return u;
 }
 CudaDeviceFunction real_t getPstar(){
+	#ifdef OPTIONS_split
+	real_t rho;
+	rho = Density_l + (Density_h-Density_l) * (PhaseF(0,0,0) - PhaseField_l)/(PhaseField_h - PhaseField_l);
+	g0 = g0 + f0/rho;
+	g1 = g1 + f1/rho;
+	g2 = g2 + f2/rho;
+	g3 = g3 + f3/rho;
+	g4 = g4 + f4/rho;
+	g5 = g5 + f5/rho;
+	g6 = g6 + f6/rho;
+	g7 = g7 + f7/rho;
+	g8 = g8 + f8/rho;
+	g9 = g9 + f9/rho;
+	g10 = g10 + f10/rho;
+	g11 = g11 + f11/rho;
+	g12 = g12 + f12/rho;
+	g13 = g13 + f13/rho;
+	g14 = g14 + f14/rho;
+	g15 = g15 + f15/rho;
+	g16 = g16 + f16/rho;
+	g17 = g17 + f17/rho;
+	g18 = g18 + f18/rho;
+	g19 = g19 + f19/rho;
+	g20 = g20 + f20/rho;
+	g21 = g21 + f21/rho;
+	g22 = g22 + f22/rho;
+	g23 = g23 + f23/rho;
+	g24 = g24 + f24/rho;
+	g25 = g25 + f25/rho;
+	g26 = g26 + f26/rho;
+	#endif
 	return <?R C(sum(g)) ?>;
 }
 CudaDeviceFunction real_t getP(){
@@ -560,7 +692,7 @@ CudaDeviceFunction void specialCases_Init(){
                        - 0.5*(PhaseField_h - PhaseField_l) * BubbleType * tanh(2 * (Ri - Radius)/IntWidth);
         }	
  	// Rayleigh-Taylor Instability
-	// Initialises with a sharp interface
+	    // Initialises with a sharp interface
 	if (RTI_Characteristic_Length > 0){
 		real_t d = RTI_Characteristic_Length;
 		real_t ycutoff;
@@ -615,6 +747,7 @@ CudaDeviceFunction void specialCases_Init(){
             }
         }
     }
+    
     // Washburn Law test setup
     if ((Washburn_start > 0) && (Washburn_end > 0) ) {
 		PhaseF = 1 - 0.5 *  ( tanh( 2.0 * ( X - Washburn_start ) / IntWidth ) -
@@ -770,6 +903,11 @@ CudaDeviceFunction void Init_distributions(){
 							C(h_old, h)     }       ?>
 			}
 	#endif
+	#ifdef OPTIONS_split
+	real_t A = <?R C(sum(g)) ?>;
+
+	split_distributions(d, A);
+	#endif
 }
 
 /*	ITERATION:	*/
@@ -787,11 +925,18 @@ CudaDeviceFunction void Run() {
 		#else
 			if (NodeType & NODE_MRT)
 			{
+				#ifdef OPTIONS_split
+					real_t rho = getRho();
+					real_t A = recombine_distributions(rho); 
+				#endif
 				CollisionMRT();
+				#ifdef OPTIONS_split
+					split_distributions(rho, A);	
+				#endif
 			} 
 		#endif
 	}
-        pnorm  = <?R C(sum(g)) ?>;
+        //pnorm  = <?R C(sum(g)) ?>;
 }
 
 CudaDeviceFunction real_t calcTau(real_t pf){
@@ -825,13 +970,13 @@ CudaDeviceFunction void calc_Fp(real_t *fx, real_t *fy, real_t *fz, real_t press
 CudaDeviceFunction void calc_Fb(real_t *fx, real_t *fy, real_t *fz, real_t rho){
     if (Time < gravity_ramp_its){
         real_t multiplier = (gravity_ramp_its - Time) / gravity_ramp_its;
-        *fx = multiplier*((PhaseField_h-PhaseF(0,0,0))*BuoyancyX + rho*GravitationX);
-        *fy = multiplier*((PhaseField_h-PhaseF(0,0,0))*BuoyancyY + rho*GravitationY);
-        *fz = multiplier*((PhaseField_h-PhaseF(0,0,0))*BuoyancyZ + rho*GravitationZ);
+        *fx = multiplier*((Density_h-rho)*BuoyancyX + rho*GravitationX);
+        *fy = multiplier*((Density_h-rho)*BuoyancyY + rho*GravitationY);
+        *fz = multiplier*((Density_h-rho)*BuoyancyZ + rho*GravitationZ);
     } else {
-        *fx = (PhaseField_h-PhaseF(0,0,0))*BuoyancyX + rho*GravitationX;
-        *fy = (PhaseField_h-PhaseF(0,0,0))*BuoyancyY + rho*GravitationY;
-        *fz = (PhaseField_h-PhaseF(0,0,0))*BuoyancyZ + rho*GravitationZ;
+        *fx = (Density_h-rho)*BuoyancyX + rho*GravitationX;
+        *fy = (Density_h-rho)*BuoyancyY + rho*GravitationY;
+        *fz = (Density_h-rho)*BuoyancyZ + rho*GravitationZ;
     }
 }
 CudaDeviceFunction void calc_Fs(real_t *fx, real_t *fy, real_t *fz, real_t mu, vector_t gPhi){
@@ -925,7 +1070,13 @@ CudaDeviceFunction void CollisionMRT(){
 	//n.z = gradPhi.z/magnPhi;
 
 	// CALCULATE FORCES:
-    calc_Fp(&F_pressure[0], &F_pressure[1], &F_pressure[2], p, gradPhi);
+	#ifdef OPTIONS_split
+		F_pressure[0]=0.0;
+		F_pressure[1]=0.0;
+		F_pressure[2]=0.0;
+	#else
+    	calc_Fp(&F_pressure[0], &F_pressure[1], &F_pressure[2], p, gradPhi);
+	#endif
 	calc_Fb(&F_body[0], &F_body[1], &F_body[2], rho);
     calc_Fs(&F_surf[0], &F_surf[1], &F_surf[2], mu, gradPhi);
 	//  Viscous Force:
@@ -1225,6 +1376,23 @@ CudaDeviceFunction void BounceBack(){
 	tmp = g20; g20 = g21; g21 = tmp;
 	tmp = g23; g23 = g26; g26 = tmp;
 	tmp = g24; g24 = g25; g25 = tmp;
+
+	#ifdef OPTIONS_split
+		tmp = f0; f0 = f0; f0 = tmp;
+		tmp = f1; f1 = f2; f2 = tmp;
+		tmp = f3; f3 = f4; f4 = tmp;
+		tmp = f5; f5 = f6; f6 = tmp;
+		tmp = f7; f7 = f14; f14 = tmp;
+		tmp = f8; f8 = f13; f13 = tmp;
+		tmp = f9; f9 = f12; f12 = tmp;
+		tmp = f10; f10 = f11; f11 = tmp;
+		tmp = f15; f15 = f18; f18 = tmp;
+		tmp = f16; f16 = f17; f17 = tmp;
+		tmp = f19; f19 = f22; f22 = tmp;
+		tmp = f20; f20 = f21; f21 = tmp;
+		tmp = f23; f23 = f26; f26 = tmp;
+		tmp = f24; f24 = f25; f25 = tmp;
+	#endif
 
 	tmp = h0; h0 = h0; h0 = tmp;
 	tmp = h1; h1 = h2; h2 = tmp;
