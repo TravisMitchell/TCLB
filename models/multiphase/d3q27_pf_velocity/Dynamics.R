@@ -11,6 +11,7 @@ AddDensity(name="pnorm", dx=0, dy=0, dz=0, group="Vel")
 AddDensity(name="U", dx=0, dy=0, dz=0, group="Vel")
 AddDensity(name="V", dx=0, dy=0, dz=0, group="Vel")
 AddDensity(name="W", dx=0, dy=0, dz=0, group="Vel")
+AddDensity(name="nu_total", dx=0, dy=0, dz=0, group="Vel")
 
 # normal direction
 AddDensity(name="nw_x", dx=0, dy=0, dz=0, group="nw")
@@ -161,6 +162,7 @@ if (Options$thermo){
 #######################
 ########OUTPUTS########
 #######################
+	AddQuantity(name="Nu_Total", unit="m2/s")
 	AddQuantity(name="Rho",unit="kg/m3")
 	AddQuantity(name="PhaseField",unit="1")
 	AddQuantity(name="U",	  unit="m/s",vector=T)
@@ -177,6 +179,7 @@ if (Options$thermo){
 ###################################
 ########INPUTS - PHASEFIELD########
 ###################################
+	AddSetting(name="Smag", default=0, comment='Smagorinsky constant')
 	AddSetting(name="Density_h", comment='High density')
 	AddSetting(name="Density_l", comment='Low  density')
 	AddSetting(name="PhaseField_h", default=1, comment='PhaseField in Liquid')

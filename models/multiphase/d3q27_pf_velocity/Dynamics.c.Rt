@@ -95,6 +95,10 @@ CudaDeviceFunction vector_t getNormal(){
 	return n;
 }
 
+CudaDeviceFunction real_t getNu_Total(){
+	return nu_total(0,0,0);
+}
+
 <?R
 ###################################################
 # Miscellaneous helper functions used in the code #
@@ -616,6 +620,10 @@ CudaDeviceFunction void CollisionMRT()
     calc_Fp(&F_pressure[0], &F_pressure[1], &F_pressure[2], p, gradPhi);
 	calc_Fb(&F_body[0], &F_body[1], &F_body[2], rho);
     calc_Fs(&F_surf[0], &F_surf[1], &F_surf[2], mu, gradPhi);
+	
+	// Smagorinski LES params
+	real_t tau_0 = tau;
+	real_t strain_rate[6];
 	//  Viscous Force:
 	for (j=0;j<force_fixed_iterator;j++) {
 	<?R
@@ -623,13 +631,32 @@ CudaDeviceFunction void CollisionMRT()
 
 		stress = PV("stress[",1:6-1,"]");
 		new_g = solve(M) %*% m
-		C(stress[1], sum( U[,1]*U[,1] * new_g )); # XX
-		C(stress[2], sum( U[,1]*U[,2] * new_g )); # XY
-		C(stress[3], sum( U[,1]*U[,3] * new_g )); # XZ
-		C(stress[4], sum( U[,2]*U[,2] * new_g )); # YY
-		C(stress[5], sum( U[,2]*U[,3] * new_g )); # YZ
-		C(stress[6], sum( U[,3]*U[,3] * new_g )); # ZZ
+		C(stress[1], sum( U[,1]*U[,1] * new_g )); # XX:0
+		C(stress[2], sum( U[,1]*U[,2] * new_g )); # XY:1
+		C(stress[3], sum( U[,1]*U[,3] * new_g )); # XZ:2
+		C(stress[4], sum( U[,2]*U[,2] * new_g )); # YY:3
+		C(stress[5], sum( U[,2]*U[,3] * new_g )); # YZ:4
+		C(stress[6], sum( U[,3]*U[,3] * new_g )); # ZZ:5
 	?>
+		// strain tensor = 1/2 * (gradU + gradU^T)
+		strain_rate[0] = -3.0/2.0 * stress[0];
+		strain_rate[1] = -3.0/2.0 * stress[1];
+		strain_rate[2] = -3.0/2.0 * stress[2];
+		strain_rate[3] = -3.0/2.0 * stress[3];
+		strain_rate[4] = -3.0/2.0 * stress[4];
+		strain_rate[5] = -3.0/2.0 * stress[5];
+
+		tau = tau_0 + 3.0*(Smag * sqrt( 2.0*(strain_rate[0]*strain_rate[0] + strain_rate[3]*strain_rate[3] + 
+									  strain_rate[5]*strain_rate[5] + 
+									  2.0*(strain_rate[1]*strain_rate[1] + strain_rate[2]*strain_rate[2] + 
+									  	   strain_rate[4]*strain_rate[4])) ));
+		nu_total = (tau-0.5)/3.0;
+
+		// 1. manipulate fluid props s.t. dont exactly match fluids (i.e. what parameters are important
+		//    for the hydrodynamics)
+		// 2. velocity limiting force
+		// more encouragement for use of git to monitor his changes
+
 		F_mu[0] = (0.5-tau) * (Density_h-Density_l) * (stress[0]*gradPhi.x + stress[1]*gradPhi.y + stress[2]*gradPhi.z);
 		F_mu[1] = (0.5-tau) * (Density_h-Density_l) * (stress[1]*gradPhi.x + stress[3]*gradPhi.y + stress[4]*gradPhi.z);
 		F_mu[2] = (0.5-tau) * (Density_h-Density_l) * (stress[2]*gradPhi.x + stress[4]*gradPhi.y + stress[5]*gradPhi.z);
