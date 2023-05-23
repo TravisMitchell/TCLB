@@ -652,10 +652,10 @@ CudaDeviceFunction void CollisionMRT()
 									  	   strain_rate[4]*strain_rate[4])) ));
 		nu_total = (tau-0.5)/3.0;
 
+		// Other options for seeking stability
 		// 1. manipulate fluid props s.t. dont exactly match fluids (i.e. what parameters are important
 		//    for the hydrodynamics)
 		// 2. velocity limiting force
-		// more encouragement for use of git to monitor his changes
 
 		F_mu[0] = (0.5-tau) * (Density_h-Density_l) * (stress[0]*gradPhi.x + stress[1]*gradPhi.y + stress[2]*gradPhi.z);
 		F_mu[1] = (0.5-tau) * (Density_h-Density_l) * (stress[1]*gradPhi.x + stress[3]*gradPhi.y + stress[4]*gradPhi.z);
