@@ -270,6 +270,7 @@ if (Options$thermo){
 	AddNodeType(name="Wall", group="BOUNDARY")
 	AddNodeType(name="BGK", group="COLLISION")
 	AddNodeType(name="MRT", group="COLLISION")
+	AddNodeType(name="Body", group="BODY")
 	if (Options$OutFlow){
 		AddNodeType(name="ENeumann", group="BOUNDARY")
 		AddNodeType(name="WNeumann", group="BOUNDARY")
@@ -302,3 +303,7 @@ if (Options$thermo){
 	AddGlobal(name="FluxX",comment='flux in x direction for flux_nodes', unit="1")
 	AddGlobal(name="FluxY",comment='flux in y direction for flux_nodes', unit="1")
 	AddGlobal(name="FluxZ",comment='flux in z direction for flux_nodes', unit="1")
+
+	AddGlobal(name="Drag", comment='Force exerted on body in X-direction', unit="N")
+	AddGlobal(name="Lift", comment='Force exerted on body in Z-direction', unit="N")
+	AddGlobal(name="Lateral", comment='Force exerted on body in Y-direction', unit="N")

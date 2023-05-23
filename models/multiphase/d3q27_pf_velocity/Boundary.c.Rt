@@ -223,38 +223,25 @@ CudaDeviceFunction void MovingSWall(){
 }
 
 CudaDeviceFunction void BounceBack(){
-	real_t tmp;
-	tmp = g0; g0 = g0; g0 = tmp;
-	tmp = g1; g1 = g2; g2 = tmp;
-	tmp = g3; g3 = g4; g4 = tmp;
-	tmp = g5; g5 = g6; g6 = tmp;
-	tmp = g7; g7 = g14; g14 = tmp;
-	tmp = g8; g8 = g13; g13 = tmp;
-	tmp = g9; g9 = g12; g12 = tmp;
-	tmp = g10; g10 = g11; g11 = tmp;
-	tmp = g15; g15 = g18; g18 = tmp;
-	tmp = g16; g16 = g17; g17 = tmp;
-	tmp = g19; g19 = g22; g22 = tmp;
-	tmp = g20; g20 = g21; g21 = tmp;
-	tmp = g23; g23 = g26; g26 = tmp;
-	tmp = g24; g24 = g25; g25 = tmp;
 
-	tmp = h0; h0 = h0; h0 = tmp;
-	tmp = h1; h1 = h2; h2 = tmp;
-	tmp = h3; h3 = h4; h4 = tmp;
-	tmp = h5; h5 = h6; h6 = tmp;
-	tmp = h7; h7 = h14; h14 = tmp;
-	tmp = h8; h8 = h13; h13 = tmp;
-	tmp = h9; h9 = h12; h12 = tmp;
-	tmp = h10; h10 = h11; h11 = tmp;
-#ifdef OPTIONS_q27
-	tmp = h15; h15 = h18; h18 = tmp;
-	tmp = h16; h16 = h17; h17 = tmp;
-	tmp = h19; h19 = h22; h22 = tmp;
-	tmp = h20; h20 = h21; h21 = tmp;
-	tmp = h23; h23 = h26; h26 = tmp;
-	tmp = h24; h24 = h25; h25 = tmp;
-#endif
+	vector_t p1,p2;
+	<?R C(PV(c("p1.x","p1.y", "p1.z")), g %*% U) ?>
+
+	{
+		<?R FullBounceBack(group = 'g') ?>
+	}
+	{
+		<?R FullBounceBack(group = 'h') ?>
+	}
+
+	<?R C(PV(c("p2.x","p2.y", "p2.z")), g %*% U) ?>
+	//Summing the difference in momentum before/after collision
+	if((NodeType & NODE_BODY) == NODE_Body) {
+		real_t rho = Density_l + (PhaseF(0,0,0) - PhaseField_l)*(Density_h - Density_l) / (PhaseField_h - PhaseField_l);
+		AddToDrag(-(p2.x-p1.x)*rho);
+		AddToLateral(-(p2.y-p1.y)*rho);
+		AddToLift(-(p2.z-p1.z)*rho);
+    }
 }
 
 //######WETTING CONDITION DETAILS######//
