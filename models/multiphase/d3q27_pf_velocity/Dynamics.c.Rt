@@ -263,6 +263,7 @@ CudaDeviceFunction real_t calcF_phi(int i, real_t tmp1, real_t nx, real_t ny, re
 CudaDeviceFunction void Init() 
 {
 	PhaseF = PhaseField;
+	nu_total = Viscosity_l + (Viscosity_h-Viscosity_l) * (PhaseF - PhaseField_l)/(PhaseField_h - PhaseField_l);
 	specialCases_Init();
 	if ( IamWall || IamSolid ) PhaseF = -999;
 
