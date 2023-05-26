@@ -1,0 +1,50 @@
+
+<?xml version="1.0"?>
+<!--Model:	d3q27_pf_velocity 
+    Created: 	25-03-2021 
+
+        This is the benchmark problem from Safi et al. (2017)
+        Computers & Mathematics with Applications
+
+    By:		T.Mitchell -->
+<CLBConfig version="2.0" output="output/">
+	<Geometry nx="128.000000" ny="256.000000" nz="128.000000">
+		<MRT>
+			<Box/>
+		</MRT>
+		<Bubbletrack>
+			<Box nx="1" nz="1" dx="64.000000" dz="64.000000"/>
+		</Bubbletrack>
+		<Wall mask="ALL">
+			<Box dx="-1"/>
+			<Box dy="-1"/>
+			<Box dz="-1"/>
+			<Box nx="1"/>
+			<Box ny="1"/>
+			<Box nz="1"/>
+		</Wall>
+	</Geometry>
+	<Model>
+		<Param name="Radius" value="32.000000"/>
+		<Param name="BubbleType" value="-1"/>
+		<Param name="CenterX" value="64.000000"/>
+		<Param name="CenterY" value="64.000000"/>
+		<Param name="CenterZ" value="64.000000"/>
+		<Param name="sigma" value="0.000015"/>
+		<Param name="M" value="0.100000"/>
+		<Param name="IntWidth" value="5.000000"/>
+		<Param name="GravitationY" value="-0.00000047"/>
+		<Param name="Viscosity_h" value="0.01000000"/>
+		<Param name="Viscosity_l" value="0.10000000"/>
+		<Param name="PhaseField" value="1.0"/>
+		<Param name="Smag" value="100"/>
+		<Param name="Density_l" value="0.001000"/>
+		<Param name="Density_h" value="1.000000"/>
+	</Model>
+	<VTK/>
+	<Solve Iterations="12000.000000">
+		<VTK Iterations="2000.000000"/>
+		<Log Iterations="1000.000000" />
+		<Failcheck Iterations="1000.000000" />
+	</Solve>
+</CLBConfig>
