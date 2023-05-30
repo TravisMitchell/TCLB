@@ -180,6 +180,7 @@ if (Options$thermo){
 ########INPUTS - PHASEFIELD########
 ###################################
 	AddSetting(name="gravity_ramp", default=0, comment='iterations to ramp gravity from zero to specified GravitationalX/Y/Z')
+	AddSetting(name="vel_ramp", default=0, comment='iterations to ramp velocity boundary from zero to specified VelocityX/Y/Z')
 	AddSetting(name="Smag", default=0, comment='Smagorinsky constant')
 	AddSetting(name="Density_h", comment='High density')
 	AddSetting(name="Density_l", comment='Low  density')

@@ -29,9 +29,16 @@
     for (ii in 1:cube_faces){
 ?>
 CudaDeviceFunction void <?R C(my_velocity_boundaries[ii])?>(){
-    U = VelocityX;
-    V = VelocityY;
-    W = VelocityZ;
+	if (Time < vel_ramp){
+		real_t ramp = Time/vel_ramp;
+		U = ramp*VelocityX;
+		V = ramp*VelocityY;
+		W = ramp*VelocityZ;
+	} else {
+		U = VelocityX;
+		V = VelocityY;
+		W = VelocityZ;
+	}
     if ( developedFlow > 0.1 ){
         <?R
             C(b_velocities,-1*my_normal_directions[ii,]*b_channel_flow)
