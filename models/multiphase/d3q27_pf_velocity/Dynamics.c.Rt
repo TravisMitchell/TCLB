@@ -522,9 +522,16 @@ CudaDeviceFunction void calc_Fp(real_t *fx, real_t *fy, real_t *fz, real_t press
 	*fz = (-1.0/3.0) * pressure * (Density_h-Density_l) * gPhi.z;
 }
 CudaDeviceFunction void calc_Fb(real_t *fx, real_t *fy, real_t *fz, real_t rho){
-    *fx = (Density_h-rho)*BuoyancyX + rho*GravitationX;
-	*fy = (Density_h-rho)*BuoyancyY + rho*GravitationY;
-	*fz = (Density_h-rho)*BuoyancyZ + rho*GravitationZ;
+	if (Time < gravity_ramp){
+		real_t factor = Time/gravity_ramp;
+		*fx = factor*((Density_h-rho)*BuoyancyX + rho*GravitationX);
+		*fy = factor*((Density_h-rho)*BuoyancyY + rho*GravitationY);
+		*fz = factor*((Density_h-rho)*BuoyancyZ + rho*GravitationZ);
+	} else {
+		*fx = (Density_h-rho)*BuoyancyX + rho*GravitationX;
+		*fy = (Density_h-rho)*BuoyancyY + rho*GravitationY;
+		*fz = (Density_h-rho)*BuoyancyZ + rho*GravitationZ;
+	}
 }
 CudaDeviceFunction void calc_Fs(real_t *fx, real_t *fy, real_t *fz, real_t mu, vector_t gPhi){
 	#ifdef OPTIONS_thermo
