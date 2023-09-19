@@ -5,8 +5,6 @@ OPT="(q27 + OutFlow + thermo*planarBenchmark)*autosym*geometric*staircaseimp*iso
 #
 # OutFlow - include extra velocity stencil for outflowing boundaries
 #
-# BGK - single relaxation time operator, not really supported- educational purposes only
-#
 # thermo - include energy equation solver for temperature field, influences through
 #        - the surface tension
 #

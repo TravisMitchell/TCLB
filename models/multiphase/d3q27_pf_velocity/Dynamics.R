@@ -228,8 +228,10 @@ if (Options$thermo){
 ###################################
 	AddSetting(name="Density_h", comment='High density')
 	AddSetting(name="Density_l", comment='Low  density')
-	AddSetting(name="PhaseField_h", default=1, comment='PhaseField in Liquid')
-	AddSetting(name="PhaseField_l", default=0, comment='PhaseField gas')
+# 	TM - Travis removing optional high and low values as not strictly
+#  	     applied in the Dynamics.c
+#	AddSetting(name="PhaseField_h", default=1, comment='PhaseField in Liquid')
+#	AddSetting(name="PhaseField_l", default=0, comment='PhaseField gas')
 	AddSetting(name="PhaseField", 	   comment='Initial PhaseField distribution', zonal=T)
 	AddSetting(name="IntWidth", default=4,    comment='Anti-diffusivity coeff')
 	AddSetting(name="omega_phi", comment='one over relaxation time (phase field)')

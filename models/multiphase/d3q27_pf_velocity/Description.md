@@ -4,5 +4,4 @@ The base implementation uses a velocity based LBM for capturing the hydrodynamic
 
 The model currently has 3 options at compile time: 
 	- OutFlow; this enables convective and neumann outflow conditions. It requires extra memory access and is thus added as a compile option (faster code without).
-	- BGK; this is in existence for the sole reason of initial testing, however if you would like to use a BGK collision operator - this flag is necessary.
 	- autosym; both of these options can be compiled with symmetry conditions. 

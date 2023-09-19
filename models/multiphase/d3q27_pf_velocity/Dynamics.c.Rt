@@ -63,7 +63,7 @@ CudaDeviceFunction real_t getRho(){
 		return 0.0;
 	} else {
 		real_t current_phase = getPhaseField();
-		return Density_l + (Density_h-Density_l) * (current_phase - PhaseField_l)/(PhaseField_h - PhaseField_l);
+		return Density_l + (Density_h-Density_l) * current_phase;
 	}
 }
 
@@ -171,8 +171,7 @@ CudaDeviceFunction void calcPhaseF()
 */
 CudaDeviceFunction real_t calcMu(real_t C)
 {
-	real_t pfavg, lpPhi, mu;
-	pfavg = 0.5*(PhaseField_l+PhaseField_h);
+	real_t lpPhi, mu;
 	#ifdef OPTIONS_OutFlow
 		if ((NodeType & NODE_BOUNDARY) == NODE_ENeumann || (NodeType & NODE_BOUNDARY) == NODE_EConvect) { 
 			lpPhi = 16.0 *( 2.0* PhaseF(-1,0,0)
@@ -219,10 +218,10 @@ CudaDeviceFunction real_t calcMu(real_t C)
 			?>
 	#endif
 	#ifdef OPTIONS_thermo
-		mu = 4.0*(12.0*SurfaceTension(0,0,0)/IntWidth)*(C-PhaseField_l)*(C-PhaseField_h)*(C-pfavg)
+		mu = 4.0*(12.0*SurfaceTension(0,0,0)/IntWidth)*C*(C-1.0)*(C-0.5)
 			- (1.5 *SurfaceTension(0,0,0)*IntWidth) * lpPhi;
 	#else
-		mu = 4.0*(12.0*sigma/IntWidth)*(C-PhaseField_l)*(C-PhaseField_h)*(C-pfavg)
+		mu = 4.0*(12.0*sigma/IntWidth)*C*(C-1.0)*(C-0.5)
 			- (1.5 *sigma*IntWidth) * lpPhi;
 	#endif
 	return mu;
@@ -321,8 +320,7 @@ CudaDeviceFunction void specialCases_Init()
         if ( Radius > 0 ){ 
                 real_t Ri;
                 Ri = sqrt( (X - CenterX)*(X - CenterX) + (Y - CenterY)*(Y - CenterY) + (Z - CenterZ)*(Z - CenterZ) );
-                PhaseF = 0.5*(PhaseField_h + PhaseField_l)
-                       - 0.5*(PhaseField_h - PhaseField_l) * BubbleType * tanh(2 * (Ri - Radius)/IntWidth);
+                PhaseF = 0.5 - 0.5* BubbleType * tanh(2 * (Ri - Radius)/IntWidth);
         }	
  	// Rayleigh-Taylor Instability
 	    // Initialises with a sharp interface
@@ -362,9 +360,8 @@ CudaDeviceFunction void Init_distributions()
 {
 	// Initialise phase variables:
 	int i;
-	real_t C0 = 0.5*(PhaseField_h - PhaseField_l);
 	PhaseF = PhaseF(0,0,0);
-	real_t d = Density_l + (Density_h-Density_l) * (PhaseF - PhaseField_l)/(PhaseField_h - PhaseField_l);
+	real_t d = Density_l + (Density_h-Density_l) * PhaseF;
     pnorm = Pressure / (d*cs2);
 
 	// Gradients and phasefield normals:
@@ -393,7 +390,7 @@ CudaDeviceFunction void Init_distributions()
 	real_t Gamma[27];
 	// ##### heq
 	real_t F_phi[hPops]; 
-	real_t tmp1 = (1.0 - 4.0*(PhaseF - C0)*(PhaseF - C0))/IntWidth;
+	real_t tmp1 = (1.0 - 4.0*(PhaseF - 0.5)*(PhaseF - 0.5))/IntWidth;
 	for (i=0; i< 27; i++){
 		Gamma[i] = calcGamma(i, U, V, W, mag);
 		if (i < hPops) F_phi[i] = calcF_phi(i, tmp1, nx, ny, nz);
@@ -477,15 +474,15 @@ CudaDeviceFunction void Run()
 CudaDeviceFunction real_t calcTau(real_t pf)
 {
 	real_t tau;
-	if ( pf < PhaseField_l){
+	if ( pf < 0.0){
 		tau = tau_l + 0.5;
-	} else if (pf > PhaseField_h) {
+	} else if (pf > 1.0) {
 		tau = tau_h + 0.5;
 	} else {
 	    if (tauUpdate == 1) { // Linear update:
-            tau = 0.5 + tau_l + (pf-PhaseField_l)*(tau_h - tau_l)/(PhaseField_h - PhaseField_l);
+            tau = 0.5 + tau_l + pf*(tau_h - tau_l);
         } else if (tauUpdate == 2){ // Inverse update:
-		    tau = (pf - PhaseField_l)/(PhaseField_h - PhaseField_l) * (1.0/tau_h - 1.0/tau_l) + 1.0/tau_l;
+		    tau = pf * (1.0/tau_h - 1.0/tau_l) + 1.0/tau_l;
 		    tau = 1.0/tau + 0.5;
 			// NOTE: For some reason Viscosity_h and Viscosity_l are set to zero. Deduce it from tau here
 			// instead for tauUpdate 3 and tauUpdate 4
@@ -496,11 +493,11 @@ CudaDeviceFunction real_t calcTau(real_t pf)
         } else if (tauUpdate == 4) { // update from Zu-He 2013
 			real_t mu_l = Density_l * tau_l / 3.0;
 			real_t mu_h = Density_h * tau_h / 3.0;
-		    real_t DynVisc = mu_l * mu_h * (PhaseField_h - PhaseField_l) / ((pf - PhaseField_l)*mu_l  + (PhaseField_h - pf)*mu_h);
+		    real_t DynVisc = mu_l * mu_h / (pf*mu_l  + (1.0 - pf)*mu_h);
             real_t rho = getRho();
 			tau = 3.0 * DynVisc / rho + 0.5;
 		} else { // default to linear...
-            tau = 0.5 + tau_l + (pf-PhaseField_l)*(tau_h - tau_l)/(PhaseField_h - PhaseField_l);
+            tau = 0.5 + tau_l + pf*(tau_h - tau_l);
         }
 	}
 	return tau;
@@ -567,7 +564,7 @@ CudaDeviceFunction void CollisionMRT()
 	real_t m[27]; 							//MRT Details
 
 	// Find Macroscopic Details
-	rho = Density_l + (C - PhaseField_l)*(Density_h - Density_l)/(PhaseField_h - PhaseField_l);
+	rho = Density_l + C*(Density_h - Density_l);
 
 	updateMyGlobals( C );
 	
@@ -709,7 +706,7 @@ CudaDeviceFunction void updateBoundary(){
 
 CudaDeviceFunction void updateMyGlobals(real_t pf){
 	real_t tmpPF = 1 - pf;
-	real_t rho = Density_l + ((pf) - PhaseField_l)*(Density_h - Density_l)/(PhaseField_h - PhaseField_l);
+	real_t rho = Density_l + pf*(Density_h - Density_l);
 	real_t u2mag = (U*U+V*V+W*W);
 	AddToTotalDensity( rho ); // Add globals of post-stream, pre-collide macroscopic globals.
 	AddToKineticEnergy( rho * u2mag );
