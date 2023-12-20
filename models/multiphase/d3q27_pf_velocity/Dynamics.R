@@ -69,7 +69,7 @@ if (Options$geometric){
     AddField("IsBoundary", stencil3d=1, group="solid_boundary")
 }
 
-save_initial_PF = c("PF","Vel")
+save_initial_PF = c("PF","Vel","solid_boundary")
 save_initial    = c("g","h","PF")
 save_iteration  = c("g","h","Vel","nw", "solid_boundary", extra_save_iteration)
 load_iteration  = c("g","h","Vel","nw", "solid_boundary", extra_load_iteration)
@@ -134,7 +134,7 @@ if (Options$thermo){
 		AddStage('calcPhaseGrad_init', "calcPhaseGrad_init", load=DensityAll$group %in% c("nw", "PF", "solid_boundary"), save=Fields$group=="gradPhi")
 		AddStage("calcWallPhase_correction", "calcWallPhase_correction", save=Fields$name=="PhaseF", load=DensityAll$group %in% c("nw", "solid_boundary"))
 	} else {
-		AddStage("WallInit" , "Init_wallNorm", save=Fields$group %in% c("nw", "solid_boundary", extra_fields_to_load_for_bc))
+		AddStage("WallInit" , "Init_wallNorm", save=Fields$group %in% c("nw", "solid_boundary") , load=DensityAll$group %in% c("solid_boundary",extra_fields_to_load_for_bc))
 		AddStage("calcWall" , "calcWallPhase", save=Fields$name=="PhaseF", load=DensityAll$group %in% c("nw", "solid_boundary", extra_fields_to_load_for_bc))
 		AddStage("calcWallPhase_correction", "calcWallPhase_correction", save=Fields$name=="PhaseF", load=DensityAll$group %in% c("nw", "solid_boundary"))
 	}

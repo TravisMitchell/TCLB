@@ -859,7 +859,6 @@ CudaDeviceFunction real_t getSpecialBoundaryPoint() {
 CudaDeviceFunction void Init_wallNorm(){
 	PhaseF = PhaseF(0,0,0);
     IsBoundary = IsBoundary(0,0,0);
-	IsBoundary = 0.0;
 	IsSpecialBoundaryPoint = 0.0;
 #ifdef OPTIONS_staircaseimp
 	coeff_v1 = 0;
@@ -871,11 +870,11 @@ CudaDeviceFunction void Init_wallNorm(){
 		int i,j,k;
 	  	real_t tmp = 0.0;
 	  	for (i=-1;i<2;i++){for (j=-1;j<2;j++){for (k=-1;k<2;k++){
-			tmp += PhaseF_dyn(i,j,k);
+			tmp += IsBoundary_dyn(i,j,k);
 	  	}}}
 
-	  	if ( abs(tmp) > 26000){
-			// I am surrounded by all solid nodes (sum(pf) = 27*-999 = -26973 if surrounded):
+	  	if ( abs(tmp) > 26){
+			// I am surrounded by all solid nodes (sum(IsBoundary) = 27*1 = 27 if surrounded):
 			nw_x = 0.0; nw_y = 0.0; nw_z = 0.0;
 #ifdef OPTIONS_staircaseimp
 			nw_actual_x = 0.0;
@@ -893,7 +892,7 @@ CudaDeviceFunction void Init_wallNorm(){
 			// negative PhaseF into actual solid flags
 			<?R
 			    myN   = PV(paste0("myNorm[",1:3-1,"]"))
-			    pf    = PV(paste0("PhaseF(",U[,1],",",U[,2],",",U[,3],")/-998"))
+			    pf    = PV(paste0("isnan(IsBoundary(",U[,1],",",U[,2],",",U[,3],")) ? 1 : IsBoundary(",U[,1],",",U[,2],",",U[,3],")"))
 			    solid = PV(paste0("solidFlag[",1:27-1,"]"))
 
 			    C(solid, pf)
@@ -927,7 +926,7 @@ CudaDeviceFunction void Init_wallNorm(){
 				// normal points into another solid node, save it for the later treatment
 				// NOTE: Cant use IsBoundary here, because it is not yet necessary set for
 				// the neighboring nodes
-				if (PhaseF_dyn(nw_x, nw_y, nw_z) < -100) {
+				if (IsBoundary_dyn(nw_x, nw_y, nw_z) > 0.5) {
 					IsSpecialBoundaryPoint = <?%d NORMAL_POINTING_INTO_SOLID_ON_NEXT_NODE ?>;
 				}
 			}
@@ -973,11 +972,11 @@ CudaDeviceFunction void Init_wallNorm(){
 		<?R for (v in c(1, 2, 3)) { ?>
 			triangle_id_to_vertex_<?%s v ?>_coords(face_index, face_triangle_index, vertex_coords);
 			int v<?%s v ?>_x = vertex_coords[0], v<?%s v ?>_y = vertex_coords[1], v<?%s v ?>_z = vertex_coords[2];
-			real_t pf_v<?%s v?> = PhaseF_dyn(v<?%s v?>_x, v<?%s v?>_y, v<?%s v?>_z);
+			real_t pf_v<?%s v?> = IsBoundary_dyn(v<?%s v?>_x, v<?%s v?>_y, v<?%s v?>_z);
 		<?R } ?>
 
 
-		bool will_interpolate_from_the_boundary = pf_v3 < -100 || pf_v2 < -100 || pf_v1 < -100;
+		bool will_interpolate_from_the_boundary = pf_v3 > 0.5 || pf_v2 > 0.5 || pf_v1 > 0.5;
 
 		// if normal vector points to the solid, continue marking this point as the special point
 		// because this is definitely a vector vertices of which coincide with the one of triangle
@@ -999,12 +998,12 @@ CudaDeviceFunction void Init_wallNorm(){
 				int v2a_<?%s v ?>_x = v2_<?%s v ?>_x + v2_x, v2a_<?%s v?>_y = v2_<?%s v?>_y + v2_y, v2a_<?%s v?>_z = v2_<?%s v?>_z + v2_z;
 			<?R } ?>
 
-			bool will_interpolate_further_from_the_boundary = PhaseF_dyn(v2a_1_x, v2a_1_y, v2a_1_z) < -100 || PhaseF_dyn(v2a_2_x, v2a_2_y, v2a_2_z) < -100 || PhaseF_dyn(v2a_3_x, v2a_3_y, v2a_3_z) < -100;
+			bool will_interpolate_further_from_the_boundary = IsBoundary_dyn(v2a_1_x, v2a_1_y, v2a_1_z) > 0.5 || IsBoundary_dyn(v2a_2_x, v2a_2_y, v2a_2_z) > 0.5 || IsBoundary_dyn(v2a_3_x, v2a_3_y, v2a_3_z) > 0.5;
 		#else
-			bool will_interpolate_further_from_the_boundary = PhaseF_dyn(2*v1_x, 2*v1_y, 2*v1_z) < -100 || PhaseF_dyn(2*v2_x, 2*v2_y, 2*v2_z) < -100 || PhaseF_dyn(2*v3_x, 2*v3_y, 2*v3_z) < -100;
+			bool will_interpolate_further_from_the_boundary = IsBoundary_dyn(2*v1_x, 2*v1_y, 2*v1_z) > 0.5 || IsBoundary_dyn(2*v2_x, 2*v2_y, 2*v2_z) > 0.5 || IsBoundary_dyn(2*v3_x, 2*v3_y, 2*v3_z) > 0.5;
 
 		#endif
-		bool normal_pointing_into_solid_on_further_next_node = PhaseF_dyn(2*nw_x, 2*nw_y, 2*nw_z) < -100;
+		bool normal_pointing_into_solid_on_further_next_node = IsBoundary_dyn(2*nw_x, 2*nw_y, 2*nw_z) > 0.5;
 
 		// if the normal point poinst to a solid, it takes precedence, otherwise enter if condition
 		if (will_interpolate_further_from_the_boundary && IsSpecialBoundaryPoint != <?%d NORMAL_POINTING_INTO_SOLID_ON_NEXT_NODE ?>) {
@@ -1022,7 +1021,7 @@ CudaDeviceFunction void Init_wallNorm(){
         // when there is no staircase improvement and I am geometric
 #ifdef OPTIONS_geometric
 		// if the next-next node is solid (but next is not) we cant really compute anything with geometric method and have to switch to surface energy
-		if (IsSpecialBoundaryPoint != <?%d NORMAL_POINTING_INTO_SOLID_ON_NEXT_NODE ?> && PhaseF_dyn(2*nw_x, 2*nw_y, 2*nw_z) < -100) {
+		if (IsSpecialBoundaryPoint != <?%d NORMAL_POINTING_INTO_SOLID_ON_NEXT_NODE ?> && IsBoundary_dyn(2*nw_x, 2*nw_y, 2*nw_z) > 0.5) {
 			IsSpecialBoundaryPoint = <?%d NORMAL_POINTING_INTO_SOLID_ON_FURTHER_NEXT_NODE ?>;
 		}
 #endif

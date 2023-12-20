@@ -58,12 +58,8 @@
 ###################################################
 ?>
 CudaDeviceFunction real_t getRho(){
-	if ( IamWall || IamSolid) {
-		return 0.0;
-	} else {
 		real_t current_phase = getPhaseField();
 		return Density_l + (Density_h-Density_l) * (current_phase - PhaseField_l)/(PhaseField_h - PhaseField_l);
-	}
 }
 
 CudaDeviceFunction real_t getPhaseField(){
@@ -140,9 +136,43 @@ CudaDeviceFunction vector_t calcGradPhi()
 			?>
 		}
 	#else
+		if (IamWall || IamSolid) {
+			// conduct one-sided differences but check first to see if neighbour is solid
+
+			// x-direction
+			if ( ((isnan(IsBoundary(-1,0,0)) ? 1 : IsBoundary(-1,0,0)) && (isnan(IsBoundary(1,0,0)) ? 1 : IsBoundary(1,0,0))) || 
+			     ((isnan(IsBoundary(-1,0,0)) ? 0 : IsBoundary(-1,0,0)) && (isnan(IsBoundary(1,0,0)) ? 0 : IsBoundary(1,0,0))) ) {
+				gradPhi.x = 0.0;
+			} else if (IsBoundary(1,0,0) ){
+				gradPhi.x = (PhaseF(0,0,0) - PhaseF(-1,0,0));
+			} else {
+				gradPhi.x = (PhaseF(1,0,0) - PhaseF(0,0,0));
+			}
+
+			// y-direction
+			if ( ((isnan(IsBoundary(0,-1,0)) ? 1 : IsBoundary(0,-1,0)) && (isnan(IsBoundary(0,1,0)) ? 1 : IsBoundary(0,1,0))) || 
+			     ((isnan(IsBoundary(0,-1,0)) ? 0 : IsBoundary(0,-1,0)) && (isnan(IsBoundary(0,1,0)) ? 0 : IsBoundary(0,1,0))) ) {
+				gradPhi.y = 0.0;
+			} else if (IsBoundary(0,1,0) ){
+				gradPhi.y = (PhaseF(0,0,0) - PhaseF(0,-1,0));
+			} else {
+				gradPhi.y = (PhaseF(0,1,0) - PhaseF(0,0,0));
+			}
+
+			// z-direction
+			if ( ((isnan(IsBoundary(0,0,-1)) ? 1 : IsBoundary(0,0,-1)) && (isnan(IsBoundary(0,0,1)) ? 1 : IsBoundary(0,0,1))) || 
+			     ((isnan(IsBoundary(0,0,-1)) ? 0 : IsBoundary(0,0,-1)) && (isnan(IsBoundary(0,0,1)) ? 0 : IsBoundary(0,0,1))) ) {
+				gradPhi.z = 0.0;
+			} else if (IsBoundary(0,0,1) ){
+				gradPhi.z = (PhaseF(0,0,0) - PhaseF(0,0,-1));
+			} else {
+				gradPhi.z = (PhaseF(0,0,1) - PhaseF(0,0,0));
+			}
+		} else {
 		    <?R
 			IsotropicGrad('gradPhi', 'PhaseF')
 		    ?>
+		}
 	#endif	
 	return gradPhi;
 }
@@ -213,9 +243,13 @@ CudaDeviceFunction real_t calcMu(real_t C)
 			?>
 		}
 	#else
+		if (IamWall || IamSolid) {
+			lpPhi = 0.0;
+		} else {
 			<?R
 				myLaplace('lpPhi', 'PhaseF')
 			?>
+		}
 	#endif
 	#ifdef OPTIONS_thermo
 		mu = 4.0*(12.0*SurfaceTension(0,0,0)/IntWidth)*(C-PhaseField_l)*(C-PhaseField_h)*(C-pfavg)
@@ -260,7 +294,13 @@ CudaDeviceFunction void Init()
 {
 	PhaseF = PhaseField;
 	specialCases_Init();
-	if ( IamWall || IamSolid ) PhaseF = -999;
+
+	if (IamWall || IamSolid) {
+		IsBoundary = 1;
+	} else {
+		IsBoundary = 0;
+	}
+	IsSpecialBoundaryPoint = 0;
 
 	if (developedFlow > 0.1) {
 		U = 6.0 * Uavg * Y*(HEIGHT - Y)/(HEIGHT*HEIGHT);
@@ -283,7 +323,8 @@ CudaDeviceFunction void InitFromFieldsStage()
 	U = Init_UX_External;
 	V = Init_UY_External;
 	W = Init_UZ_External;
-	if ( IamWall || IamSolid ) PhaseF = -999;
+	if ( IamWall || IamSolid ) IsBoundary = 1;
+	IsSpecialBoundaryPoint = 0;
 }
 
 CudaDeviceFunction void specialCases_Init()
