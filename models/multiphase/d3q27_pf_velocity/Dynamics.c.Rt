@@ -103,6 +103,27 @@ CudaDeviceFunction vector_t getNormal(){
 CudaDeviceFunction vector_t calcGradPhi()
 {
 	vector_t gradPhi = {0.0,0.0,0.0};
+
+	// use weighted average to cater for boundaries
+	gradPhi.x = 0.0;
+	gradPhi.y = 0.0;
+	gradPhi.z = 0.0;
+
+	real_t phi_a = PhaseF(0,0,0);
+	real_t phi_b, denom = 0.0;
+
+	for (int i = 0; i<27; i++){
+		phi_b = PhaseF_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]);
+		if (!isnan(phi_b)){
+			gradPhi.x += wg[i]*d3q27_ex[i]*(phi_b - phi_a);
+			gradPhi.y += wg[i]*d3q27_ey[i]*(phi_b - phi_a);
+			gradPhi.z += wg[i]*d3q27_ez[i]*(phi_b - phi_a);
+			denom += wg[i]; 
+		}
+	}
+	gradPhi.x = gradPhi.x/denom/cs2;
+	gradPhi.y = gradPhi.y/denom/cs2;
+	gradPhi.z = gradPhi.z/denom/cs2;
 	#ifdef OPTIONS_OutFlow
 		if ((NodeType & NODE_BOUNDARY) == NODE_ENeumann || (NodeType & NODE_BOUNDARY) == NODE_EConvect) {
 			gradPhi.x = 0.0;
@@ -130,49 +151,7 @@ CudaDeviceFunction vector_t calcGradPhi()
 							+  PhaseF(0,1,1) + PhaseF(0,-1,1) - PhaseF(0,1,-1) - PhaseF(0,-1,-1));
 		} else if ((NodeType & NODE_BOUNDARY)) {
 			gradPhi.x = 0.0;gradPhi.y = 0.0;gradPhi.z = 0.0;
-		} else {	
-			<?R
-				IsotropicGrad('gradPhi', 'PhaseF')
-			?>
-		}
-	#else
-		if (IamWall || IamSolid) {
-			// conduct one-sided differences but check first to see if neighbour is solid
-
-			// x-direction
-			if ( ((isnan(IsBoundary(-1,0,0)) ? 1 : IsBoundary(-1,0,0)) && (isnan(IsBoundary(1,0,0)) ? 1 : IsBoundary(1,0,0))) || 
-			     ((isnan(IsBoundary(-1,0,0)) ? 0 : IsBoundary(-1,0,0)) && (isnan(IsBoundary(1,0,0)) ? 0 : IsBoundary(1,0,0))) ) {
-				gradPhi.x = 0.0;
-			} else if (IsBoundary(1,0,0) ){
-				gradPhi.x = (PhaseF(0,0,0) - PhaseF(-1,0,0));
-			} else {
-				gradPhi.x = (PhaseF(1,0,0) - PhaseF(0,0,0));
-			}
-
-			// y-direction
-			if ( ((isnan(IsBoundary(0,-1,0)) ? 1 : IsBoundary(0,-1,0)) && (isnan(IsBoundary(0,1,0)) ? 1 : IsBoundary(0,1,0))) || 
-			     ((isnan(IsBoundary(0,-1,0)) ? 0 : IsBoundary(0,-1,0)) && (isnan(IsBoundary(0,1,0)) ? 0 : IsBoundary(0,1,0))) ) {
-				gradPhi.y = 0.0;
-			} else if (IsBoundary(0,1,0) ){
-				gradPhi.y = (PhaseF(0,0,0) - PhaseF(0,-1,0));
-			} else {
-				gradPhi.y = (PhaseF(0,1,0) - PhaseF(0,0,0));
-			}
-
-			// z-direction
-			if ( ((isnan(IsBoundary(0,0,-1)) ? 1 : IsBoundary(0,0,-1)) && (isnan(IsBoundary(0,0,1)) ? 1 : IsBoundary(0,0,1))) || 
-			     ((isnan(IsBoundary(0,0,-1)) ? 0 : IsBoundary(0,0,-1)) && (isnan(IsBoundary(0,0,1)) ? 0 : IsBoundary(0,0,1))) ) {
-				gradPhi.z = 0.0;
-			} else if (IsBoundary(0,0,1) ){
-				gradPhi.z = (PhaseF(0,0,0) - PhaseF(0,0,-1));
-			} else {
-				gradPhi.z = (PhaseF(0,0,1) - PhaseF(0,0,0));
-			}
-		} else {
-		    <?R
-			IsotropicGrad('gradPhi', 'PhaseF')
-		    ?>
-		}
+		} 	
 	#endif	
 	return gradPhi;
 }
