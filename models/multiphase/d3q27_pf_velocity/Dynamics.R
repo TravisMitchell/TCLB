@@ -231,7 +231,7 @@ if (Options$thermo){
 	AddSetting(name="tau_h", comment='relaxation time (high density fluid)')
     AddSetting(name="tauUpdate", default="1", comment="Interpolation: 1-linear, 2- inverse, 3- dyn viscosity")
 	AddSetting(name="Viscosity_l", tau_l='(3*Viscosity_l)', default=0.16666666, comment='kinematic viscosity')
-	AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)', default=0.16666666, comment='kinematic viscosity')
+	AddSetting(name="Viscosity_h", tau_h='(3*Viscosity_h)', default=0.16666666, comment='kinematic viscosity', zonal=T)
 	AddSetting(name="VelocityX", default=0.0, comment='inlet/outlet/init velocity', zonal=T)
 	AddSetting(name="VelocityY", default=0.0, comment='inlet/outlet/init velocity', zonal=T)
 	AddSetting(name="VelocityZ", default=0.0, comment='inlet/outlet/init velocity', zonal=T)

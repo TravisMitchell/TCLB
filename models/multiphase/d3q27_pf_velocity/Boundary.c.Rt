@@ -709,7 +709,23 @@ CudaDeviceFunction void calcWallPhase(){
 			// Pass for now. Dont calculate anything, just set it to some huge number, purely to make sure
 			// that the value is corrected in calcWall_correction, and otherwise the error would be visible
 			// and hopefulyl break the simulation
-			PhaseF = <?%f SPECIAL_POINT_HUGE_MAGIC_NUMBER ?>;
+			//PhaseF = <?%f SPECIAL_POINT_HUGE_MAGIC_NUMBER ?>;
+			// Average surrounding fluid nodes - future update to weighted average
+			real_t sum_bound=0, sum_weight=0;
+			real_t bounds[27], phases[27];
+			<?R
+				count=0
+				for (x in c(-1,0,1)) { for (y in c(-1,0,1)) { for (z in c(-1,0,1)) {
+					C(PV(paste0("bounds[",count,"]")), PV(paste0("IsBoundary(",x,",",y,",",z,")")))
+					C(PV(paste0("phases[",count,"]")), PV(paste0("PhaseF(",x,",",y,",",z,")")))
+					count = count+1
+				}}}
+			?>
+			for (int i=0;i<27;i++){
+				sum_bound  += (1-bounds[i]);
+				sum_weight += (1-bounds[i])*phases[i];
+			}
+			PhaseF = sum_weight / sum_bound;
 		} else if  (IsSpecialBoundaryPoint == <?%d NORMAL_POINTING_INTO_SOLID_ON_FURTHER_NEXT_NODE ?>) {
 			// Eventhough I am geometric boundary condition, still apply surface energy
 			// here because otherwise we cant really apply anything else
