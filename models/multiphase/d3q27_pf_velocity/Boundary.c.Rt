@@ -709,7 +709,17 @@ CudaDeviceFunction void calcWallPhase(){
 			// Pass for now. Dont calculate anything, just set it to some huge number, purely to make sure
 			// that the value is corrected in calcWall_correction, and otherwise the error would be visible
 			// and hopefulyl break the simulation
-			PhaseF = <?%f SPECIAL_POINT_HUGE_MAGIC_NUMBER ?>;
+			//PhaseF = <?%f SPECIAL_POINT_HUGE_MAGIC_NUMBER ?>;
+			real_t phi_b, denom = 1e-16;
+			real_t phi_a = 0.0;
+			for (int i = 0; i<27; i++){
+				phi_b = PhaseF_dyn(d3q27_ex[i],d3q27_ey[i],d3q27_ez[i]);
+				if (!isnan(phi_b)){
+					phi_a += wg[i]*phi_b;
+					denom += wg[i];
+				}
+			}
+			PhaseF = phi_a/denom;
 		} else if  (IsSpecialBoundaryPoint == <?%d NORMAL_POINTING_INTO_SOLID_ON_FURTHER_NEXT_NODE ?>) {
 			// Eventhough I am geometric boundary condition, still apply surface energy
 			// here because otherwise we cant really apply anything else
