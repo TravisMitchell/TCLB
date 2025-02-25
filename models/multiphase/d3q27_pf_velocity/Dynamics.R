@@ -283,12 +283,10 @@ if (Options$thermo){
 	AddNodeType(name="flux_nodes", group="ADDITIONALS")
     # the first one are "fflux"
     pressure_boundary_types = c("", "open", "fpf")
-	dotR_my_velocity_boundaries = paste0(c("N","E","S","W","F","B"),"Velocity")
+	dotR_my_velocity_boundaries = outer(paste0(c("N","E","S","W","F","B"),"Velocity"), pressure_boundary_types, FUN  = paste, sep="")
     dotR_my_pressure_boundaries = outer(paste0(c("N","E","S","W","F","B"),"Pressure"), pressure_boundary_types, FUN  = paste, sep="")
-    for (ii in 1:6){
-        AddNodeType(name=dotR_my_velocity_boundaries[ii], group="BOUNDARY")
-    }
     for (ii in 1:length(dotR_my_pressure_boundaries)) {
+		AddNodeType(name=dotR_my_velocity_boundaries[ii], group="BOUNDARY")
         AddNodeType(name=dotR_my_pressure_boundaries[ii], group="BOUNDARY")
     }
 

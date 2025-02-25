@@ -726,13 +726,13 @@ CudaDeviceFunction void updateBoundary(){
 			BounceBack();
 			break;
         <?R
-        for (ii in 1:cube_faces){
+        for (my_velocity_boundaries in dotR_my_velocity_boundaries) {
         ?>
-        case NODE_<?R C(my_velocity_boundaries[ii])?>:
-			<?R C(my_velocity_boundaries[ii])?>();
+        case NODE_<?%s my_velocity_boundaries ?>:
+			<?%s my_velocity_boundaries ?>();
 			break;
 		<?R
-        }
+        	}
         ?>
         <?R
         for (my_pressure_boundary in dotR_my_pressure_boundaries) {
