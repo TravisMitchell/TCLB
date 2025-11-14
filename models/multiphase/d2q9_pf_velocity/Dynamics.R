@@ -28,6 +28,13 @@ AddDensity( name="h[6]", dx=-1, dy= 1, group="h")
 AddDensity( name="h[7]", dx=-1, dy=-1, group="h")
 AddDensity( name="h[8]", dx= 1, dy=-1, group="h")
 
+AddDensity( name="f[0]", dx= 0, dy= 0, group="f")
+AddDensity( name="f[1]", dx= 1, dy= 0, group="f")
+AddDensity( name="f[2]", dx= 0, dy= 1, group="f")
+AddDensity( name="f[3]", dx=-1, dy= 0, group="f")
+AddDensity( name="f[4]", dx= 0, dy=-1, group="f")
+AddDensity( name="phi_e", dx= 0, dy= 0, group="electric_potential")
+
 if (Options$Outflow) {
 	AddDensity( name=paste("gold",0:8,sep=""), dx=0, dy=0, group="gold")
 	AddDensity( name=paste("hold",0:8,sep=""), dx=0, dy=0, group="hold")
@@ -41,7 +48,9 @@ AddDensity(name="nw_y", dx=0, dy=0, group="nw")
 AddDensity(name="U", dx=0, dy=0, group="Vel")
 AddDensity(name="V", dx=0, dy=0, group="Vel")
 
+
 #	Phase-field stencil for finite differences
+AddField('phi_e', stencil2d=1)
 AddField('PhaseF',stencil2d=1, group="PF")
 
 #	Additional access required for outflow boundaries
@@ -80,19 +89,28 @@ if (Options$RT) {
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF"), load=DensityAll$group=="nw")	
 } else {
 	
+	AddStage("InitElectric", "init_electric", save=Fields$group %in% c("f", "electric_potential"))
+	# Modified IterElectric to load hydrodynamic fields so electric solver can see the phase field and other state
+	# Save both electric field and hydrodynamic fields to preserve state during convergence loop
+	AddStage("IterElectric", "iter_electric", 
+	         save=Fields$group %in% c("f", "electric_potential"), 
+	         load=DensityAll$group %in% c("f", "electric_potential"))
+	#AddStage("CopyAll","copy_all_fields", save=Fields$group %in% c("f", "g", "h", "Vel", "PF", "nw"))
+
 	# initialisation
 	AddStage("PhaseInit" , "Init_phase"			, save=Fields$group %in% c("PF"))
 	AddStage("WallInit"  , "Init_wallNorm"		, save=Fields$group %in% c("nw"))
 	AddStage("BaseInit"  , "Init_distributions" , save=Fields$group %in% c("g","h","Vel"))
 
 	# iteration
-	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw") , load=DensityAll$group %in% c("g","h","Vel","nw"))  # TODO: is nw needed here?
+	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw") , load=DensityAll$group %in% c("g","h","Vel","nw","electric_potential"))  # TODO: is nw needed here?
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("g","h","Vel","nw"))
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw"))	
 }
 
+AddAction("Iter_Electric", c("IterElectric"))
 AddAction("Iteration", c("BaseIter", "PhaseIter","WallIter"))
-AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit"))
+AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit", "InitElectric"))
 
 # 	Outputs:
 AddQuantity(name="Rho",	  unit="kg/m3")
@@ -101,8 +119,13 @@ AddQuantity(name="U",	  unit="m/s",vector=T)
 AddQuantity(name="NormalizedPressure",	  unit="Pa")
 AddQuantity(name="Pressure",	  unit="Pa")
 AddQuantity(name="Normal", unit="1", vector=T)
+AddQuantity(name="ElectricField", unit="1")
 
 #	Initialisation States
+AddSetting(name="PHI_E", default="0", comment='Variable to monitor for convergence test', zonal=T)
+AddSetting(name="sigma_electric_l", default="0.1", comment='Electric permittivity of low density fluid')
+AddSetting(name="sigma_electric_h", default="0.5", comment='Electric permittivity of high density fluid')
+
 AddSetting(name="Period", default="0", comment='Number of cells per cos wave')
 AddSetting(name="Perturbation", default="0", comment='Size of wave perturbation, Perturbation Period')
 AddSetting(name="MidPoint", default="0", comment='height of RTI centerline')
@@ -184,6 +207,11 @@ if (Options$debug){
 	AddGlobal(name="F_phiX", comment='Forcing term for interface tracking X', unit="")
 	AddGlobal(name="F_phiY", comment='Forcing term for interface tracking Y', unit="")
 }
+
+AddGlobal(name="ElectricChange", comment='Test Convergence Criterion')
+AddNodeType(name="ENorth", group="ADDITIONALS")
+AddNodeType(name="ESouth", group="ADDITIONALS")
+
 #	Node things
 if (Options$CM){
 	AddNodeType(name="CM", group="COLLISION")  # Central Moments collision

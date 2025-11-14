@@ -101,6 +101,100 @@ CudaDeviceFunction vector_t getNormal(){
 	return normal;
 }
 
+// ---------------------------
+#define q5_w0 0.33333333333333
+#define q5_w1 0.16666666666667
+#define q5_w2 0.1666666666667
+#define q5_w3 0.1666666666667
+#define q5_w4 0.1666666666667
+
+CudaDeviceFunction real_t getElectricField(){
+	if ((NodeType & NODE_ADDITIONALS) == NODE_ENorth){
+		f[4] = PHI_E * (1.0 - 1/3.) - (f[1] + f[2] + f[3]);
+	}
+	if ((NodeType & NODE_ADDITIONALS) == NODE_ESouth){
+		f[2] = PHI_E * (1.0 - 1/3.) - (f[1] + f[4] + f[3]);
+	}
+	return f[0] + f[1] + f[2] + f[3] + f[4];
+}
+
+CudaDeviceFunction void init_electric(){
+	real_t local_phi;
+
+	local_phi = 30.0 * Y / 288.0;
+
+	f[0] = (q5_w0-1)*local_phi;
+	f[1] = q5_w1*local_phi;
+	f[2] = q5_w2*local_phi;
+	f[3] = q5_w3*local_phi;
+	f[4] = q5_w4*local_phi;
+	phi_e = local_phi;
+	if (X == 0.5) printf("%.2f: %.2f\n", Y, phi_e);
+}
+
+CudaDeviceFunction void iter_electric(){
+if (NodeType & NODE_MRT) { 
+	real_t pf_local = PhaseF(0,0);
+	real_t sigma_e = sigma_electric_l + (pf_local - PhaseField_l)/(PhaseField_h - PhaseField_l)
+									  * (sigma_electric_h - sigma_electric_l);
+	real_t tau_e = 0.5 + sigma_e*3.0;
+	real_t old_phi = phi_e;
+	phi_e = f[0] + f[1] + f[2] + f[3] + f[4];
+
+	f[0] = f[0] - (f[0] - ((q5_w0-1)*phi_e))/tau_e;
+	f[1] = f[1] - (f[1] - (q5_w1*phi_e))/tau_e;
+	f[2] = f[2] - (f[2] - (q5_w2*phi_e))/tau_e;
+	f[3] = f[3] - (f[3] - (q5_w3*phi_e))/tau_e;
+	f[4] = f[4] - (f[4] - (q5_w4*phi_e))/tau_e;	
+
+	AddToElectricChange((fabs(phi_e - old_phi)));
+}
+if ((NodeType & NODE_ADDITIONALS) == NODE_ENorth){
+	f[4] = 30.0 * (1.0 - 1/3.) - (f[1] + f[2] + f[3]);
+}
+if ((NodeType & NODE_ADDITIONALS) == NODE_ESouth){
+	f[2] = 0.0 * (1.0 - 1/3.) - (f[1] + f[4] + f[3]);
+}
+
+}
+
+CudaDeviceFunction void copy_all_fields(){
+f[0] = f0(0,0);
+f[1] = f1(0,0);
+f[2] = f2(0,0);
+f[3] = f3(0,0);
+f[4] = f4(0,0);
+phi_e = phi_e(0,0);
+
+g[0] = g0(0,0);
+g[1] = g1(0,0);
+g[2] = g2(0,0);
+g[3] = g3(0,0);
+g[4] = g4(0,0);
+g[5] = g5(0,0);
+g[6] = g6(0,0);
+g[7] = g7(0,0);
+g[8] = g8(0,0);
+
+h[0] = h0(0,0);
+h[1] = h1(0,0);
+h[2] = h2(0,0);
+h[3] = h3(0,0);
+h[4] = h4(0,0);
+h[5] = h5(0,0);
+h[6] = h6(0,0);
+h[7] = h7(0,0);
+h[8] = h8(0,0);
+nw_x = nw_x(0,0);
+nw_y = nw_y(0,0);
+U = U(0,0);
+V = V(0,0);
+PhaseF = PhaseF(0,0);
+
+}
+// ---------------------------
+
+
 // 	HELPER FUNCTIONS:
 CudaDeviceFunction vector_t calcGradPhi(){
 	vector_t gradPhi;
@@ -305,6 +399,7 @@ CudaDeviceFunction void Init_phase() {
 		   - 0.5 * (PhaseField_h - PhaseField_l) * BubbleType * tanh(2.0*(Ri - Radius)/W);
 	}
 	if ((NodeType & NODE_BOUNDARY) == NODE_Wall) PhaseF = -999;
+
 }
 
 CudaDeviceFunction void Init_wallNorm(){
@@ -454,6 +549,9 @@ CudaDeviceFunction void calcHydroIter() {
 			if (NodeType & NODE_CM) { CollisionCM();}
 		#else
 			if (NodeType & NODE_MRT) { CollisionMRT();}
+			if ((X == 0.5) & (Y == 0.5)) {
+				printf("We have run MRT collision\n");
+			}
 		#endif
                 if (tmpPhase <= 0.5) {
 			AddToBubbleVelocityX( (1 - tmpPhase)*U );
@@ -1030,6 +1128,26 @@ CudaDeviceFunction vector_t calcTotalHydrodynamicForceMRT(vector_t gradPhi, real
 	// eq 4
 	F_surf_tension[0] = mu*gradPhi.x;
 	F_surf_tension[1] = mu*gradPhi.y;
+
+	// ----------------------
+	// Electric force
+	real_t E_grad[2], eps_grad[2], F_electric[2];
+	E_grad[0] = -1.0 * (phi_e(1,0) - phi_e(-1,0)) * 0.5; // dphi/dx
+	E_grad[1] = -1.0 * (phi_e(0,1) - phi_e(0,-1)) * 0.5; // dphi/dy
+	if ((NodeType & NODE_ADDITIONALS) == NODE_ENorth){
+		E_grad[1] = -1.0 * (phi_e(0,0) - phi_e(0,-1)); // dphi/dy
+	}
+	if ((NodeType & NODE_ADDITIONALS) == NODE_ESouth){
+		E_grad[1] = -1.0 * (phi_e(0,1) - phi_e(0,0)); // dphi/dy
+	}
+	eps_grad[0] = (sigma_electric_h - sigma_electric_l) * gradPhi.x; //fudge for testing only
+	eps_grad[1] = (sigma_electric_h - sigma_electric_l) * gradPhi.y;
+	real_t Esqrd = E_grad[0]*E_grad[0] + E_grad[1]*E_grad[1];
+	F_electric[0] = -0.5 * Esqrd * eps_grad[0]; //doesnt include leaky
+	F_electric[1] = -0.5 * Esqrd * eps_grad[1];
+
+	// ----------------------
+
 
 	// Calculate viscous force
 	for (int j=0;j<fixedIterator;j++){
