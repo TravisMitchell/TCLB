@@ -292,6 +292,12 @@ public:
 		ret[0] = v * solver->lattice->globals[it.id];
 		return ret;
 	}
+	SEXP Call(Rcpp::List args) {
+		// Calculate globals
+		solver->lattice->clearGlobals();
+		solver->lattice->calcGlobals();
+		return rNull;
+	}
 	Rcpp::CharacterVector Names() {
 		Rcpp::CharacterVector ret;
 		ret.push_back("Iteration");
@@ -311,9 +317,20 @@ public:
 
 	rAction(const char* name_): name(name_) {};
 	SEXP Call(Rcpp::List args) {
-		int Snap = solver->lattice->Snap;
 		const Model::Action& it = solver->lattice->model->actions.by_name(name);
 		if (it) {
+			// Check if 'globals' argument was passed
+			int iter_type = solver->iter_type;
+			if (args.size() > 0) {
+				Rcpp::LogicalVector compute_globals(args[0]);
+				if (compute_globals[0]) {
+					// Use IterateAction with ITER_LASTGLOB to properly compute globals
+					iter_type |= ITER_LASTGLOB;
+					solver->lattice->IterateAction(it.id, 1, iter_type);
+					return rNull;
+				}
+			}
+			// Standard RunAction without globals
 			solver->lattice->RunAction(it.id, solver->iter_type);
 		} else {
 			ERROR("R: Unknown Action");
@@ -502,8 +519,23 @@ public:
 	    return rWrap(new rGeometry());
 	  } else if (name == "Info") {
 		return rWrap(new rInfo());
+	  } else if (name == "Iter") {
+		return SingleInteger(solver->lattice->Iter);
+	  } else if (name == "Rank") {
+		return SingleInteger(D_MPI_RANK);
+	  } else if (name == "NRanks") {
+		return SingleInteger(solver->mpi_size);
 	  }
 	  return rNull;
+	}
+	void DollarAssign(std::string name, SEXP v_) {
+		if (name == "Iter") {
+			Rcpp::IntegerVector v(v_);
+			solver->lattice->Iter = v[0];
+			solver->iter = v[0];
+		} else {
+			ERROR("R: Unknown or read-only property");
+		}
 	}
 	Rcpp::CharacterVector Names() {
 		Rcpp::CharacterVector ret;
@@ -515,7 +547,21 @@ public:
 		ret.push_back("Actions");
 		ret.push_back("Geometry");
 		ret.push_back("Info");
+		ret.push_back("Iter");
+		ret.push_back("Rank");
+		ret.push_back("NRanks");
 		return ret;
+	}
+	SEXP Call(Rcpp::List args) {
+		// DoHandlers: execute scheduled handlers at current iteration
+		solver->lattice->FinalIteration();
+		solver->lattice->InitialIteration(1);
+		for (size_t i=0; i<solver->hands.size(); i++) {
+			if (solver->hands[i].Now(solver->iter)) {
+				solver->hands[i].DoIt();
+			}
+		}
+		return rNull;
 	}
 };
 
