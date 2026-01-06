@@ -33,7 +33,6 @@ AddDensity( name="f[1]", dx= 1, dy= 0, group="f")
 AddDensity( name="f[2]", dx= 0, dy= 1, group="f")
 AddDensity( name="f[3]", dx=-1, dy= 0, group="f")
 AddDensity( name="f[4]", dx= 0, dy=-1, group="f")
-AddDensity( name="phi_e", dx= 0, dy= 0, group="electric_potential")
 
 if (Options$Outflow) {
 	AddDensity( name=paste("gold",0:8,sep=""), dx=0, dy=0, group="gold")
@@ -50,7 +49,7 @@ AddDensity(name="V", dx=0, dy=0, group="Vel")
 
 
 #	Phase-field stencil for finite differences
-AddField('phi_e', stencil2d=1)
+AddField('phi_e', stencil2d=1, group="f")
 AddField('PhaseF',stencil2d=1, group="PF")
 
 #	Additional access required for outflow boundaries
@@ -83,19 +82,16 @@ if (Options$RT) {
 	AddStage("WallInit"  , "Init_wallNorm"		, save=Fields$group %in% c("nw"))
 	AddStage("BaseInit"  , "Init_distributions"	, save=Fields$group %in% c("g","h","Vel","gold","hold")) 
 	# iteration
-	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw","gold","hold"), 
+	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("f","g","h","Vel","nw","gold","hold"), 
 												  load=DensityAll$group %in% c("g","h","Vel","nw","gold","hold")) 
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF"), load=DensityAll$group %in% c("g","h","Vel","nw","gold","hold"))
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF"), load=DensityAll$group=="nw")	
 } else {
 	
-	AddStage("InitElectric", "init_electric", save=Fields$group %in% c("f", "electric_potential"))
-	# Modified IterElectric to load hydrodynamic fields so electric solver can see the phase field and other state
-	# Save both electric field and hydrodynamic fields to preserve state during convergence loop
+	AddStage("InitElectric", "init_electric", save=Fields$group %in% c("f"))
 	AddStage("IterElectric", "iter_electric", 
-	         save=Fields$group %in% c("f", "electric_potential"), 
-	         load=DensityAll$group %in% c("f", "electric_potential"))
-	#AddStage("CopyAll","copy_all_fields", save=Fields$group %in% c("f", "g", "h", "Vel", "PF", "nw"))
+	         save=Fields$group %in% c("f", "g", "h", "Vel", "PF", "nw" ), 
+	         load=DensityAll$group %in% c("f", "PF"))
 
 	# initialisation
 	AddStage("PhaseInit" , "Init_phase"			, save=Fields$group %in% c("PF"))
@@ -103,12 +99,12 @@ if (Options$RT) {
 	AddStage("BaseInit"  , "Init_distributions" , save=Fields$group %in% c("g","h","Vel"))
 
 	# iteration
-	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw") , load=DensityAll$group %in% c("g","h","Vel","nw","electric_potential"))  # TODO: is nw needed here?
+	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("f","g","h","Vel","nw") , load=DensityAll$group %in% c("g","h","Vel","nw","electric_potential"))  # TODO: is nw needed here?
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("g","h","Vel","nw"))
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw"))	
 }
 
-AddAction("Iter_Electric", c("IterElectric"))
+AddAction("Iter_Electric", "IterElectric")
 AddAction("Iteration", c("BaseIter", "PhaseIter","WallIter"))
 AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit", "InitElectric"))
 
