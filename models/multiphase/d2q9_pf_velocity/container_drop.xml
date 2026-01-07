@@ -1,7 +1,7 @@
 
 <?xml version="1.0"?>
 <CLBConfig version="2.0" output="output/">
-<Geometry nx="288" ny="288" >
+<Geometry nx="288" ny="282" >
 	<MRT><Box /></MRT>
 	<Wall mask="ALL">
 	    <Box   ny="1"  />
@@ -31,7 +31,7 @@
 
 	<Param name="Radius"   value="47" />
 	<Param name="CenterX"  value="144" />
-	<Param name="CenterY"  value="144" />
+	<Param name="CenterY"  value="141" />
 	<Param name="BubbleType"  value="1" />
 
 	<Param name="M"     value="0.05" />   
@@ -39,11 +39,12 @@
 	<Param name="sigma" value="0.001" />
 
 </Model>
-<VTK Iterations="10000"/>
+<VTK Iterations="100"/>
 <RunR>
   if (Solver$Rank == 0) {
-	vtks = 10000
-	solve = 1e6
+	vtks = 100
+	solve = 5000
+	check_electric = 100
 	prev = 0
 	Solver$Actions$Init()
 	for (i in 1:solve) {
@@ -52,11 +53,11 @@
 		for (j in 1:2000000) 
 		{
 			Solver$Actions$Iter_Electric()
-			if (j %% 100 == 0) {
+			if (j %% check_electric == 0) {
 				diff = abs(prev - Solver$Quantities$ElectricField)
 				criterion = sum(diff) / sum(abs(Solver$Quantities$ElectricField))
 				if (criterion &lt; 1e-7) {
-					#cat("   Electric Field Iteration:", j, " Sum Difference:", criterion, "\n")
+					if (i %% vtks == 0) {cat("  iter:", i, "   Electric Iteration:", j, " Sum Difference:", criterion, "\n")}
 					break
 					}
 				prev = Solver$Quantities$ElectricField
