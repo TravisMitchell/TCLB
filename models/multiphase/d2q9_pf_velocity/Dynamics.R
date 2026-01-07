@@ -121,6 +121,9 @@ AddQuantity(name="ElectricField", unit="1")
 AddSetting(name="PHI_E", default="0", comment='Variable to monitor for convergence test', zonal=T)
 AddSetting(name="sigma_electric_l", default="0.1", comment='Electric permittivity of low density fluid')
 AddSetting(name="sigma_electric_h", default="0.5", comment='Electric permittivity of high density fluid')
+AddSetting(name="eps_electric_l", default="0.001", comment='Electric permittivity of low density fluid')
+AddSetting(name="eps_electric_h", default="0.06", comment='Electric permittivity of high density fluid')
+
 
 AddSetting(name="Period", default="0", comment='Number of cells per cos wave')
 AddSetting(name="Perturbation", default="0", comment='Size of wave perturbation, Perturbation Period')
