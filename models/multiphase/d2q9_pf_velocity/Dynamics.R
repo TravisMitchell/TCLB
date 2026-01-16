@@ -28,11 +28,6 @@ AddDensity( name="h[6]", dx=-1, dy= 1, group="h")
 AddDensity( name="h[7]", dx=-1, dy=-1, group="h")
 AddDensity( name="h[8]", dx= 1, dy=-1, group="h")
 
-AddDensity( name="f[0]", dx= 0, dy= 0, group="f")
-AddDensity( name="f[1]", dx= 1, dy= 0, group="f")
-AddDensity( name="f[2]", dx= 0, dy= 1, group="f")
-AddDensity( name="f[3]", dx=-1, dy= 0, group="f")
-AddDensity( name="f[4]", dx= 0, dy=-1, group="f")
 
 if (Options$Outflow) {
 	AddDensity( name=paste("gold",0:8,sep=""), dx=0, dy=0, group="gold")
@@ -48,8 +43,44 @@ AddDensity(name="U", dx=0, dy=0, group="Vel")
 AddDensity(name="V", dx=0, dy=0, group="Vel")
 
 
+if (Options$electric){
+	AddDensity( name="f0", dx= 0, dy= 0, group="f")
+	AddDensity( name="f1", dx= 1, dy= 0, group="f")
+	AddDensity( name="f2", dx= 0, dy= 1, group="f")
+	AddDensity( name="f3", dx=-1, dy= 0, group="f")
+	AddDensity( name="f4", dx= 0, dy=-1, group="f")
+
+	AddField("f0", group="f")
+	AddField("f1", group="f")
+	AddField("f2", group="f")
+	AddField("f3", group="f")
+	AddField("f4", group="f")
+
+	AddField("g[0]", group="g")
+	AddField("g[1]", group="g")
+	AddField("g[2]", group="g")
+	AddField("g[3]", group="g")
+	AddField("g[4]", group="g")
+	AddField("g[5]", group="g")
+	AddField("g[6]", group="g")
+	AddField("g[7]", group="g")
+	AddField("g[8]", group="g")
+
+	#	Phase Field Evolution:
+	AddField("h[0]", group="h")
+	AddField("h[1]", group="h")
+	AddField("h[2]", group="h")
+	AddField("h[3]", group="h")
+	AddField("h[4]", group="h")
+	AddField("h[5]", group="h")
+	AddField("h[6]", group="h")
+	AddField("h[7]", group="h")
+	AddField("h[8]", group="h")
+    AddField('phi_e', stencil2d=1, group="f")
+
+}
+
 #	Phase-field stencil for finite differences
-AddField('phi_e', stencil2d=1, group="f")
 AddField('PhaseF',stencil2d=1, group="PF")
 
 #	Additional access required for outflow boundaries
@@ -86,12 +117,7 @@ if (Options$RT) {
 												  load=DensityAll$group %in% c("g","h","Vel","nw","gold","hold")) 
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF"), load=DensityAll$group %in% c("g","h","Vel","nw","gold","hold"))
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF"), load=DensityAll$group=="nw")	
-} else {
-	
-	AddStage("InitElectric", "init_electric", save=Fields$group %in% c("f"))
-	AddStage("IterElectric", "iter_electric", 
-	         save=Fields$group %in% c("f", "g", "h", "Vel", "PF", "nw" ), 
-	         load=DensityAll$group %in% c("f", "PF"))
+} else if (Options$electric){
 
 	# initialisation
 	AddStage("PhaseInit" , "Init_phase"			, save=Fields$group %in% c("PF"))
@@ -99,15 +125,39 @@ if (Options$RT) {
 	AddStage("BaseInit"  , "Init_distributions" , save=Fields$group %in% c("g","h","Vel"))
 
 	# iteration
-	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("f","g","h","Vel","nw") , load=DensityAll$group %in% c("g","h","Vel","nw","electric_potential"))  # TODO: is nw needed here?
+	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("f","g","h","Vel","nw") , 
+									              load=DensityAll$group %in% c("g","h","Vel","nw","electric_potential"))  # TODO: is nw needed here?
+	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("g","h","Vel","nw"))
+	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw"))	
+
+	AddStage("InitElectric", "init_electric", save=Fields$group %in% c("f"))
+	AddStage("IterElectric", "iter_electric", 
+				save=Fields$group %in% c("f", "g", "h", "Vel", "PF", "nw" ), 
+				load=DensityAll$group %in% c("f", "PF"))
+} else {
+	# initialisation
+	AddStage("PhaseInit" , "Init_phase"			, save=Fields$group %in% c("PF"))
+	AddStage("WallInit"  , "Init_wallNorm"		, save=Fields$group %in% c("nw"))
+	AddStage("BaseInit"  , "Init_distributions" , save=Fields$group %in% c("g","h","Vel"))
+
+	# iteration
+	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw") , load=DensityAll$group %in% c("g","h","Vel","nw"))  # TODO: is nw needed here?
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("g","h","Vel","nw"))
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw"))	
 }
 
-AddAction("Iter_Electric", "IterElectric")
-AddAction("Iteration", c("BaseIter", "PhaseIter","WallIter"))
-AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit", "InitElectric"))
+if (Options$electric) {
 
+	AddAction("Iter_Electric", "IterElectric")
+	AddAction("Iteration", c("BaseIter", "PhaseIter","WallIter"))
+	AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit", "InitElectric"))
+
+} else {
+
+	AddAction("Iteration", c("BaseIter", "PhaseIter","WallIter"))
+	AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit"))
+	
+}
 # 	Outputs:
 AddQuantity(name="Rho",	  unit="kg/m3")
 AddQuantity(name="PhaseField",unit="1")
@@ -115,15 +165,19 @@ AddQuantity(name="U",	  unit="m/s",vector=T)
 AddQuantity(name="NormalizedPressure",	  unit="Pa")
 AddQuantity(name="Pressure",	  unit="Pa")
 AddQuantity(name="Normal", unit="1", vector=T)
-AddQuantity(name="ElectricField", unit="1")
 
 #	Initialisation States
-AddSetting(name="PHI_E", default="0", comment='Variable to monitor for convergence test', zonal=T)
-AddSetting(name="sigma_electric_l", default="0.1", comment='Electric permittivity of low density fluid')
-AddSetting(name="sigma_electric_h", default="0.5", comment='Electric permittivity of high density fluid')
-AddSetting(name="eps_electric_l", default="0.001", comment='Electric permittivity of low density fluid')
-AddSetting(name="eps_electric_h", default="0.06", comment='Electric permittivity of high density fluid')
+if (Options$electric) {
 
+	AddQuantity(name="ElectricField", unit="1")
+	AddSetting(name="PHI_E", default="0", comment='Variable to monitor for convergence test', zonal=T)
+	AddSetting(name="sigma_electric_l", default="0.1", comment='Electric permittivity of low density fluid')
+	AddSetting(name="sigma_electric_h", default="0.5", comment='Electric permittivity of high density fluid')
+	AddSetting(name="eps_electric_l", default="0.001", comment='Electric permittivity of low density fluid')
+	AddSetting(name="eps_electric_h", default="0.06", comment='Electric permittivity of high density fluid')
+	AddSetting(name="elect_top", default="30", comment='Electric potential at top boundary')
+	AddSetting(name="domain_height", default="288", comment='Height of the domain for electric potential calculation')
+}
 
 AddSetting(name="Period", default="0", comment='Number of cells per cos wave')
 AddSetting(name="Perturbation", default="0", comment='Size of wave perturbation, Perturbation Period')
@@ -207,9 +261,11 @@ if (Options$debug){
 	AddGlobal(name="F_phiY", comment='Forcing term for interface tracking Y', unit="")
 }
 
-AddGlobal(name="ElectricChange", comment='Test Convergence Criterion')
-AddNodeType(name="ENorth", group="ADDITIONALS")
-AddNodeType(name="ESouth", group="ADDITIONALS")
+if (Options$electric){
+	AddGlobal(name="ElectricChange", comment='Test Convergence Criterion')
+	AddNodeType(name="ENorth", group="ADDITIONALS")
+	AddNodeType(name="ESouth", group="ADDITIONALS")
+}
 
 #	Node things
 if (Options$CM){

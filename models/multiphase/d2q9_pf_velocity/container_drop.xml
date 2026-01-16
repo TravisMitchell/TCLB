@@ -18,12 +18,18 @@
 	<Param name="PHI_E" value="0" />
 	<Param name="PHI_E" value="30" zone="ENorth"/>
 	<Param name="PHI_E" value="0" zone="ESouth"/>
+	
+	<Param name="sigma_electric_l" value="0.1" />
+	<Param name="sigma_electric_h" value="0.5" />
+	<Param name="eps_electric_l" value="0.001" />
+	<Param name="eps_electric_h" value="0.06" />
 
 	<Param name="Density_h" value="1" />    
 	<Param name="Density_l" value="1" />    
 
 	<Param name="Viscosity_h" value="0.1" />    
 	<Param name="Viscosity_l" value="0.1" />    
+
 
 	<Param name="PhaseField_h" value="1" />    
 	<Param name="PhaseField_l" value="0" />    
@@ -39,18 +45,18 @@
 	<Param name="sigma" value="0.001" />
 
 </Model>
-<VTK Iterations="100"/>
+<VTK Iterations="50"/>
 <RunR>
-  if (Solver$Rank == 0) {
-	vtks = 100
+	vtks  = 50
 	solve = 5000
 	check_electric = 100
 	prev = 0
 	Solver$Actions$Init()
 	for (i in 1:solve) {
 		Solver$Iter = i
+		#cat(i)
 		Solver$Actions$Iteration()  
-		for (j in 1:2000000) 
+		for (j in 1:500) # note that this should be increased to account for slow convergence of method 
 		{
 			Solver$Actions$Iter_Electric()
 			if (j %% check_electric == 0) {
@@ -61,22 +67,12 @@
 					break
 					}
 				prev = Solver$Quantities$ElectricField
+				#cat("  iter:", i, "   Electric Iteration:", j, " Sum Difference:", criterion, "\n")
 				}
 		}
-
+		cat("  iter:", i, "   Electric Iteration:", j, " Sum Difference:", criterion, "\n")
 		if (i %% vtks == 0)  {Solver() }
-
-		# if (i %% vtks == 0) {
-		#   Solver$Actions$Iteration(globals = TRUE)  # Compute globals during iteration
-		#   Solver$Actions$Iter_Electric()
-		#   Solver()  # Trigger handlers like VTK
-		#   cat("Iteration:", i, "SumPhiGas:", Solver$Globals$SumPhiGas, "\n")
-		# } else {
-		#   Solver$Actions$Iteration()  
-		#   Solver$Actions$Iter_Electric()
-		# }
 	}
-  }
 </RunR>
 <VTK/>
 </CLBConfig>

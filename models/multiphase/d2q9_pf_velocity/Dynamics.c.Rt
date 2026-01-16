@@ -101,6 +101,7 @@ CudaDeviceFunction vector_t getNormal(){
 	return normal;
 }
 
+#ifdef OPTIONS_electric
 // ---------------------------
 #define q5_w0 0.33333333333333
 #define q5_w1 0.16666666666667
@@ -110,84 +111,85 @@ CudaDeviceFunction vector_t getNormal(){
 
 CudaDeviceFunction real_t getElectricField(){
 	if ((NodeType & NODE_ADDITIONALS) == NODE_ENorth){
-		f[4] = PHI_E * (1.0 - 1/3.) - (f[1] + f[2] + f[3]);
+		f4 = PHI_E * (1.0 - 1/3.) - (f1 + f2 + f3);
 	}
 	if ((NodeType & NODE_ADDITIONALS) == NODE_ESouth){
-		f[2] = PHI_E * (1.0 - 1/3.) - (f[1] + f[4] + f[3]);
+		f2 = PHI_E * (1.0 - 1/3.) - (f1 + f4 + f3);
 	}
-	return (f[1] + f[2] + f[3] + f[4]) / (1-q5_w0);
+	return (f1 + f2 + f3 + f4) / (1-q5_w0);
 }
 
 CudaDeviceFunction void init_electric(){
 	real_t local_phi;
 
-	local_phi = 30.0 * Y / 288.0;
+	local_phi = elect_top * Y / domain_height;
 
-	f[0] = (q5_w0-1)*local_phi;
-	f[1] = q5_w1*local_phi;
-	f[2] = q5_w2*local_phi;
-	f[3] = q5_w3*local_phi;
-	f[4] = q5_w4*local_phi;
+	f0 = (q5_w0-1)*local_phi;
+	f1 = q5_w1*local_phi;
+	f2 = q5_w2*local_phi;
+	f3 = q5_w3*local_phi;
+	f4 = q5_w4*local_phi;
 	phi_e = local_phi;
 }
 
 CudaDeviceFunction void iter_electric(){
 
-copy_all_fields();
+	copy_all_fields();
 
-if (NodeType & NODE_MRT) { 
-	real_t pf_local = PhaseF(0,0);
-	real_t sigma_e = sigma_electric_l + (pf_local - PhaseField_l)/(PhaseField_h - PhaseField_l)
-									  * (sigma_electric_h - sigma_electric_l);
-	real_t tau_e = 0.5 + sigma_e*3.0;
-	real_t old_phi = phi_e;
-	phi_e = (f[1] + f[2] + f[3] + f[4]) / (1-q5_w0);
+	if (NodeType & NODE_MRT) { 
+		real_t pf_local = PhaseF(0,0);
+		real_t sigma_e = sigma_electric_l + (pf_local - PhaseField_l)/(PhaseField_h - PhaseField_l)
+										* (sigma_electric_h - sigma_electric_l);
+		real_t tau_e = 0.5 + sigma_e*3.0;
 
-	f[0] = f[0] - (f[0] - ((q5_w0-1)*phi_e))/tau_e;
-	f[1] = f[1] - (f[1] - (q5_w1*phi_e))/tau_e;
-	f[2] = f[2] - (f[2] - (q5_w2*phi_e))/tau_e;
-	f[3] = f[3] - (f[3] - (q5_w3*phi_e))/tau_e;
-	f[4] = f[4] - (f[4] - (q5_w4*phi_e))/tau_e;	
+		phi_e = (f1 + f2 + f3 + f4) / (1-q5_w0);
 
-	AddToElectricChange((fabs(phi_e - old_phi)));
-}
-if ((NodeType & NODE_ADDITIONALS) == NODE_ENorth){
-	f[4] = 30.0 * (1.0 - 1/3.) - (f[1] + f[2] + f[3]);
-}
-if ((NodeType & NODE_ADDITIONALS) == NODE_ESouth){
-	f[2] = 0.0 * (1.0 - 1/3.) - (f[1] + f[4] + f[3]);
-}
+		f0 = f0 - (f0 - ((q5_w0-1)*phi_e))/tau_e;
+		f1 = f1 - (f1 - (q5_w1*phi_e))/tau_e;
+		f2 = f2 - (f2 - (q5_w2*phi_e))/tau_e;
+		f3 = f3 - (f3 - (q5_w3*phi_e))/tau_e;
+		f4 = f4 - (f4 - (q5_w4*phi_e))/tau_e;	
+
+	}
+	if ((NodeType & NODE_ADDITIONALS) == NODE_ENorth){
+		f4 = elect_top * (1.0 - 1/3.) - (f1 + f2 + f3);
+	}
+	if ((NodeType & NODE_ADDITIONALS) == NODE_ESouth){
+		f2 = 0.0 * (1.0 - 1/3.) - (f1 + f4 + f3);
+	}
 
 }
 
 CudaDeviceFunction void copy_all_fields(){
-g[0] = g[0];
-g[1] = g[1];
-g[2] = g[2];
-g[3] = g[3];
-g[4] = g[4];
-g[5] = g[5];
-g[6] = g[6];
-g[7] = g[7];
-g[8] = g[8];
+	g[0] = g0(0,0);
+	g[1] = g1(0,0);
+	g[2] = g2(0,0);
+	g[3] = g3(0,0);
+	g[4] = g4(0,0);
+	g[5] = g5(0,0);
+	g[6] = g6(0,0);
+	g[7] = g7(0,0);
+	g[8] = g8(0,0);
 
-h[0] = h[0];
-h[1] = h[1];
-h[2] = h[2];
-h[3] = h[3];
-h[4] = h[4];
-h[5] = h[5];
-h[6] = h[6];
-h[7] = h[7];
-h[8] = h[8];
-nw_x = nw_x(0,0);
-nw_y = nw_y(0,0);
-U = U(0,0);
-V = V(0,0);
-PhaseF = PhaseF(0,0);
+	h[0] = h0(0,0);
+	h[1] = h1(0,0);
+	h[2] = h2(0,0);
+	h[3] = h3(0,0);
+	h[4] = h4(0,0);
+	h[5] = h5(0,0);
+	h[6] = h6(0,0);
+	h[7] = h7(0,0);
+	h[8] = h8(0,0);
+
+	nw_x = nw_x(0,0);
+	nw_y = nw_y(0,0);
+	U = U(0,0);
+	V = V(0,0);
+	PhaseF = PhaseF(0,0);
 
 }
 // ---------------------------
+#endif
 
 // 	HELPER FUNCTIONS:
 CudaDeviceFunction vector_t calcGradPhi(){
@@ -515,12 +517,16 @@ CudaDeviceFunction void BC_Switcher ()
 
 CudaDeviceFunction void calcHydroIter() {
 	real_t tmpPhase = 0.0;
-	f[0] = f[0];
-	f[1] = f[1];
-	f[2] = f[2];
-	f[3] = f[3];
-	f[4] = f[4];
-	phi_e = phi_e(0,0);
+
+	#ifdef OPTIONS_electric
+		f0 = f0(0,0);
+		f1 = f1(0,0);
+		f2 = f2(0,0);
+		f3 = f3(0,0);
+		f4 = f4(0,0);
+		phi_e = phi_e(0,0);
+	#endif
+
 	if ((NodeType & NODE_ADDITIONALS) == NODE_Smoothing){
 		Init_distributions();
 	}
@@ -1097,6 +1103,7 @@ CudaDeviceFunction void relaxMRT(real_t R[9], real_t tau)
 	R[8] = ( S[2] + ( S[1] + S[0]*2. )*2. + ( -S[6] + S[4] - S[8]*3. + ( -S[5] + S[3] )*2. )*3. )/36.;
 }
 
+#ifdef OPTIONS_electric
 CudaDeviceFunction vector_t calcElectricForce(vector_t gradPhi, real_t myPhaseF){
 	// ----------------------
 	// Electric force
@@ -1130,6 +1137,7 @@ CudaDeviceFunction vector_t calcElectricForce(vector_t gradPhi, real_t myPhaseF)
 	// Leaky force requires additional non-local terms - not implemented yet
 	return F_electric;
 }
+#endif
 
 CudaDeviceFunction vector_t calcTotalHydrodynamicForceMRT(vector_t gradPhi, real_t myPhaseF, real_t rho, real_t tau, real_t mu, real_t p)
 {
@@ -1238,9 +1246,13 @@ CudaDeviceFunction void CollisionMRT(){
 
 	real_t p = getNormalizedPressure(); // normalized pressure
 	vector_t Fhydro = calcTotalHydrodynamicForceMRT(gradPhi, myPhaseF, rho, tau,  calcMu(myPhaseF), p);
-	vector_t Felectric = calcElectricForce(gradPhi, myPhaseF);
-	Fhydro.x += Felectric.x;
-	Fhydro.y += Felectric.y;
+	
+	#ifdef OPTIONS_electric
+		vector_t Felectric = calcElectricForce(gradPhi, myPhaseF);
+		Fhydro.x += Felectric.x;
+		Fhydro.y += Felectric.y;
+	#endif
+
 	// PHASE FIELD POPULATION UPDATE:
 	#ifdef OPTIONS_RT
 		real_t Req[9];
