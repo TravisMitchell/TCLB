@@ -101,6 +101,7 @@ class ArbLattice : public LatticeBase {
     const std::vector<unsigned>& getLocalPermutation() const { return local_permutation; }
 
     void resetAverage();
+    lbRegion getLocalBoundingBox() const;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice 
 
    protected:
     ArbLatticeLauncher launcher;  /// Launcher responsible for running CUDA kernels on the lattice
@@ -149,7 +150,6 @@ class ArbLattice : public LatticeBase {
     void initCommManager();                                                                                                        /// Compute which fields need to be sent to/received from which neighbors
     void initContainer();                                                                                                          /// Initialize the data residing in launcher.container
     int fullLatticePos(double pos) const;                                                                                          /// Compute the position (in terms of lattice offsets) of a node, assuming the arbitrary lattice is a subset of a Cartesian lattice
-    lbRegion getLocalBoundingBox() const;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice
     ArbVTUGeom makeVTUGeom() const;                                                                                                /// Compute VTU geometry
     void communicateBorder();                                                                                                      /// Send and receive border values in snap (overlapped with interior computation)
     unsigned lookupLocalGhostIndex(ArbLatticeConnectivity::Index gid) const;                                                       /// For a given ghost gid, look up its local id
