@@ -8,6 +8,7 @@
 
 struct Particle {
     real_t* particle_data;
+    vector_t pos; 
 	vector_t cvel, diff;
 	real_t rad; real_t dist;
 	CudaDeviceFunction bool in() {
@@ -19,7 +20,7 @@ struct ParticleI : Particle {
 	size_t i;
 	CudaDeviceFunction ParticleI(real_t* particle_data_, const size_t& i_, const real_t node[3]) : i(i_) {
         particle_data = particle_data_;
-		vector_t pos, vel, angvel;
+		vector_t vel, angvel;
 		rad = particle_data[i*RFI_DATA_SIZE+RFI_DATA_R];
 		pos.x = particle_data[i*RFI_DATA_SIZE+RFI_DATA_POS+0];
 		pos.y = particle_data[i*RFI_DATA_SIZE+RFI_DATA_POS+1];

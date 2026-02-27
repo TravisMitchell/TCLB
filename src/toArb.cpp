@@ -88,9 +88,9 @@ static int writeArbLatticeNodes(const Geometry& geo,
                 if (lin_to_arb_index_map.find(current_lin_pos) == lin_to_arb_index_map.end()) continue;  // void node
 
                 // Coordinates
-                const double x_coord = (static_cast<double>(x) + .5) * spacing;
-                const double y_coord = (static_cast<double>(y) + .5) * spacing;
-                const double z_coord = (static_cast<double>(z) + .5) * spacing;
+                const double x_coord = (static_cast<double>(x) + .5) ;
+                const double y_coord = (static_cast<double>(y) + .5) ;
+                const double z_coord = (static_cast<double>(z) + .5) ;
                 file << x_coord << ' ' << y_coord << ' ' << z_coord << ' ';
 
                 // Neighbors
