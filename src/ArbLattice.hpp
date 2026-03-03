@@ -96,13 +96,19 @@ class ArbLattice : public LatticeBase {
     virtual void setFlags(const std::vector<big_flag_t>& x);
     virtual void setField(const Model::Field& f, const std::vector<real_t>& x);
     virtual void setFieldAdjZero(const Model::Field& f);
+
+    virtual void updateAllSamples() override;
     
     const ArbVTUGeom& getVTUGeom() const { return vtu_geom; }
     Span<const flag_t> getNodeTypes() const { return {node_types_host.data(), node_types_host.size()}; }  /// Get host view of node types (permuted)
     const ArbLatticeConnectivity& getConnectivity() const { return connect; }
     const std::vector<unsigned>& getLocalPermutation() const { return local_permutation; }
 
+    unsigned int getCartesianCoordinateLid(vector_t point) const; 
+    void getSample(int quant, unsigned int lid, real_t scale, real_t *buf);
+
     void resetAverage();
+    lbRegion getLocalBoundingBox() const override;                                                                                  /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice
 
    protected:
     ArbLatticeLauncher launcher;  /// Launcher responsible for running CUDA kernels on the lattice
@@ -152,7 +158,6 @@ class ArbLattice : public LatticeBase {
     void initCommManager();                                                                                                        /// Compute which fields need to be sent to/received from which neighbors
     void initContainer();                                                                                                          /// Initialize the data residing in launcher.container
     int fullLatticePos(double pos) const;                                                                                          /// Compute the position (in terms of lattice offsets) of a node, assuming the arbitrary lattice is a subset of a Cartesian lattice
-    lbRegion getLocalBoundingBox() const;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice
     ArbVTUGeom makeVTUGeom() const;                                                                                                /// Compute VTU geometry
     void communicateBorder();                                                                                                      /// Send and receive border values in snap (overlapped with interior computation)
     unsigned lookupLocalGhostIndex(ArbLatticeConnectivity::Index gid) const;                                                       /// For a given ghost gid, look up its local id

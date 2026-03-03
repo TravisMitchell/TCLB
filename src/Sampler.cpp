@@ -80,10 +80,11 @@ int Sampler::Allocate(name_set* nquantities,int start,int iter) {
 	return 0;
 }
 
-int Sampler::addPoint(lbRegion loc,int rank){ 
+int Sampler::addPoint(lbRegion loc,int rank, unsigned int lid){
 	sreg temp;
 	temp.location = loc;
 	temp.rank = rank;
+    temp.lid = lid;
 	spoints.push_back(temp);
 	return 0;
 }

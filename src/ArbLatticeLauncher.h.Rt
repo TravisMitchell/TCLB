@@ -22,6 +22,10 @@ struct ArbLatticeLauncher {
 
     void getQuantity(int quant, real_t* host_tab, real_t scale, const LatticeData& data) const;
 
+    unsigned int getCartesianCoordinateLid(const vector_t point, const LatticeData& data) const;
+
+    void sampleQuantity(int quant, unsigned int lid, real_t* host_tab, real_t scale, const LatticeData &data) const;
+
 private:
 <?R for (q in rows(Quantities)) { ifdef(q$adjoint);
 if (q$adjoint) {
@@ -31,6 +35,8 @@ if (q$adjoint) {
 }
 ?>
     void getQuantity<?%s q$name ?>(<?%s q$type ?>* tab, real_t scale, const LatticeData& data) const;
+
+    void getSample<?%s q$name ?>(<?%s q$type ?>* tab, real_t scale, const LatticeData& data, unsigned int lid) const;
 <?R }
 ifdef() ?>
 };

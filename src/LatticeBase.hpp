@@ -10,6 +10,8 @@
 #include "SolidContainer.h"
 #include "SyntheticTurbulence.h"
 #include "ZoneSettings.h"
+#include "Sampler.h"
+#include "Region.h"
 #include "cross.h"
 #include "unit.h"
 
@@ -67,6 +69,7 @@ class LatticeBase {
     bool RFI_omega, RFI_torque;
     SyntheticTurbulence ST;                   ///<
     std::string snapFileName;
+    std::unique_ptr<Sampler> sample;          ///< sampler of quantities
 
    protected:
     static constexpr int maxSnaps = 33;
@@ -93,6 +96,9 @@ class LatticeBase {
    public:
     virtual size_t getLocalSize() const = 0;
     virtual size_t getGlobalSize() const = 0;
+
+    virtual lbRegion getLocalBoundingBox() const = 0;
+
     void initLattice();  /// Called by handlers
 
     template <class F>
@@ -117,6 +123,8 @@ class LatticeBase {
     virtual void setFlags(const std::vector<big_flag_t>& x) = 0;
     virtual void setField(const Model::Field& f, const std::vector<real_t>& x) = 0;
     virtual void setFieldAdjZero(const Model::Field& f) = 0;
+
+    virtual void updateAllSamples() = 0;
 
     void CopyInParticles();
     void CopyOutParticles();

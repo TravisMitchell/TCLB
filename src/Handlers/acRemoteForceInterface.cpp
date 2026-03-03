@@ -106,7 +106,7 @@ int acRemoteForceInterface::ConnectRemoteForceInterface(std::string integrator_)
 
         MPI_Barrier(MPMD.local);
         lattice->RFI.Connect(MPMD.work,inter.work);
-        
+
         return 0;
 }
 

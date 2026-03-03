@@ -5,6 +5,7 @@ c_header();
 
 #include "LatticeBase.hpp"
 #include "utils.h"
+#include "Global.h"
 
 LatticeBase::LatticeBase(int zonesettings, int zones, int num_snaps_, const UnitEnv& units_)
   : model(std::make_unique<Model_m>()), zSet(zonesettings, zones), num_snaps(num_snaps_), units(&units_) {
@@ -23,6 +24,8 @@ LatticeBase::LatticeBase(int zonesettings, int zones, int num_snaps_, const Unit
     data.ZoneSettings = zSet.gpuTab;
     data.ConstZoneSettings = zSet.gpuConst;
     std::fill_n(iSnaps.get(), maxSnaps, -1);
+
+	sample = std::make_unique<Sampler>(model.get(), units, D_MPI_RANK);
 
 	// Setting settings to default
 <?R for (v in rows(Settings)) {

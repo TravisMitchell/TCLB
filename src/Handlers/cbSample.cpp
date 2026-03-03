@@ -16,7 +16,6 @@ int cbSample::Init () {
 		else {
 			s.add_from_string("all",',');
 		}
-                const auto lattice = solver->getCartLattice();
 		for (pugi::xml_node par = node.first_child(); par; par = par.next_sibling()) {
 			if (strcmp(par.name(),"Point") == 0) {
 				lbRegion loc;
@@ -32,33 +31,44 @@ int cbSample::Init () {
 				if (attr) {
 					loc.dz = solver->units.alt(attr.value());
 				}
-				loc = lattice->getLocalRegion().intersect(loc);
-				if (loc.nx == 1)  lattice->sample->addPoint(loc, solver->mpi_rank);
+				loc = solver->lattice->getLocalBoundingBox().intersect(loc);
+
+				if (loc.nx == 1) {
+					unsigned int lid = 0;
+					auto variant = solver->getLatticeVariant();
+					if (auto* lattice = std::get_if<Lattice<ArbLattice>*>(&variant)) {
+						// cache lid for arbitrary lattice
+						const real_t offset = 0.5;
+						vector_t point{real_t(loc.dx) + offset, real_t(loc.dy) + offset, real_t(loc.dz) + offset};
+						lid = (*lattice)->getCartesianCoordinateLid(point);
+					}
+					solver->lattice->sample->addPoint(loc, solver->mpi_rank, lid);
+				}
+
 			} else {
 				error("Uknown element in Sampler\n");
 				return -1;
 			}
 		}
 		filename = solver->outIterFile(nm, ".csv");
-		lattice->sample->units = &solver->units;
-		lattice->sample->mpi_rank = solver->mpi_rank;
-		lattice->sample->Allocate(&s,startIter,everyIter);
-		lattice->sample->initCSV(filename.c_str());
+		solver->lattice->sample->units = &solver->units;
+		solver->lattice->sample->mpi_rank = solver->mpi_rank;
+		solver->lattice->sample->Allocate(&s,startIter,everyIter);
+		solver->lattice->sample->initCSV(filename.c_str());
 		return 0;
 		}
 
 
 int cbSample::DoIt () {
 		Callback::DoIt();
-                const auto lattice = solver->getCartLattice();
-		lattice->sample->writeHistory(solver->iter);
-		lattice->sample->startIter = solver->iter;
+		solver->lattice->sample->writeHistory(solver->iter);
+		solver->lattice->sample->startIter = solver->iter;
 		return 0;
 		}
 
 
 int cbSample::Finish () {
-	   solver->getCartLattice()->sample->Finish();
+	   solver->lattice->sample->Finish();
 	   return Callback::Finish();
 	 }	 
 
