@@ -192,6 +192,11 @@ void ArbLattice::readFromCxn(const std::string& cxn_path) {
                 auto& zone = connect.zones.emplace_back();
                 file >> zone;
             }
+             
+            for (size_t d = 0; d != 26; ++d) {
+                auto& cut = connect.cut_distance(d, local_node_ind);
+                file >> cut;
+            }
 
             check_file_ok("Failed to read node data");
         }
@@ -293,6 +298,8 @@ void ArbLattice::allocDeviceMemory() {
     neighbors_device = cudaMakeUnique2D<unsigned>(sizes.neighbors_pitch, Q);
     sizes.coords_pitch = local_sz;
     coords_device = cudaMakeUnique2D<real_t>(sizes.coords_pitch, 3);
+    sizes.cuts_pitch = local_sz;
+    cut_distances_device = cudaMakeUnique2D<cut_t>(sizes.cuts_pitch, 26);
     sizes.snaps_pitch = local_sz + ghost_nodes.size() + 1;
     snaps_device = cudaMakeUnique2D<storage_t>(sizes.snaps_pitch, sizes.snaps * NF);
     node_types_device = cudaMakeUnique<flag_t>(local_sz);
@@ -358,6 +365,17 @@ std::vector<real_t> ArbLattice::computeCoords() const {
     return retval;
 }
 
+std::vector<cut_t> ArbLattice::computeCutDistances() const {
+    const auto local_sz = connect.getLocalSize();
+    std::vector<cut_t> retval(sizes.cuts_pitch * 26);
+    for (size_t d = 0; d != 26; ++d) {
+        size_t i = 0;
+        for (; i != local_sz; ++i) retval[local_permutation[i] + d * sizes.cuts_pitch] = connect.cut_distance(d, i);
+        for (; i != sizes.cuts_pitch; ++i) retval[i + d * sizes.cuts_pitch] = NO_CUT;  // padding
+    }
+    return retval;
+}
+
 unsigned int ArbLattice::lookupLocalGhostIndex(ArbLatticeConnectivity::Index gid) const {
     const unsigned local_sz = connect.getLocalSize();
     const auto it = std::lower_bound(ghost_nodes.begin(), ghost_nodes.end(), gid);
@@ -393,6 +411,8 @@ void ArbLattice::initDeviceData(pugi::xml_node arb_node, const std::map<std::str
     copyVecToDeviceAsync(neighbors_device.get(), nbrs, inStream);
     const auto coords = computeCoords();
     copyVecToDeviceAsync(coords_device.get(), coords, inStream);
+    const auto cuts = computeCutDistances();
+    copyVecToDeviceAsync(cut_distances_device.get(), cuts, inStream);
     CudaStreamSynchronize(inStream);
 }
 
@@ -404,6 +424,8 @@ void ArbLattice::initContainer() {
 #endif
     launcher.container.nbrs = neighbors_device.get();
     launcher.container.coords = coords_device.get();
+    launcher.container.Q = cut_distances_device.get();
+    launcher.container.cuts_pitch = sizes.cuts_pitch;
     launcher.container.node_types = node_types_device.get();
     launcher.container.nbrs_pitch = sizes.neighbors_pitch;
     launcher.container.coords_pitch = sizes.coords_pitch;

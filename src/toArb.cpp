@@ -120,6 +120,20 @@ static int writeArbLatticeNodes(const Geometry& geo,
                         if (zone_flag == zf) file << gz_ind << ' ';
                         ++gz_ind;
                     }
+
+                if (geo.Q != nullptr){
+                    size_t regsize = geo.region.sizeL();
+                    for (int d=0; d < 26; d++){
+                        size_t k = geo.region.offset(x, y, z);
+                        const cut_t q = geo.Q[regsize*d + k];
+                        file << q << ' ';
+                    }
+                } else {
+                    for (int i=0; i < 26; i++){
+                        const cut_t q = NO_CUT;
+                        file << q << ' ';
+                    }
+                }
                 file << '\n';
                 if (!file.good()) break;  // Fail early
             }

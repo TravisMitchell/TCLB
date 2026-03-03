@@ -33,6 +33,7 @@ class ArbLattice : public LatticeBase {
         size_t neighbors_pitch;  /// B + I + padding
         size_t coords_pitch;     /// B + I + padding (should be the same as neighbors_pitch, but let's be extra safe since they come from separate pitched allocation calls)
         size_t snaps_pitch;      /// B + I + G + 1 + padding
+        size_t cuts_pitch;     /// B + I + padding (should be the same as neighbors_pitch, but same as above)
     };
 
     struct CommManager {
@@ -63,6 +64,7 @@ class ArbLattice : public LatticeBase {
     std::unordered_map<std::string, int> label_to_ind_map;  /// Label string to unique ID
     CudaUniquePtr<unsigned> neighbors_device;               /// Device allocation of the neighbor table: (B + I) x Q
     CudaUniquePtr<real_t> coords_device;                    /// Device allocation of node coordinates: (B + I) x 3
+    CudaUniquePtr<cut_t> cut_distances_device;              /// Device allocation of cut-distances: (B + I) x 26
     CudaUniquePtr<storage_t> snaps_device;                  /// Device allocation of snaps: (B + I + G + 1) x NF x num_snaps
     CudaUniquePtr<flag_t> node_types_device;                /// Device allocation of node type array: (B + I)
     std::vector<flag_t, pinned_allocator<flag_t> > node_types_host;               /// Host (pinned) allocation of node type array: (B + I)
@@ -145,6 +147,7 @@ class ArbLattice : public LatticeBase {
     void computeNodeTypesOnHost(pugi::xml_node arb_node, const std::map<std::string, int>& setting_zones, bool permute);           /// Compute the node types to be stored on the device, `permute` enables better code reuse
     std::vector<real_t> computeCoords() const;                                                                                /// Compute the coordinates 2D array to be stored on the device
     std::vector<unsigned> computeNeighbors() const;                                                                           /// Compute the neighbors 2D array to be stored on the device
+    std::vector<cut_t> computeCutDistances() const;                                                                                /// Compute the cut-distances 2D array to be stored on the device
     void initDeviceData(pugi::xml_node arb_node, const std::map<std::string, int>& setting_zones);                                 /// Initialize data residing in device memory
     void initCommManager();                                                                                                        /// Compute which fields need to be sent to/received from which neighbors
     void initContainer();                                                                                                          /// Initialize the data residing in launcher.container
