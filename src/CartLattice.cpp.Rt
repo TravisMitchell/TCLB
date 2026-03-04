@@ -720,8 +720,9 @@ void CartLattice::GetSample<?%s q$name ?>(const lbRegion& over, real_t scale,rea
     launcher.container.in = Snaps[Snap];
 <?R if (q$adjoint) { ?>
     launcher.container.adjin = aSnaps[aSnap]; <?R } ?>
-    lbRegion small = getLocalRegion().intersect(over);
-    launcher.SampleQuantity<?%s q$name ?>(small, (<?%s q$type ?>*)buf, scale, data);
+    lbRegion local_reg = getLocalRegion();
+    lbRegion small_local = over.shift(local_reg.dx, local_reg.dy, local_reg.dz);
+    launcher.SampleQuantity<?%s q$name ?>(small_local, (<?%s q$type ?>*)buf, scale, data);
 }
 <?R } ;ifdef() ?>
 void CartLattice::updateAllSamples(){

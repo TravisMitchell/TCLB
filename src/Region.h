@@ -28,6 +28,10 @@ struct lbRegion {
     if (ret.nx <= 0 || ret.ny <= 0 || ret.nz <= 0) { ret.nx = ret.ny = ret.nz = 0; };
     return ret;
   };
+  lbRegion shift(int dxs, int dys, int dzs) const {
+    lbRegion ret(dx - dxs, dy - dys, dz - dzs, nx, ny, nz);
+    return ret;
+  }
   int offset(int x,int y) const {
     return (x-dx) + (y-dy) * nx;
   };
