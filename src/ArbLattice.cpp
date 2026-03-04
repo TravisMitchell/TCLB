@@ -844,3 +844,8 @@ void ArbLattice::resetAverage(){
         }
     }
 }
+
+ArbLattice::~ArbLattice()
+{
+	RFI.Close();
+}

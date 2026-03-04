@@ -77,7 +77,7 @@ class ArbLattice : public LatticeBase {
     ArbLattice(ArbLattice&&) = delete;
     ArbLattice& operator=(const ArbLattice&) = delete;
     ArbLattice& operator=(ArbLattice&&) = delete;
-    virtual ~ArbLattice() = default;
+    virtual ~ArbLattice();
 
     int reinitialize(size_t num_snaps_, const std::map<std::string, int>& setting_zones, pugi::xml_node arb_node);  /// Init if passed args differ from those passed at construction or the last call to reinitialize (avoid duplicating work)
     size_t getLocalSize() const final { return connect.chunk_end - connect.chunk_begin; }
