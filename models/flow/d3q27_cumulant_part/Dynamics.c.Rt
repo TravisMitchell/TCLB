@@ -20,34 +20,78 @@
 #	EQ = MRT_eq(U, rho, J);
 ?>
 
+#define PI 3.141592653589793
+
 CudaDeviceFunction void CalcF(){
 	for (auto p : SyncParticleIterator(X,Y,Z)) {
-	if ((NodeType & NODE_BOUNDARY) == 0) {
-	real_t d = getRho();
+        real_t d = getRho();
         vector_t u;
-	vector_t force;
-<?R C(PV(c("u.x","u.y", "u.z")), f %*% U) ?>
-	if (p.dist < p.rad) {
-		real_t cvel_len = sqrt(p.cvel.x*p.cvel.x + p.cvel.y*p.cvel.y + p.cvel.z*p.cvel.z);
-		if (cvel_len > ParticleVelocityLimit) {
-			p.cvel.x = p.cvel.x / cvel_len * ParticleVelocityLimit;
-			p.cvel.y = p.cvel.y / cvel_len * ParticleVelocityLimit;
-			p.cvel.z = p.cvel.z / cvel_len * ParticleVelocityLimit;
-		}
-		force.x = u.x - d*p.cvel.x;
-		force.y = u.y - d*p.cvel.y;
-		force.z = u.z - d*p.cvel.z;
-		p.applyForce(force);
+        <?R C(PV(c("u.x","u.y", "u.z")), f %*% U) ?>
+
+        // if particle can be shared etween two cells
+        // can't apply this approach
+        bool is_subgrid_particle =  p.rad <= 0.5;
+        // apply subgrid forcing model
+        if (is_subgrid_particle) {
+            bool found_on_boundary = false;
+            if ((NodeType & NODE_BOUNDARY) == NODE_Wall) {
+                // might not work in case of many particles
+                bool owned_by_cell = floor(p.pos.x) == floor(X) && floor(p.pos.y) == floor(Y) && floor(p.pos.z) == floor(Z);
+                if (owned_by_cell) {
+                    real_t wrong_value = nanf("");
+                    vector_t nan_vec = {wrong_value, wrong_value, wrong_value};
+                    p.applyForce(nan_vec);
+                }
+            }
+            // no need to apply any other forces
+            if (found_on_boundary) continue;
+            real_t dist = sqrt(p.diff.x*p.diff.x + p.diff.y*p.diff.y + p.diff.z*p.diff.z);
+            bool owned_by_cell = floor(p.pos.x) == floor(X) && floor(p.pos.y) == floor(Y) && floor(p.pos.z) == floor(Z);
+
+            if (owned_by_cell) {
+                vector_t u_particle = {p.cvel.x, p.cvel.y, p.cvel.z};
+
+                vector_t u_diff;
+                u_diff.x = u_particle.x - u.x;
+                u_diff.y = u_particle.y - u.y;
+                u_diff.z = u_particle.z - u.z;
+
+                vector_t force;
+                real_t u_diff_mag = sqrt(u_diff.x*u_diff.x + u_diff.y*u_diff.y + u_diff.z*u_diff.z);
+
+                real_t Re = u_diff_mag * (2*p.rad) / nu;
+                real_t drag_coeff = 1 + 0.15*pow(Re, 0.687);
+
+                force.x = - 3*PI * (p.rad*2)*nu* d*u_diff.x * drag_coeff;
+                force.y = - 3*PI * (p.rad*2)*nu* d*u_diff.y * drag_coeff;
+                force.z = - 3*PI * (p.rad*2)*nu* d*u_diff.z * drag_coeff;
+                p.applyForce(force);
+            }
+        } else {
+            if ((NodeType & NODE_BOUNDARY) == 0) {
+                vector_t force;
+                if (p.dist < p.rad) {
+                    real_t cvel_len = sqrt(p.cvel.x*p.cvel.x + p.cvel.y*p.cvel.y + p.cvel.z*p.cvel.z);
+                    if (cvel_len > ParticleVelocityLimit) {
+                        p.cvel.x = p.cvel.x / cvel_len * ParticleVelocityLimit;
+                        p.cvel.y = p.cvel.y / cvel_len * ParticleVelocityLimit;
+                        p.cvel.z = p.cvel.z / cvel_len * ParticleVelocityLimit;
+                    }
+                    force.x = u.x - d*p.cvel.x;
+                    force.y = u.y - d*p.cvel.y;
+                    force.z = u.z - d*p.cvel.z;
+                    p.applyForce(force);
 //		p.force.x += +force.x;
-		fx         = -force.x;
+                    fx         = -force.x;
 //		p.force.y += +force.y;
-		fy         = -force.y;
+                    fy         = -force.y;
 //		p.force.z += +force.z;
-		fz         = -force.z;
-		sol += 1;
-	}
-	}
-	}
+                    fz         = -force.z;
+                    sol += 1;
+                }
+            }
+        }
+    }
 }
 
 
