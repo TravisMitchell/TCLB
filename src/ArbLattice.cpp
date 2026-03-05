@@ -160,14 +160,35 @@ void ArbLattice::readFromCxn(const std::string& cxn_path) {
     });
     for (size_t i = 0; i != labels.size(); ++i) label_to_ind_map.emplace(labels[i], i);
 
-    // Nodes header
-    process_section("NODES", [&](size_t num_nodes_global) {
+    // Optional CUTS section - check at the next word to see if it's CUTS or NODES
+    bool has_cuts = false;
+    {
+        file >> word;
+        check_file_ok("Failed to read section header: expected CUTS or NODES");
+        if (word == "CUTS") {
+            size_t n_cuts{};
+            file >> n_cuts;
+            check_file_ok("Failed to read CUTS size");
+            if (n_cuts != 26) throw std::logic_error(wrap_err_msg("Expected CUTS 26, got CUTS " + std::to_string(n_cuts)));
+            has_cuts = true;
+            file >> word;
+            check_file_ok("Failed to read section header: NODES");
+        }
+        check_expected_word("NODES", word);
+    }
+
+    // Nodes
+    {
+        size_t num_nodes_global{};
+        file >> num_nodes_global;
+        check_file_ok("Failed to read section size: NODES");
+
         // Compute the current rank's offset and number of nodes to read
         const auto chunk_offsets = computeInitialNodeDist(num_nodes_global, static_cast<size_t>(comm_size));
         const auto chunk_begin = static_cast<size_t>(chunk_offsets[comm_rank]), chunk_end = static_cast<size_t>(chunk_offsets[comm_rank + 1]);
         const auto num_nodes_local = chunk_end - chunk_begin;
 
-        connect = ArbLatticeConnectivity(chunk_begin, chunk_end, num_nodes_global, Q);
+        connect = ArbLatticeConnectivity(chunk_begin, chunk_end, num_nodes_global, Q, has_cuts);
         connect.grid_size = grid_size;
 
         // Skip chunk_begin + 1 (header) newlines
@@ -192,15 +213,17 @@ void ArbLattice::readFromCxn(const std::string& cxn_path) {
                 auto& zone = connect.zones.emplace_back();
                 file >> zone;
             }
-             
-            for (size_t d = 0; d != 26; ++d) {
-                auto& cut = connect.cut_distance(d, local_node_ind);
-                file >> cut;
+
+            if (has_cuts) {
+                for (size_t d = 0; d != 26; ++d) {
+                    auto& cut = connect.cut_distance(d, local_node_ind);
+                    file >> cut;
+                }
             }
 
             check_file_ok("Failed to read node data");
         }
-    });
+    }
 }
 
 void ArbLattice::partition() {
@@ -299,7 +322,11 @@ void ArbLattice::allocDeviceMemory() {
     sizes.coords_pitch = local_sz;
     coords_device = cudaMakeUnique2D<real_t>(sizes.coords_pitch, 3);
     sizes.cuts_pitch = local_sz;
-    cut_distances_device = cudaMakeUnique2D<cut_t>(sizes.cuts_pitch, 26);
+    if (connect.has_cuts) {
+        cut_distances_device = cudaMakeUnique2D<cut_t>(sizes.cuts_pitch, 26);
+    } else {
+        cut_distances_device.reset();
+    }
     sizes.snaps_pitch = local_sz + ghost_nodes.size() + 1;
     snaps_device = cudaMakeUnique2D<storage_t>(sizes.snaps_pitch, sizes.snaps * NF);
     node_types_device = cudaMakeUnique<flag_t>(local_sz);
@@ -411,8 +438,10 @@ void ArbLattice::initDeviceData(pugi::xml_node arb_node, const std::map<std::str
     copyVecToDeviceAsync(neighbors_device.get(), nbrs, inStream);
     const auto coords = computeCoords();
     copyVecToDeviceAsync(coords_device.get(), coords, inStream);
-    const auto cuts = computeCutDistances();
-    copyVecToDeviceAsync(cut_distances_device.get(), cuts, inStream);
+    if (connect.has_cuts) {
+        const auto cuts = computeCutDistances();
+        copyVecToDeviceAsync(cut_distances_device.get(), cuts, inStream);
+    }
     CudaStreamSynchronize(inStream);
 }
 
@@ -424,7 +453,7 @@ void ArbLattice::initContainer() {
 #endif
     launcher.container.nbrs = neighbors_device.get();
     launcher.container.coords = coords_device.get();
-    launcher.container.Q = cut_distances_device.get();
+    launcher.container.Q = connect.has_cuts ? cut_distances_device.get() : nullptr;
     launcher.container.cuts_pitch = sizes.cuts_pitch;
     launcher.container.node_types = node_types_device.get();
     launcher.container.nbrs_pitch = sizes.neighbors_pitch;

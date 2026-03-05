@@ -18,9 +18,10 @@ struct ArbLatticeConnectivity {
     std::vector<ZoneIndex> zones;
     std::unique_ptr<cut_t[]> cuts;
     double grid_size{};
+    bool has_cuts{};
 
     ArbLatticeConnectivity() = default;
-    ArbLatticeConnectivity(size_t chunk_begin_, size_t chunk_end_, size_t num_nodes_global_, size_t Q_)
+    ArbLatticeConnectivity(size_t chunk_begin_, size_t chunk_end_, size_t num_nodes_global_, size_t Q_, bool has_cuts_ = false)
         : chunk_begin(chunk_begin_),
           chunk_end(chunk_end_),
           num_nodes_global(num_nodes_global_),
@@ -29,7 +30,8 @@ struct ArbLatticeConnectivity {
           og_index(std::make_unique<Index[]>(chunk_end_ - chunk_begin_)),
           nbrs(std::make_unique<Index[]>((chunk_end_ - chunk_begin_) * Q)),
           zones_per_node(std::make_unique<ZoneIndex[]>(chunk_end_ - chunk_begin_)),
-          cuts(std::make_unique<cut_t[]>(26 * (chunk_end_ - chunk_begin_))) {
+          cuts(has_cuts_ ? std::make_unique<cut_t[]>(26 * (chunk_end_ - chunk_begin_)) : nullptr),
+          has_cuts(has_cuts_) {
         zones.reserve(getLocalSize());
     }
 
