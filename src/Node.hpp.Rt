@@ -21,7 +21,7 @@
 	}
 	f = Fields
 	AddMacro(paste0_s(f$nicename,"(...)"), paste0_s("acc.template load_", f$nicename, "< __VA_ARGS__ >()"))
-	AddMacro(paste0_s(f$nicename,"_dyn(...)"), paste0_s("acc.template load_", f$nicename, "(__VA_ARGS__)"))
+	AddMacro(paste0_s(f$nicename,"_dyn(...)"), paste0_s("acc.load_", f$nicename, "(__VA_ARGS__)"))
 	XYZ = c("X","Y","Z")
 	AddMacro(XYZ, paste0_s("acc.get", XYZ,"()"))
 	AddMacro("NodeType", paste0_s("acc.getNodeType()"))

@@ -517,13 +517,41 @@ void ArbLattice::SetFirstTabs(int tab_in, int tab_out) {
 }
 
 
+std::vector<big_flag_t> ArbLattice::getFlags() const {
+    size_t size = getLocalSize();
+    std::vector<big_flag_t> ret(size);
+    CudaMemcpy(ret.data(), launcher.container.node_types, sizeof(big_flag_t)*getLocalSize(), CudaMemcpyDeviceToHost);
+    return ret;
+}
 
+std::vector<real_t> ArbLattice::getField(const Model::Field& f) {
+	assert(f.isParameter);
+    storage_t* from = getSnapPtr(Snap);
+	assert(sizeof(storage_t) == sizeof(real_t));
+    size_t size = getLocalSize();
+    std::vector<real_t> ret(size);
+	debug2("Pulling all %s\n",f.name.c_str());
+    CudaMemcpy(ret.data(), &from[f.id*sizes.snaps_pitch], size*sizeof(real_t),
+               CudaMemcpyDeviceToHost);
+    return ret;
+}
 
-std::vector<big_flag_t> ArbLattice::getFlags() const { throw std::runtime_error{"UNIMPLEMENTED"}; return {}; };
-std::vector<real_t> ArbLattice::getField(const Model::Field& f) { throw std::runtime_error{"UNIMPLEMENTED"}; return {}; };
 std::vector<real_t> ArbLattice::getFieldAdj(const Model::Field& f) { throw std::runtime_error{"UNIMPLEMENTED"}; return {}; };
-void ArbLattice::setFlags(const std::vector<big_flag_t>& x) { throw std::runtime_error{"UNIMPLEMENTED"}; return; };
-void ArbLattice::setField(const Model::Field& f, const std::vector<real_t>& x) { throw std::runtime_error{"UNIMPLEMENTED"}; return; };
+void ArbLattice::setFlags(const std::vector<big_flag_t>& x) { throw std::runtime_error{"NOT SUPPORTED FOR ARB LATTICE"}; return; };
+
+void ArbLattice::setField(const Model::Field& f, const std::vector<real_t>& x) {
+	assert(f.isParameter);
+	storage_t* from = getSnapPtr(Snap);
+	assert(sizeof(storage_t) == sizeof(real_t));
+    size_t size = getLocalSize();
+	debug2("Setting all %s\n", f.name.c_str());
+	CudaMemcpy(
+		&from[f.id*sizes.snaps_pitch],
+		x.data(),
+		size*sizeof(real_t),
+		CudaMemcpyHostToDevice);
+}
+
 void ArbLattice::setFieldAdjZero(const Model::Field& f) { throw std::runtime_error{"UNIMPLEMENTED"}; return; };
 
 
