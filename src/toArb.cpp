@@ -57,13 +57,14 @@ static auto makeArbLatticeIndexMap(const lbRegion& region, const std::vector<boo
     return retval;
 }
 
-static int writeArbLatticeHeader(std::fstream& file, size_t n_nodes, double grid_size, const Model& model, const std::map<std::string, int>& zone_map) {
+static int writeArbLatticeHeader(std::fstream& file, size_t n_nodes, double grid_size, const Model& model, const std::map<std::string, int>& zone_map, bool has_cuts) {
     file << "OFFSET_DIRECTIONS " << Model_m::offset_directions.size() << '\n';
     for (const auto [x, y, z] : Model_m::offset_directions) file << x << ' ' << y << ' ' << z << '\n';
     file << "GRID_SIZE " << grid_size << '\n';
     file << "NODE_LABELS " << model.nodetypeflags.size() + zone_map.size() << '\n';
     for (const auto& ntf : model.nodetypeflags) file << ntf.name << '\n';
     for (const auto& [name, zf] : zone_map) file << "_Z_" << name << '\n';
+    if (has_cuts) file << "CUTS 26\n";
     file << "NODES " << n_nodes << '\n';
     return file.good() ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -74,7 +75,8 @@ static int writeArbLatticeNodes(const Geometry& geo,
                                 const std::unordered_map<long, long>& lin_to_arb_index_map,
                                 const std::vector<bool>& bulk_bmp,
                                 std::fstream& file,
-                                double spacing) {
+                                double spacing,
+                                bool has_cuts) {
     const long nx = geo.totalregion.nx, ny = geo.totalregion.ny, nz = geo.totalregion.nz;
     const auto get_nbr_id = [&](long my_pos, long nbr_pos) -> long {
         if (my_pos != nbr_pos && bulk_bmp[my_pos] && bulk_bmp[nbr_pos]) return -1;  // ignore edges between bulk nodes
@@ -120,6 +122,15 @@ static int writeArbLatticeNodes(const Geometry& geo,
                         if (zone_flag == zf) file << gz_ind << ' ';
                         ++gz_ind;
                     }
+
+                if (has_cuts) {
+                    size_t regsize = geo.region.sizeL();
+                    for (int d=0; d < 26; d++){
+                        size_t k = geo.region.offset(x, y, z);
+                        const cut_t q = geo.Q[regsize*d + k];
+                        file << q << ' ';
+                    }
+                }
                 file << '\n';
                 if (!file.good()) break;  // Fail early
             }
@@ -135,13 +146,14 @@ static int writeArbLattice(const Geometry& geo,
                            const std::vector<bool>& bulk_bmp,
                            const std::string& filename,
                            double spacing) {
+    const bool has_cuts = geo.Q != nullptr;
     std::fstream file(filename, std::ios_base::out);
     if (!file.good()) {
         ERROR("Failed to open .cxn file for writing");
         return EXIT_FAILURE;
     }
-    if (writeArbLatticeHeader(file, lin_to_arb_index_map.size(), spacing, model, zone_map)) return EXIT_FAILURE;
-    return writeArbLatticeNodes(geo, model, zone_map, lin_to_arb_index_map, bulk_bmp, file, spacing);
+    if (writeArbLatticeHeader(file, lin_to_arb_index_map.size(), spacing, model, zone_map, has_cuts)) return EXIT_FAILURE;
+    return writeArbLatticeNodes(geo, model, zone_map, lin_to_arb_index_map, bulk_bmp, file, spacing, has_cuts);
 }
 
 static int writeArbXml(const Solver& solver, const Geometry& geo, const Model& model, const std::string& cxn_path) {
