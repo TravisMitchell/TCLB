@@ -153,7 +153,6 @@ struct CartesianCoordinateMapperArbExecutor: public LinearExecutor {
 
     CudaDeviceFunction void Execute() const {
         using LA = ArbLatticeAccess; 
-        using N = Node< LA, Primal, NoGlobals, Get >; 
         const int i = threadID(CudaThread, CudaBlock, CudaNumberOfThreads);
         if (inRange(i)) {
             LA acc(i, container);
