@@ -86,7 +86,7 @@ public:
   const lbRegion& getLocalRegion() const { return connectivity.getLocalRegion(); }
   const lbRegion& getGlobalRegion() const { return connectivity.global_region; }
 
-  lbRegion getLocalBoundingBox() const {
+  lbRegion getLocalBoundingBox() const override {
     lbRegion reg = getLocalRegion();
     return lbRegion(px + reg.dx, py + reg.dy, pz + reg.dz,
                     reg.nx, reg.ny, reg.nz);

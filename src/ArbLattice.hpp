@@ -101,7 +101,7 @@ class ArbLattice : public LatticeBase {
     const std::vector<unsigned>& getLocalPermutation() const { return local_permutation; }
 
     void resetAverage();
-    lbRegion getLocalBoundingBox() const;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice 
+    lbRegion getLocalBoundingBox() const override;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice 
 
    protected:
     ArbLatticeLauncher launcher;  /// Launcher responsible for running CUDA kernels on the lattice
