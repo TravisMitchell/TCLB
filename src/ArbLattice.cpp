@@ -475,7 +475,7 @@ void ArbLattice::initContainer() {
 }
 
 int ArbLattice::fullLatticePos(double pos) const {
-    const auto retval = std::lround(pos / connect.grid_size - .5);
+    const auto retval = std::lround(pos - .5);
     assert(retval <= std::numeric_limits<int>::max() && retval >= std::numeric_limits<int>::min());
     return static_cast<int>(retval);
 }
@@ -923,4 +923,9 @@ void ArbLattice::updateAllSamples(){
 
 unsigned int ArbLattice::getCartesianCoordinateLid(vector_t point) const {
     return launcher.getCartesianCoordinateLid(point, data);
+}
+
+ArbLattice::~ArbLattice()
+{
+	RFI.Close();
 }

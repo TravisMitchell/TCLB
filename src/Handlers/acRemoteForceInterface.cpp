@@ -77,10 +77,9 @@ int acRemoteForceInterface::ConnectRemoteForceInterface(std::string integrator_)
           }
         }
 
-        const auto lattice = solver->getCartLattice();
         if (stats) {
           output("Asking for stats on RFI ( %s every %d it)\n", stats_prefix.c_str(), stats_iter);
-          lattice->RFI.enableStats(stats_prefix.c_str(), stats_iter);
+          solver->lattice->RFI.enableStats(stats_prefix.c_str(), stats_iter);
         }
 
         inter = MPMD[integrator_];
@@ -91,22 +90,19 @@ int acRemoteForceInterface::ConnectRemoteForceInterface(std::string integrator_)
         integrator = integrator_;
 
         if (use_box) {
-          lbRegion reg = lattice->getLocalRegion();
-          double px = lattice->px;
-          double py = lattice->py;
-          double pz = lattice->pz;
-          lattice->RFI.DeclareSimpleBox(
-            px + reg.dx - PART_MAR_BOX,
-            px + reg.dx + reg.nx + PART_MAR_BOX,
-            py + reg.dy - PART_MAR_BOX,
-            py + reg.dy + reg.ny + PART_MAR_BOX,
-            pz + reg.dz - PART_MAR_BOX,
-            pz + reg.dz + reg.nz + PART_MAR_BOX);
+          lbRegion reg = solver->lattice->getLocalBoundingBox();
+          solver->lattice->RFI.DeclareSimpleBox(
+            reg.dx - PART_MAR_BOX,
+            reg.dx + reg.nx + PART_MAR_BOX,
+            reg.dy - PART_MAR_BOX,
+            reg.dy + reg.ny + PART_MAR_BOX,
+            reg.dz - PART_MAR_BOX,
+            reg.dz + reg.nz + PART_MAR_BOX);
         }
 
         MPI_Barrier(MPMD.local);
-        lattice->RFI.Connect(MPMD.work,inter.work);
-
+        solver->lattice->RFI.Connect(MPMD.work,inter.work);
+        
         return 0;
 }
 
