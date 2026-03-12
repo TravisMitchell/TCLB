@@ -8,7 +8,6 @@
 #include "LatticeBase.hpp"
 #include "CartLatticeLauncher.h"
 #include "CartConnectivity.hpp"
-#include "Sampler.h"
 #include "Geometry.h"
 
 #include <memory>
@@ -73,7 +72,6 @@ protected:
 #endif
 
 public:
-  std::unique_ptr<Sampler> sample; //initializing sampler with zero size
   real_t px, py, pz;
 
   CartLattice (CartConnectivity connect, int ns, const UnitEnv& units_);
@@ -148,7 +146,7 @@ public:
   int getPar(const ParStruct& par_struct, double * wb);
   int setPar(const ParStruct& par_struct, double * w);
 
-  void updateAllSamples();
+  virtual void updateAllSamples() override;
   void resetAverage();
 };
 

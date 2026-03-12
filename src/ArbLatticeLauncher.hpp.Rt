@@ -34,7 +34,8 @@ struct ArbLatticeExecutor : public LinearExecutor {
 
 template <eOperationType I, eCalculateGlobals G, eStage S>
 void ArbLatticeLauncher::RunBorder(CudaStream_t stream, const LatticeData& data) const {
-    const ArbLatticeExecutor<I, G, S> executor{{container.num_border_nodes}, container, data, 0};
+    const ArbLatticeExecutor<I, G, S> executor{{container.num_border_nodes},
+            container, data, 0};
     LaunchExecutorAsync(executor, stream);
 }
 
@@ -99,6 +100,7 @@ struct GetQuantityArbExecutor<?%s q$name?> : public LinearExecutor {
     LatticeData data;
     <?%s q$type ?>* buf;
     real_t scale;
+    unsigned int offset;  // Starting offset for iteration space
 
     CudaDeviceFunction void Execute() const {
         using LA = ArbLatticeAccess; <?R
@@ -109,7 +111,8 @@ if (q$adjoint) { ?>
 }?>
         const int i = threadID(CudaThread, CudaBlock, CudaNumberOfThreads);
         if (inRange(i)) {
-            LA acc(i, container);
+            const int index = i + offset;
+            LA acc(index, container);
             N now(acc, data);
             acc.pop(now); <?R
 if (q$adjoint) { ?>
@@ -129,10 +132,68 @@ if (q$type == "vector_t") {
 };
 
 void ArbLatticeLauncher::getQuantity<?%s q$name ?>(<?%s q$type ?>* tab, real_t scale, const LatticeData& data) const {
-    const GetQuantityArbExecutor<?%s q$name?> executor{{container.num_border_nodes + container.num_interior_nodes}, container, data, tab, scale};
+    const GetQuantityArbExecutor<?%s q$name?> executor{{container.num_border_nodes + container.num_interior_nodes}, container, data, tab, scale, 0};
     LaunchExecutor(executor);
 }
+
+void ArbLatticeLauncher::getSample<?%s q$name ?>(<?%s q$type ?>* tab, real_t scale, const LatticeData& data, unsigned int lid) const {
+    const GetQuantityArbExecutor<?%s q$name?> executor{{1}, container, data, tab, scale, lid};
+    LaunchExecutor(executor);
+}
+
 <?R }
 ifdef() ?>
+
+struct CartesianCoordinateMapperArbExecutor: public LinearExecutor {
+    ArbLatticeContainer container; 
+    LatticeData data;
+    vector_t point; // cartesian point coordinates
+    real_t epsilon2;  // should be a small value (e.g. < 1e-10) to match with only one point
+    unsigned int *matched_lid; 
+
+    CudaDeviceFunction void Execute() const {
+        using LA = ArbLatticeAccess; 
+        const int i = threadID(CudaThread, CudaBlock, CudaNumberOfThreads);
+        if (inRange(i)) {
+            LA acc(i, container);
+            real_t X  = acc.getX();
+            real_t Y = acc.getY();
+            real_t Z = acc.getZ(); 
+            real_t distance = (X - point.x)*(X - point.x) + (Y - point.y)*(Y - point.y) + (Z - point.z)*(Z - point.z); 
+            if (distance < epsilon2) {
+                *matched_lid= i;
+            }
+    }
+  }
+};
+
+
+unsigned int ArbLatticeLauncher::getCartesianCoordinateLid(const vector_t point, const LatticeData& data) const {
+    const auto gpu_lid = cudaMakeUnique<unsigned int>(1);
+    const real_t tol2 = 1e-10;
+    const CartesianCoordinateMapperArbExecutor executor{{container.num_border_nodes + container.num_interior_nodes}, container, data, point, tol2,
+                                                        gpu_lid.get()};
+    LaunchExecutor(executor);
+
+    unsigned int matched_lid;
+    CudaMemcpy(&matched_lid, gpu_lid.get(), sizeof(unsigned int), CudaMemcpyDeviceToHost);
+    return matched_lid; 
+}
+
+void ArbLatticeLauncher::sampleQuantity(int quant, unsigned int lid, real_t* host_tab, real_t scale, const LatticeData &data) const {
+    switch(quant) {	<?R
+for (q in rows(Quantities)) { ifdef(q$adjoint);
+?>
+        case <?%s q$Index ?>: {
+            const auto gpu_tab = cudaMakeUnique<<?%s q$type ?>>(1);
+            getSample<?%s q$name ?>(gpu_tab.get(), scale, data, lid);
+            CudaMemcpy(host_tab, gpu_tab.get(), sizeof(<?%s q$type ?>), CudaMemcpyDeviceToHost);
+            break;
+        } <?R
+}
+ifdef();
+?>
+	}
+}
 
 #endif  // ARBLATTICELAUNCHER_HPP

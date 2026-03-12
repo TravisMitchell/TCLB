@@ -23,6 +23,7 @@ Each point and corresponding output data is controlled by the mpi rank related t
 struct sreg {
 	int rank;
 	lbRegion location;
+        unsigned int lid; // location index cache for arbitrary grid
 };
 class Sampler {
        	typedef std::map< std::string , int > Location;
@@ -42,7 +43,7 @@ class Sampler {
                	int initCSV(const char* name);
                	int writeHistory(int curr_iter);
                	int Allocate(name_set* quantities,int total_iter,int iter);
-		int addPoint(lbRegion loc,int rank);
+		int addPoint(lbRegion loc,int rank, unsigned int lid = 0);
                	const char *filename;
 		int Finish();
        	};

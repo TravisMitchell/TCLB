@@ -22,7 +22,6 @@ ArbLattice::ArbLattice(size_t num_snaps_, const UnitEnv& units_, const std::map<
 }
 
 void ArbLattice::initialize(size_t num_snaps_, const std::map<std::string, int>& setting_zones, pugi::xml_node arb_node) {
-    const int rank = mpitools::MPI_Rank(comm);
     sizes.snaps = num_snaps_;
 #ifdef ADJOINT
     sizes.snaps += 2;  // Adjoint snaps are appended to the total snap allocation
@@ -925,6 +924,36 @@ void ArbLattice::resetAverage(){
             CudaMemset(&getSnapPtr(Snap)[f.id*sizes.snaps_pitch], 0, sizes.snaps_pitch*sizeof(real_t));
         }
     }
+}
+
+void ArbLattice::getSample(int quant, unsigned int lid, real_t scale, real_t *buf) {
+    setSnapIn(Snap);
+#ifdef ADJOINT
+    setAdjSnapIn(aSnap);
+#endif
+    launcher.sampleQuantity(quant, lid, buf, scale, data);
+}
+
+
+void ArbLattice::updateAllSamples(){
+    const int rank = mpitools::MPI_Rank(comm);
+    if (sample->size != 0) {
+	    for (size_t j = 0; j < sample->spoints.size(); j++) {
+		    if (rank == sample->spoints[j].rank) {
+		        for(const Model::Quantity& q : model->quantities) {
+                    if (sample->quant->in(q.name.c_str())){
+                        double v = sample->units->alt(q.unit.c_str());
+                        getSample(q.id, sample->spoints[j].lid, 1/v,
+                                  &sample->gpu_buffer[sample->location[q.name.c_str()]+(data.iter - sample->startIter)*sample->size + sample->totalIter*j*sample->size]);
+                    }
+                }
+	        }
+        }
+    }
+}
+
+unsigned int ArbLattice::getCartesianCoordinateLid(vector_t point) const {
+    return launcher.getCartesianCoordinateLid(point, data);
 }
 
 ArbLattice::~ArbLattice()

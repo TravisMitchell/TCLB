@@ -96,14 +96,18 @@ class ArbLattice : public LatticeBase {
     virtual void setFlags(const std::vector<big_flag_t>& x) override;
     virtual void setField(const Model::Field& f, const std::vector<real_t>& x) override;
     virtual void setFieldAdjZero(const Model::Field& f) override;
+    virtual void updateAllSamples() override;
     
     const ArbVTUGeom& getVTUGeom() const { return vtu_geom; }
     Span<const flag_t> getNodeTypes() const { return {node_types_host.data(), node_types_host.size()}; }  /// Get host view of node types (permuted)
     const ArbLatticeConnectivity& getConnectivity() const { return connect; }
     const std::vector<unsigned>& getLocalPermutation() const { return local_permutation; }
 
+    unsigned int getCartesianCoordinateLid(vector_t point) const; 
+    void getSample(int quant, unsigned int lid, real_t scale, real_t *buf);
+
     void resetAverage();
-    lbRegion getLocalBoundingBox() const override;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice 
+    lbRegion getLocalBoundingBox() const override;                                                                                  /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice
 
    protected:
     ArbLatticeLauncher launcher;  /// Launcher responsible for running CUDA kernels on the lattice
