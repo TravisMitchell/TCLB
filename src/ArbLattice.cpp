@@ -537,7 +537,10 @@ std::vector<real_t> ArbLattice::getField(const Model::Field& f) {
 }
 
 std::vector<real_t> ArbLattice::getFieldAdj(const Model::Field& f) { throw std::runtime_error{"UNIMPLEMENTED"}; return {}; };
-void ArbLattice::setFlags(const std::vector<big_flag_t>& x) { throw std::runtime_error{"NOT SUPPORTED FOR ARB LATTICE"}; return; };
+void ArbLattice::setFlags(const std::vector<big_flag_t>& x) {
+    output("overwriting all flags\n");
+	CudaMemcpy(node_types_device.get(), x.data(), sizeof(big_flag_t)*getLocalSize(), CudaMemcpyHostToDevice);
+};
 
 void ArbLattice::setField(const Model::Field& f, const std::vector<real_t>& x) {
 	assert(f.isParameter);
