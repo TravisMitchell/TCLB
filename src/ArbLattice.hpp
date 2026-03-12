@@ -86,17 +86,16 @@ class ArbLattice : public LatticeBase {
     size_t getGlobalSize() const final { return connect.num_nodes_global; }
 
 
-    virtual std::vector<int> shape() const { return {static_cast<int>(getLocalSize())}; };
-    virtual std::vector<real_t> getQuantity(const Model::Quantity& q, real_t scale = 1) ;
-    virtual std::vector<big_flag_t> getFlags() const;
-    virtual std::vector<real_t> getField(const Model::Field& f);
-    virtual std::vector<real_t> getFieldAdj(const Model::Field& f);
-    virtual std::vector<real_t> getCoord(const Model::Coord& q, real_t scale = 1);
+    virtual std::vector<int> shape() const override { return {static_cast<int>(getLocalSize())}; };
+    virtual std::vector<real_t> getQuantity(const Model::Quantity& q, real_t scale = 1) override ;
+    virtual std::vector<big_flag_t> getFlags() const override;
+    virtual std::vector<real_t> getField(const Model::Field& f) override;
+    virtual std::vector<real_t> getFieldAdj(const Model::Field& f) override;
+    virtual std::vector<real_t> getCoord(const Model::Coord& q, real_t scale = 1) override;
 
-    virtual void setFlags(const std::vector<big_flag_t>& x);
-    virtual void setField(const Model::Field& f, const std::vector<real_t>& x);
-    virtual void setFieldAdjZero(const Model::Field& f);
-
+    virtual void setFlags(const std::vector<big_flag_t>& x) override;
+    virtual void setField(const Model::Field& f, const std::vector<real_t>& x) override;
+    virtual void setFieldAdjZero(const Model::Field& f) override;
     virtual void updateAllSamples() override;
     
     const ArbVTUGeom& getVTUGeom() const { return vtu_geom; }
