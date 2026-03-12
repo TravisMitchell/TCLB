@@ -476,7 +476,7 @@ void ArbLattice::initContainer() {
 }
 
 int ArbLattice::fullLatticePos(double pos) const {
-    const auto retval = std::lround(pos / connect.grid_size - .5);
+    const auto retval = std::lround(pos - .5);
     assert(retval <= std::numeric_limits<int>::max() && retval >= std::numeric_limits<int>::min());
     return static_cast<int>(retval);
 }
@@ -894,4 +894,9 @@ void ArbLattice::resetAverage(){
             CudaMemset(&getSnapPtr(Snap)[f.id*sizes.snaps_pitch], 0, sizes.snaps_pitch*sizeof(real_t));
         }
     }
+}
+
+ArbLattice::~ArbLattice()
+{
+	RFI.Close();
 }

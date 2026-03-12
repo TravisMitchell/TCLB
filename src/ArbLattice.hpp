@@ -79,23 +79,23 @@ class ArbLattice : public LatticeBase {
     ArbLattice(ArbLattice&&) = delete;
     ArbLattice& operator=(const ArbLattice&) = delete;
     ArbLattice& operator=(ArbLattice&&) = delete;
-    virtual ~ArbLattice() = default;
+    virtual ~ArbLattice();
 
     int reinitialize(size_t num_snaps_, const std::map<std::string, int>& setting_zones, pugi::xml_node arb_node);  /// Init if passed args differ from those passed at construction or the last call to reinitialize (avoid duplicating work)
     size_t getLocalSize() const final { return connect.chunk_end - connect.chunk_begin; }
     size_t getGlobalSize() const final { return connect.num_nodes_global; }
 
 
-    virtual std::vector<int> shape() const { return {static_cast<int>(getLocalSize())}; };
-    virtual std::vector<real_t> getQuantity(const Model::Quantity& q, real_t scale = 1) ;
-    virtual std::vector<big_flag_t> getFlags() const;
-    virtual std::vector<real_t> getField(const Model::Field& f);
-    virtual std::vector<real_t> getFieldAdj(const Model::Field& f);
-    virtual std::vector<real_t> getCoord(const Model::Coord& q, real_t scale = 1);
+    virtual std::vector<int> shape() const override { return {static_cast<int>(getLocalSize())}; };
+    virtual std::vector<real_t> getQuantity(const Model::Quantity& q, real_t scale = 1) override ;
+    virtual std::vector<big_flag_t> getFlags() const override;
+    virtual std::vector<real_t> getField(const Model::Field& f) override;
+    virtual std::vector<real_t> getFieldAdj(const Model::Field& f) override;
+    virtual std::vector<real_t> getCoord(const Model::Coord& q, real_t scale = 1) override;
 
-    virtual void setFlags(const std::vector<big_flag_t>& x);
-    virtual void setField(const Model::Field& f, const std::vector<real_t>& x);
-    virtual void setFieldAdjZero(const Model::Field& f);
+    virtual void setFlags(const std::vector<big_flag_t>& x) override;
+    virtual void setField(const Model::Field& f, const std::vector<real_t>& x) override;
+    virtual void setFieldAdjZero(const Model::Field& f) override;
     
     const ArbVTUGeom& getVTUGeom() const { return vtu_geom; }
     Span<const flag_t> getNodeTypes() const { return {node_types_host.data(), node_types_host.size()}; }  /// Get host view of node types (permuted)
@@ -103,6 +103,7 @@ class ArbLattice : public LatticeBase {
     const std::vector<unsigned>& getLocalPermutation() const { return local_permutation; }
 
     void resetAverage();
+    lbRegion getLocalBoundingBox() const override;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice 
 
    protected:
     ArbLatticeLauncher launcher;  /// Launcher responsible for running CUDA kernels on the lattice
@@ -152,7 +153,6 @@ class ArbLattice : public LatticeBase {
     void initCommManager();                                                                                                        /// Compute which fields need to be sent to/received from which neighbors
     void initContainer();                                                                                                          /// Initialize the data residing in launcher.container
     int fullLatticePos(double pos) const;                                                                                          /// Compute the position (in terms of lattice offsets) of a node, assuming the arbitrary lattice is a subset of a Cartesian lattice
-    lbRegion getLocalBoundingBox() const;                                                                                          /// Compute local bounding box, assuming the arbitrary lattice is a subset of a Cartesian lattice
     ArbVTUGeom makeVTUGeom() const;                                                                                                /// Compute VTU geometry
     void communicateBorder();                                                                                                      /// Send and receive border values in snap (overlapped with interior computation)
     unsigned lookupLocalGhostIndex(ArbLatticeConnectivity::Index gid) const;                                                       /// For a given ghost gid, look up its local id

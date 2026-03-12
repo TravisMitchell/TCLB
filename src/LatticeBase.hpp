@@ -10,6 +10,7 @@
 #include "SolidContainer.h"
 #include "SyntheticTurbulence.h"
 #include "ZoneSettings.h"
+#include "Region.h"
 #include "cross.h"
 #include "unit.h"
 
@@ -93,6 +94,9 @@ class LatticeBase {
    public:
     virtual size_t getLocalSize() const = 0;
     virtual size_t getGlobalSize() const = 0;
+
+    virtual lbRegion getLocalBoundingBox() const = 0;
+
     void initLattice();  /// Called by handlers
 
     template <class F>
