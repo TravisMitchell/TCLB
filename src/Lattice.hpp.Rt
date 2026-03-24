@@ -90,11 +90,19 @@ struct Lattice : public LatticeType {
 ?>
         DEBUG_PROF_PUSH("Calculation");
     <?R if (fp_has_global) { ?>
-        LatticeType::launcher.template RunBorder< Primal, IntegrateGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
-        CudaStreamSynchronize(LatticeType::kernelStream);
-        LatticeType::MPIStream_A();
-        LatticeType::launcher.template RunInterior< Primal, IntegrateGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
-        CudaStreamSynchronize(LatticeType::kernelStream);
+        if (fp_iter >= <?%d stage$fp_minIter ?>) {
+            LatticeType::launcher.template RunBorder< Primal, IntegrateGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
+            CudaStreamSynchronize(LatticeType::kernelStream);
+            LatticeType::MPIStream_A();
+            LatticeType::launcher.template RunInterior< Primal, IntegrateGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
+            CudaStreamSynchronize(LatticeType::kernelStream);
+        } else {
+            LatticeType::launcher.template RunBorder< Primal, NoGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
+            CudaStreamSynchronize(LatticeType::kernelStream);
+            LatticeType::MPIStream_A();
+            LatticeType::launcher.template RunInterior< Primal, NoGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
+            CudaStreamSynchronize(LatticeType::kernelStream);
+        }
     <?R } else { ?>
         switch(iter_type & ITER_INTEG) {
             case ITER_NO:
@@ -128,16 +136,18 @@ struct Lattice : public LatticeType {
         DEBUG_PROF_POP();
 <?R if (stage$last_particle) { ?> LatticeType::CopyOutParticles() <?R } ?>
 <?R if (fp_has_global) { ?>
-                real_t fp_curr_val;
-                CudaMemcpy(&fp_curr_val, &LatticeType::data.Globals[<?%s G$Index ?>], sizeof(real_t), CudaMemcpyDeviceToHost);
-                MPI_Allreduce(MPI_IN_PLACE, &fp_curr_val, 1, MPI_REAL_T, MPI_<?%s G$op ?>, MPMD.local);
-                if (fp_iter >= <?%d stage$fp_minIter ?> - 1 && !std::isnan(fp_prev_val)) {
-                    if (std::abs(fp_curr_val - fp_prev_val) <= <?%g stage$fp_tol ?> * (real_t(1) + std::abs(fp_prev_val))) {
-                        fp_converged = true;
-                        break;
+                if (fp_iter >= <?%d stage$fp_minIter ?> - 1) {
+                    real_t fp_curr_val;
+                    CudaMemcpy(&fp_curr_val, &LatticeType::data.Globals[<?%s G$Index ?>], sizeof(real_t), CudaMemcpyDeviceToHost);
+                    MPI_Allreduce(MPI_IN_PLACE, &fp_curr_val, 1, MPI_REAL_T, MPI_<?%s G$op ?>, MPMD.local);
+                    if (!std::isnan(fp_prev_val)) {
+                        if (std::abs(fp_curr_val - fp_prev_val) <= <?%g stage$fp_tol ?> * (real_t(1) + std::abs(fp_prev_val))) {
+                            fp_converged = true;
+                            break;
+                        }
                     }
+                    fp_prev_val = fp_curr_val;
                 }
-                fp_prev_val = fp_curr_val;
             }
             if (!fp_converged) {
                 notice("fixedPoint stage <?%s stage$name ?> did not converge in <?%d stage$fp_maxIter ?> iterations\n");
