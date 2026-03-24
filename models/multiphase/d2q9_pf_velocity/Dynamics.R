@@ -106,7 +106,7 @@ if (Options$RT) {
 	# iteration
 	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw","PF","f") , load=DensityAll$group %in% c("PF","g","h","Vel","nw","elec_field"))  # TODO: is nw needed here?
 	AddStage("FerroIter" , "calcFerroIter"		, save=Fields$group %in% c("f")			       , load=DensityAll$group %in% c("f","PF"), 
-			 fixedPoint=list(global="PSI_CHANGE", tol=1e-10, minIter=4000L, maxIter=5000L))
+			 fixedPoint=list(global="PSI_CHANGE", tol=1e-8, maxIter=1000000L))
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF", "elec_field"), 
 												  load=DensityAll$group %in% c("g","h","Vel","nw","f"))
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw","PF"))	
