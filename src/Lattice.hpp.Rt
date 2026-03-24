@@ -6,6 +6,8 @@ c_header();
 #ifndef LATTICE_HPP
 #define LATTICE_HPP
 
+#include <cmath>
+#include <limits>
 #include <utility>
 
 #include "Global.h"
@@ -62,7 +64,22 @@ struct Lattice : public LatticeType {
         for (stage in rows(action_stages)) {
 ?>
         DEBUG_PROF_PUSH("<?%s stage$name ?>");
-<?R if (stage$fixedPoint) { ?> for (int fix=0; fix<100; fix++) { <?R } ?>
+<?R
+    fp_has_global = isTRUE(stage$fp_enabled) && !is.na(stage$fp_global)
+    if (fp_has_global) {
+        G = Globals[Globals$name == stage$fp_global, , drop=FALSE]
+        if (nrow(G) != 1) stop(paste0("fixedPoint: global '", stage$fp_global, "' not found in stage '", stage$name, "'"))
+    }
+    if (fp_has_global) {
+?>
+    {
+        real_t fp_prev_val = std::numeric_limits<real_t>::quiet_NaN();
+        bool fp_converged = false;
+        for (int fp_iter = 0; fp_iter < <?%d stage$fp_maxIter ?>; ++fp_iter) {
+        LatticeType::data.clearGlobals();
+<?R } else if (isTRUE(stage$fp_enabled)) { ?>
+    for (int fp_fix = 0; fp_fix < 100; ++fp_fix) {
+<?R } ?>
 <?R if (stage$first_particle) { ?> LatticeType::CopyInParticles(); <?R } ?>
 <?R if (old_stage_level > 0) { ?>
         LatticeType::MPIStream_B();
@@ -72,6 +89,13 @@ struct Lattice : public LatticeType {
         old_stage_level = old_stage_level + 1
 ?>
         DEBUG_PROF_PUSH("Calculation");
+    <?R if (fp_has_global) { ?>
+        LatticeType::launcher.template RunBorder< Primal, IntegrateGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
+        CudaStreamSynchronize(LatticeType::kernelStream);
+        LatticeType::MPIStream_A();
+        LatticeType::launcher.template RunInterior< Primal, IntegrateGlobals, <?%s stage$name ?> >(LatticeType::kernelStream, LatticeType::data);
+        CudaStreamSynchronize(LatticeType::kernelStream);
+    <?R } else { ?>
         switch(iter_type & ITER_INTEG) {
             case ITER_NO:
                 LatticeType::launcher.template RunBorder< Primal, NoGlobals, <?%s stage$name ?> > (LatticeType::kernelStream, LatticeType::data);
@@ -100,9 +124,29 @@ struct Lattice : public LatticeType {
                 break;
 #endif
         }
+<?R } ?>
         DEBUG_PROF_POP();
 <?R if (stage$last_particle) { ?> LatticeType::CopyOutParticles() <?R } ?>
-<?R if (stage$fixedPoint) { ?> } // for(fix) <?R } ?>
+<?R if (fp_has_global) { ?>
+                real_t fp_curr_val;
+                CudaMemcpy(&fp_curr_val, &LatticeType::data.Globals[<?%s G$Index ?>], sizeof(real_t), CudaMemcpyDeviceToHost);
+                MPI_Allreduce(MPI_IN_PLACE, &fp_curr_val, 1, MPI_REAL_T, MPI_<?%s G$op ?>, MPMD.local);
+                if (fp_iter >= <?%d stage$fp_minIter ?> - 1 && !std::isnan(fp_prev_val)) {
+                    if (std::abs(fp_curr_val - fp_prev_val) <= <?%g stage$fp_tol ?> * (real_t(1) + std::abs(fp_prev_val))) {
+                        fp_converged = true;
+                        break;
+                    }
+                }
+                fp_prev_val = fp_curr_val;
+            }
+            if (!fp_converged) {
+                notice("fixedPoint stage <?%s stage$name ?> did not converge in <?%d stage$fp_maxIter ?> iterations\n");
+            }
+            LatticeType::data.clearGlobals();
+        }
+<?R } else if (isTRUE(stage$fp_enabled)) { ?>
+        } // for(fp_fix)
+<?R } ?>
         DEBUG_PROF_POP();
 <?R } ?>
         LatticeType::MPIStream_B();

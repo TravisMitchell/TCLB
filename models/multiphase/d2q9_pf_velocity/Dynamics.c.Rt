@@ -102,6 +102,16 @@ CudaDeviceFunction vector_t getNormal(){
 	return normal;
 }
 
+#ifdef OPTIONS_ferro
+	CudaDeviceFunction real_t getPsiE(){
+		if (NodeType & NODE_MRT) {
+			return (f1+f2+f3+f4)/(1.0 - wt[0]);
+		} else {
+			return PSI_E(0,0);
+		}
+	}
+#endif
+
 // 	HELPER FUNCTIONS:
 CudaDeviceFunction vector_t calcGradPhi(){
 	vector_t gradPhi;
@@ -380,9 +390,53 @@ CudaDeviceFunction void Init_distributions(){
 				C(h_old, h)	}	?>
 		}
 	#endif
+
+	#ifdef OPTIONS_ferro
+		f0 = (wt[0] - 1.0) * psi_e;
+		f1 = wt[1] * psi_e;
+		f2 = wt[2] * psi_e;
+		f3 = wt[3] * psi_e;
+		f4 = wt[4] * psi_e;
+		PSI_E = psi_e;
+		Ex = 0.0; // assuming zero electric field force in 
+		Ey = 0.0; // zero iteration.
+	#endif
 }
 
 //	ITERATION:
+#ifdef OPTIONS_ferro
+CudaDeviceFunction void calcFerroIter() {
+	real_t myPhaseF = PhaseF(0,0);
+	if (NodeType & NODE_MRT) {
+		real_t myPHI_E = PSI_E(0,0);
+		real_t s_e_local = s_e_L + (s_e_H - s_e_L) * (myPhaseF - PhaseField_l)/(PhaseField_h - PhaseField_l);	
+		real_t relax_e = 1.0 / (0.5 + s_e_local*3.0);
+
+		f0 = f0 - relax_e * (f0 - (wt[0] - 1.0)*myPHI_E );
+		f1 = f1 - relax_e * (f1 - wt[1]*myPHI_E );
+		f2 = f2 - relax_e * (f2 - wt[2]*myPHI_E );
+		f3 = f3 - relax_e * (f3 - wt[3]*myPHI_E );
+		f4 = f4 - relax_e * (f4 - wt[4]*myPHI_E );
+
+		PSI_E = (f1 + f2 + f3 + f4) / (1.0 - wt[0]);
+		AddToPSI_CHANGE(abs(PSI_E - myPHI_E));
+	} else {
+		real_t myPHI_E = psi_e;
+		real_t s_e_local = s_e_L + (s_e_H - s_e_L) * (myPhaseF - PhaseField_l)/(PhaseField_h - PhaseField_l);	
+		real_t relax_e = 1.0 / (0.5 + s_e_local*3.0);
+
+		f0 = (wt[0] - 1.0)*myPHI_E ;
+		f1 = wt[1]*myPHI_E ;
+		f2 = wt[2]*myPHI_E ;
+		f3 = wt[3]*myPHI_E ;
+		f4 = wt[4]*myPHI_E ;
+
+		PSI_E = (f1 + f2 + f3 + f4) / (1.0 - wt[0]);
+		AddToPSI_CHANGE(abs(PSI_E - myPHI_E));
+	}
+}
+#endif
+
 CudaDeviceFunction void BC_Switcher ()
 {
 	switch (NodeType & NODE_BOUNDARY) {
@@ -454,6 +508,15 @@ CudaDeviceFunction void calcHydroIter() {
 			AddToMomentumX_afterCol(U*rho);
 			AddToMomentumY_afterCol(V*rho);
 		#endif
+
+		#ifdef OPTIONS_ferro
+		    f0 = f0(0,0);
+		    f1 = f1(0,0);
+		    f2 = f2(0,0);
+		    f3 = f3(0,0);
+		    f4 = f4(0,0);
+			PSI_E = PSI_E(0,0);
+		#endif
 	}
 }
 
@@ -489,6 +552,31 @@ CudaDeviceFunction void calcPhaseFIter(){
 	// eq 12 from "Improved locality of the phase-field lattice Boltzmann 
 	// model for immiscible fluids at high density ratios"	
 	PhaseF = <?R C(sum(h)) ?>;
+
+	#ifdef OPTIONS_ferro
+	if (NodeType & NODE_MRT) {
+		// calc gradients of PSI_E using isotropic difference
+		vector_t  gradPsiE;
+		gradPsiE.x = 0.0;
+		gradPsiE.y = 0.0;
+
+		real_t psi_a = PSI_E(0,0);
+		real_t psi_b, denom = 0.0;
+
+		for (int i = 0; i<9; i++) {
+			psi_b = PSI_E_dyn(d2q9_ex[i],d2q9_ey[i]);
+			if (!isnan(psi_b)){
+				gradPsiE.x += wf[i]*d2q9_ex[i]*(psi_b-psi_a);
+				gradPsiE.y += wf[i]*d2q9_ey[i]*(psi_b-psi_a);
+				denom += wf[i];
+			}
+		}
+		gradPsiE.x = gradPsiE.x/denom/cs2;
+		gradPsiE.y = gradPsiE.y/denom/cs2;
+		Ex = -1.0 * gradPsiE.x;
+		Ey = -1.0 * gradPsiE.y;
+	}
+	#endif
 }
 
 CudaDeviceFunction void calcWallPhaseIter(){
@@ -515,6 +603,7 @@ CudaDeviceFunction void calcWallPhaseIter(){
 			PhaseF = (myA - sqrt( myA*myA - 4.0 * (myA-1.0)*myPhase))/(myA-1.0) - myPhase;
 		}
 	} 	
+	AddToWallPhaseSum(PhaseF);
 }
 
 #ifdef OPTIONS_CM
@@ -1008,6 +1097,15 @@ CudaDeviceFunction void CollisionMRT(){
 
 	real_t p = getNormalizedPressure(); // normalized pressure
 	vector_t Fhydro = calcTotalHydrodynamicForceMRT(gradPhi, myPhaseF, rho, tau,  calcMu(myPhaseF), p);
+
+	#ifdef OPTIONS_ferro
+		vector_t Fe = {0.0, 0.0, 0.0};
+		vector_t E = {Ex(0,0), Ey(0,0), 0.0};
+		Fe.x = -0.5 * (E.x*E.x + E.y*E.y) * (s_e_H-s_e_L) * gradPhi.x;
+		Fe.y = -0.5 * (E.x*E.x + E.y*E.y) * (s_e_H-s_e_L) * gradPhi.y;
+		Fhydro.x += Fe.x;
+		Fhydro.y += Fe.y;
+	#endif
 
 	// PHASE FIELD POPULATION UPDATE:
 	#ifdef OPTIONS_RT

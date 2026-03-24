@@ -292,13 +292,38 @@ AddDescription = function(short, long) {
 
 
 AddStage = function(name, main=name, load.densities=FALSE, save.fields=FALSE, read.fields=NA, can.overwrite=FALSE, default=FALSE, fixedPoint=FALSE, particle=FALSE, particle.margin) {
+	fp_enabled = FALSE
+	fp_global = NA_character_
+	fp_tol = NA_real_
+	fp_maxIter = NA_integer_
+	fp_minIter = NA_integer_
+	if (is.list(fixedPoint)) {
+		if (is.null(fixedPoint$global)) stop("fixedPoint list must contain a 'global' key")
+		fp_enabled = TRUE
+		fp_global = fixedPoint$global
+		fp_tol = if (!is.null(fixedPoint$tol)) fixedPoint$tol else 1e-6
+		fp_maxIter = if (!is.null(fixedPoint$maxIter)) as.integer(fixedPoint$maxIter) else 100L
+		fp_minIter = if (!is.null(fixedPoint$minIter)) as.integer(fixedPoint$minIter) else 1L
+		if (!is.finite(fp_tol) || fp_tol < 0) stop("fixedPoint tol must be finite and non-negative")
+		if (fp_maxIter < 1L) stop("fixedPoint maxIter must be >= 1")
+		if (fp_minIter < 1L) stop("fixedPoint minIter must be >= 1")
+		if (fp_minIter > fp_maxIter) stop("fixedPoint minIter must be <= maxIter")
+		fixedPoint = TRUE
+	} else if (isTRUE(fixedPoint)) {
+		fp_enabled = TRUE
+	}
 	s = data.frame(
 		name = name,
 		main = main,
 		adjoint = FALSE,
-		fixedPoint=fixedPoint,
-		particle=particle,
-		can.overwrite=can.overwrite
+		fixedPoint = isTRUE(fixedPoint),
+		fp_enabled = fp_enabled,
+		fp_global = fp_global,
+		fp_tol = fp_tol,
+		fp_maxIter = fp_maxIter,
+		fp_minIter = fp_minIter,
+		particle = particle,
+		can.overwrite = can.overwrite
 	)
 	sel = Stages$name == name
 	if (any(sel)) {

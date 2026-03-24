@@ -33,6 +33,7 @@ if (Options$Outflow) {
 	AddDensity( name=paste("hold",0:8,sep=""), dx=0, dy=0, group="hold")
 }
 
+
 #	Fields required for solid contact
 AddDensity(name="nw_x", dx=0, dy=0, group="nw", comment='phase field normal at the wall in x direction, pointing into fluid')
 AddDensity(name="nw_y", dx=0, dy=0, group="nw")
@@ -41,6 +42,23 @@ AddDensity(name="nw_y", dx=0, dy=0, group="nw")
 AddDensity(name="U", dx=0, dy=0, group="Vel")
 AddDensity(name="V", dx=0, dy=0, group="Vel")
 
+if (Options$ferro){
+	AddDensity( name="f0", dx= 0, dy= 0, group="f")
+	AddDensity( name="f1", dx= 1, dy= 0, group="f")
+	AddDensity( name="f2", dx= 0, dy= 1, group="f")
+	AddDensity( name="f3", dx=-1, dy= 0, group="f")
+	AddDensity( name="f4", dx= 0, dy=-1, group="f")
+
+	AddField( name="f0", dx= 0, dy= 0, group="f")
+	AddField( name="f1", dx= 1, dy= 0, group="f")
+	AddField( name="f2", dx= 0, dy= 1, group="f")
+	AddField( name="f3", dx=-1, dy= 0, group="f")
+	AddField( name="f4", dx= 0, dy=-1, group="f")
+
+	AddField( name="PSI_E", stencil2d=1, group="f")
+	AddField( name="Ex", group="elec_field")
+	AddField( name="Ey", group="elec_field")
+}
 #	Phase-field stencil for finite differences
 AddField('PhaseF',stencil2d=1, group="PF")
 
@@ -78,6 +96,24 @@ if (Options$RT) {
 												  load=DensityAll$group %in% c("g","h","Vel","nw","gold","hold")) 
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF"), load=DensityAll$group %in% c("g","h","Vel","nw","gold","hold"))
 	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF"), load=DensityAll$group=="nw")	
+} else if (Options$ferro) {
+	
+	# initialisation
+	AddStage("PhaseInit" , "Init_phase"			, save=Fields$group %in% c("PF"))
+	AddStage("WallInit"  , "Init_wallNorm"		, save=Fields$group %in% c("nw"))
+	AddStage("BaseInit"  , "Init_distributions" , save=Fields$group %in% c("g","h","f","Vel","elec_field"))
+
+	# iteration
+	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw","PF","f") , load=DensityAll$group %in% c("PF","g","h","Vel","nw","elec_field"))  # TODO: is nw needed here?
+	AddStage("FerroIter" , "calcFerroIter"		, save=Fields$group %in% c("f")			       , load=DensityAll$group %in% c("f","PF"), 
+			 fixedPoint=list(global="PSI_CHANGE", tol=1e-10, minIter=4000L, maxIter=5000L))
+	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF", "elec_field"), 
+												  load=DensityAll$group %in% c("g","h","Vel","nw","f"))
+	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw","PF"))	
+
+	AddAction("Iteration", c("BaseIter", "FerroIter", "PhaseIter","WallIter"))
+	AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit"))
+
 } else {
 	
 	# initialisation
@@ -88,11 +124,13 @@ if (Options$RT) {
 	# iteration
 	AddStage("BaseIter"  , "calcHydroIter"      , save=Fields$group %in% c("g","h","Vel","nw") , load=DensityAll$group %in% c("PF","g","h","Vel","nw"))  # TODO: is nw needed here?
 	AddStage("PhaseIter" , "calcPhaseFIter"		, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("g","h","Vel","nw"))
-	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw","PF"))	# Purposefully read/write of PF for boundary. complex geom may force RACE condition.
+	AddStage("WallIter"  , "calcWallPhaseIter"	, save=Fields$group %in% c("PF")			   , load=DensityAll$group %in% c("nw","PF"))
 }
 
-AddAction("Iteration", c("BaseIter", "PhaseIter","WallIter"))
-AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit"))
+if (!Options$ferro) {
+	AddAction("Iteration", c("BaseIter", "PhaseIter","WallIter"))
+	AddAction("Init"     , c("PhaseInit","WallInit", "WallIter","BaseInit"))
+}
 
 # 	Outputs:
 AddQuantity(name="Rho",	unit="kg/m3")
@@ -101,6 +139,10 @@ AddQuantity(name="U", unit="m/s",vector=T)
 AddQuantity(name="NormalizedPressure", unit="1")
 AddQuantity(name="Pressure", unit="Pa")
 AddQuantity(name="Normal", unit="1", vector=T)
+
+if (Options$ferro) {
+	AddQuantity(name="PsiE", unit="1")
+}
 
 #	Initialisation States
 AddSetting(name="Period", default="0", comment='Number of cells per cos wave')
@@ -114,6 +156,11 @@ AddSetting(name="CenterX", default="0", comment='Circle center x-coord')
 AddSetting(name="CenterY", default="0", comment='Circle Center y-coord')
 AddSetting(name="BubbleType", default="1", comment='Drop/bubble')
 
+if (Options$ferro) {
+	AddSetting(name="psi_e", default="0", zonal=T, comment='External potential field')
+	AddSetting(name="s_e_H", default="0", comment='sigma_H or eps_H depending on leaky or perfect model (current implementation for perfect)')
+	AddSetting(name="s_e_L", default="0", comment='sigma_L or eps_L depending on leaky or perfect model (current implementation for perfect)')
+}
 #	Inputs: For phasefield evolution
 AddSetting(name="Density_h", comment='High density fluid')
 AddSetting(name="Density_l", comment='Low  density fluid')
@@ -163,6 +210,10 @@ AddGlobal(name="BubbleVelocityY", comment='Bubble velocity in the y direction')
 AddGlobal(name="BubbleVelocityZ", comment='Bubble velocity in the z direction')
 AddGlobal(name="BubbleLocationY", comment='Bubble Location in the y direction')
 AddGlobal(name="SumPhiGas", comment='Summation of (1-phi) in all gas cells')
+AddGlobal(name="WallPhaseSum", comment='Sum of PhaseF for WallIter fixed-point convergence')
+if (Options$ferro) {
+	AddGlobal(name="PSI_CHANGE", comment='Change in PSI_E for fixed point convergence')
+}
 
 if (Options$debug){
 	AddGlobal(name="MomentumX", comment='Total momentum in the domain', unit="")
